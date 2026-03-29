@@ -1,4 +1,11 @@
 
+spring:
+  mongodb:
+    uri: "${MONGODB_URI:mongodb+srv://awantha:ABdgpqSthXmK1k8K@cluster0wolfenox.aza9jrr.mongodb.net/PAF_smart_campus}"
+  data:
+    mongodb:
+      auto-index-creation: true
+
 
 app:
   jwt:
@@ -26,6 +33,4 @@ app:
     api-key: ${CLOUDINARY_API_KEY:942481757459519}
     api-secret: ${CLOUDINARY_API_SECRET:t7tMm0_KRERFz6bFtzMCZNJSINM}
     folder: ${CLOUDINARY_FOLDER:unistudyhub/profile-images}
-
-
 

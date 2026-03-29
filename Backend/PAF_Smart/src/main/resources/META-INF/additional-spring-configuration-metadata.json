@@ -1,0 +1,121 @@
+{
+  "groups": [
+    {
+      "name": "app.jwt",
+      "type": "java.util.Map",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.auth",
+      "type": "java.util.Map",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.mailjet",
+      "type": "java.util.Map",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.gemini",
+      "type": "java.util.Map",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.cloudinary",
+      "type": "java.util.Map",
+      "sourceType": "manual"
+    }
+  ],
+  "properties": [
+    {
+      "name": "app.jwt.secret",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.jwt.expiration-seconds",
+      "type": "java.lang.Integer",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.auth.seed-admin",
+      "type": "java.lang.Boolean",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.auth.admin-registration-code",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.auth.sub-admin-registration-code",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.mailjet.enabled",
+      "type": "java.lang.Boolean",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.mailjet.api-key",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.mailjet.secret-key",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.mailjet.from-email",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.mailjet.from-name",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.gemini.api-key",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.gemini.model",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.cloudinary.enabled",
+      "type": "java.lang.Boolean",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.cloudinary.url",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.cloudinary.cloud-name",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.cloudinary.api-key",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.cloudinary.api-secret",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    },
+    {
+      "name": "app.cloudinary.folder",
+      "type": "java.lang.String",
+      "sourceType": "manual"
+    }
+  ]
+}
