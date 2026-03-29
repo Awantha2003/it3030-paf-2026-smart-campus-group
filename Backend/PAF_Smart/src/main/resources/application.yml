@@ -1,0 +1,31 @@
+
+
+app:
+  jwt:
+    secret: change-me-in-prod
+    expiration-seconds: 3600
+  auth:
+    seed-admin: true
+    admin-registration-code: ${ADMIN_REGISTRATION_CODE:ADMIN-ACCESS-2026}
+    sub-admin-registration-code: ${SUB_ADMIN_REGISTRATION_CODE:SUPPORT-ACCESS-2026}
+  mailjet:
+    enabled: ${MAILJET_ENABLED:true}
+    api-key: ${MAILJET_API_KEY:2c4a0d772ce82986f39e2edbb836c421}
+    secret-key: ${MAILJET_SECRET_KEY:8f52d302412d192f5f485c8840b6029b}
+    from-email: ${MAILJET_FROM_EMAIL:awanthaimesh222@gmail.com}
+    from-name: ${MAILJET_FROM_NAME:UniStudy Hub}
+
+  gemini:
+    api-key: ${GEMINI_API_KEY:AIzaSyCBBxP_eRX46oXVFNyWPGah83Nrm5EX-gE}
+    model: ${GEMINI_MODEL:gemini-2.5-flash}
+
+  cloudinary:
+    enabled: ${CLOUDINARY_ENABLED:true}
+    url: ${CLOUDINARY_URL:cloudinary://942481757459519:t7tMm0_KRERFz6bFtzMCZNJSINM@dyogmyud6}
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:dyogmyud6}
+    api-key: ${CLOUDINARY_API_KEY:942481757459519}
+    api-secret: ${CLOUDINARY_API_SECRET:t7tMm0_KRERFz6bFtzMCZNJSINM}
+    folder: ${CLOUDINARY_FOLDER:unistudyhub/profile-images}
+
+
+
