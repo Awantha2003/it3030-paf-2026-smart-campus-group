@@ -14,14 +14,26 @@ import { SettingsPage } from './pages/settings/SettingsPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminTicketsPage } from './pages/admin/AdminTicketsPage';
 import { TechnicianDashboard } from './pages/technician/TechnicianDashboard';
+import { ErrorPage } from './pages/ErrorPage';
 
-const RootRedirect = () => {
+function RootRedirect() {
   const { user, isAuthenticated } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user?.role === 'ADMIN') return <Navigate to="/admin" replace />;
-  if (user?.role === 'TECHNICIAN') return <Navigate to="/technician" replace />;
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role === 'ADMIN') {
+    return <Navigate to="/admin" replace />;
+  }
+
+  if (user.role === 'TECHNICIAN') {
+    return <Navigate to="/technician" replace />;
+  }
+
   return <Navigate to="/dashboard" replace />;
-};
+}
+
 
 export function App() {
   return (
