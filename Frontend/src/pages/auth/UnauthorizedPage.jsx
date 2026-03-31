@@ -1,9 +1,24 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlertIcon, ArrowLeftIcon } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 export function UnauthorizedPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const getHomePath = () => {
+    if (user?.role === 'ADMIN') {
+      return '/admin';
+    }
+
+    if (user?.role === 'TECHNICIAN') {
+      return '/technician';
+    }
+
+    return '/dashboard';
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-brand-bg dark:bg-brand-dark p-4">
       <div className="max-w-md w-full text-center">
@@ -18,7 +33,7 @@ export function UnauthorizedPage() {
           administrator if you believe this is a mistake.
         </p>
         <Button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate(getHomePath())}
           leftIcon={<ArrowLeftIcon className="w-4 h-4" />}
           size="lg">
           

@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.tech.spcours.paf_smart.dto.CreateTechnicianRequest;
 import com.tech.spcours.paf_smart.dto.TechnicianResponse;
 import com.tech.spcours.paf_smart.exception.ResourceConflictException;
+import com.tech.spcours.paf_smart.exception.ResourceNotFoundException;
 import com.tech.spcours.paf_smart.model.TechnicianMember;
 import com.tech.spcours.paf_smart.repository.TechnicianMemberRepository;
 
@@ -54,6 +55,24 @@ public class TechnicianMemberService {
         EmailDeliveryResult emailDeliveryResult =
                 mailjetEmailService.sendTechnicianCredentialsEmail(savedTechnician, rawPassword);
         return toResponse(savedTechnician, emailDeliveryResult);
+    }
+
+    public TechnicianResponse updateTechnicianStatus(String id, boolean active) {
+        TechnicianMember technicianMember = findTechnicianById(id);
+        technicianMember.setActive(active);
+        technicianMember.setUpdatedAt(Instant.now());
+        TechnicianMember updatedTechnician = technicianMemberRepository.save(technicianMember);
+        return toResponse(updatedTechnician);
+    }
+
+    public void deleteTechnician(String id) {
+        TechnicianMember technicianMember = findTechnicianById(id);
+        technicianMemberRepository.delete(technicianMember);
+    }
+
+    private TechnicianMember findTechnicianById(String id) {
+        return technicianMemberRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Technician account not found"));
     }
 
     private TechnicianResponse toResponse(TechnicianMember technicianMember) {

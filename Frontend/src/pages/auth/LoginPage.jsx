@@ -7,7 +7,8 @@ import {
   LockIcon,
   ArrowRightIcon,
   UserIcon,
-  WrenchIcon
+  WrenchIcon,
+  ShieldIcon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
@@ -25,6 +26,12 @@ const roleOptions = [
     value: 'TECHNICIAN',
     icon: WrenchIcon,
     redirectTo: '/technician'
+  },
+  {
+    label: 'Admin',
+    value: 'ADMIN',
+    icon: ShieldIcon,
+    redirectTo: '/admin'
   }
 ];
 
@@ -114,7 +121,7 @@ export function LoginPage() {
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Sign in as
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {roleOptions.map((option) => {
                   const Icon = option.icon;
                   const isActive = selectedRole === option.value;

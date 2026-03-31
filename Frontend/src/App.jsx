@@ -17,6 +17,40 @@ import { AdminTechniciansPage } from './pages/admin/AdminTechniciansPage';
 import { TechnicianDashboard } from './pages/technician/TechnicianDashboard';
 import { ErrorPage } from './pages/ErrorPage';
 
+function PublicOnlyRoute({ children }) {
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
+
+function ProtectedRoute({ children }) {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
+function RoleRoute({ allowedRoles, children }) {
+  const { user, isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user || !allowedRoles.includes(user.role)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  return children;
+}
+
 function RootRedirect() {
   const { user, isAuthenticated } = useAuth();
 
@@ -42,20 +76,110 @@ export function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/unauthorized" element={<UnauthorizedPage />} />
-            <Route element={<DashboardLayout />}>
+            <Route
+              path="/login"
+              element={
+                <PublicOnlyRoute>
+                  <LoginPage />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route
+              path="/unauthorized"
+              element={
+                <ProtectedRoute>
+                  <UnauthorizedPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route path="/" element={<RootRedirect />} />
-              <Route path="/dashboard" element={<UserDashboard />} />
-              <Route path="/tickets" element={<MyTicketsPage />} />
-              <Route path="/tickets/new" element={<NewTicketPage />} />
-              <Route path="/tickets/:id" element={<TicketDetailPage />} />
-              <Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/tickets" element={<AdminTicketsPage />} />
-              <Route path="/admin/technicians" element={<AdminTechniciansPage />} />
-              <Route path="/technician" element={<TechnicianDashboard />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <RoleRoute allowedRoles={['USER']}>
+                    <UserDashboard />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/tickets"
+                element={
+                  <RoleRoute allowedRoles={['USER']}>
+                    <MyTicketsPage />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/tickets/new"
+                element={
+                  <RoleRoute allowedRoles={['USER']}>
+                    <NewTicketPage />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/tickets/:id"
+                element={
+                  <RoleRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
+                    <TicketDetailPage />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <RoleRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
+                    <NotificationsPage />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <RoleRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
+                    <SettingsPage />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <RoleRoute allowedRoles={['ADMIN']}>
+                    <AdminDashboard />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/admin/tickets"
+                element={
+                  <RoleRoute allowedRoles={['ADMIN']}>
+                    <AdminTicketsPage />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/admin/technicians"
+                element={
+                  <RoleRoute allowedRoles={['ADMIN']}>
+                    <AdminTechniciansPage />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/technician"
+                element={
+                  <RoleRoute allowedRoles={['TECHNICIAN']}>
+                    <TechnicianDashboard />
+                  </RoleRoute>
+                }
+              />
               <Route path="*" element={<ErrorPage />} />
             </Route>
           </Routes>
