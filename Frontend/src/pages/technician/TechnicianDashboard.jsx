@@ -14,10 +14,11 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
-import { mockTickets, mockUsers } from '../../data/mockData';
+import { mockTickets } from '../../data/mockData';
+import { useAuth } from '../../contexts/AuthContext';
 export function TechnicianDashboard() {
-  // Mock current technician ID
-  const techId = 't1';
+  const { user } = useAuth();
+  const techId = user?.id || 't1';
   const [tickets, setTickets] = useState(
     mockTickets.filter((t) => t.assignedTo === techId || t.status === 'OPEN')
   );
