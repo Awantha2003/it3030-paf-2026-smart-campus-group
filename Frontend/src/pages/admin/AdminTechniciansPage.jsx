@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, ShieldPlus, UserRoundPlus, Wrench } from 'lucide-react';
+import { Mail, Phone, ShieldPlus, Trash2, UserRoundPlus, Wrench } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { fetchTechnicians, createTechnician } from '../../api/technicians';
+import {
+  fetchTechnicians,
+  createTechnician,
+  updateTechnicianStatus,
+  deleteTechnician
+} from '../../api/technicians';
 
 const initialForm = {
   fullName: '',
@@ -19,6 +24,7 @@ export function AdminTechniciansPage() {
   const [formData, setFormData] = useState(initialForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [actioningId, setActioningId] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -70,6 +76,49 @@ export function AdminTechniciansPage() {
     }
   }
 
+  async function handleToggleStatus(technician) {
+    setActioningId(technician.id);
+    setError('');
+    setSuccess('');
+
+    try {
+      const updatedTechnician = await updateTechnicianStatus(technician.id, !technician.active);
+      setTechnicians((current) =>
+        current.map((item) => (item.id === technician.id ? updatedTechnician : item))
+      );
+      setSuccess(
+        `${technician.fullName} marked as ${updatedTechnician.active ? 'active' : 'inactive'}.`
+      );
+    } catch (actionError) {
+      setError(actionError.message);
+    } finally {
+      setActioningId('');
+    }
+  }
+
+  async function handleDelete(technician) {
+    const confirmed = window.confirm(`Delete technician account for ${technician.fullName}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setActioningId(technician.id);
+    setError('');
+    setSuccess('');
+
+    try {
+      await deleteTechnician(technician.id);
+      setTechnicians((current) => current.filter((item) => item.id !== technician.id));
+      setSuccess(`${technician.fullName} deleted successfully.`);
+    } catch (actionError) {
+      setError(actionError.message);
+    } finally {
+      setActioningId('');
+    }
+  }
+
+  const activeCount = technicians.filter((technician) => technician.active).length;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -86,7 +135,7 @@ export function AdminTechniciansPage() {
           </p>
         </div>
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-300">
-          Active technicians: <span className="font-semibold">{technicians.length}</span>
+          Active technicians: <span className="font-semibold">{activeCount}</span>
         </div>
       </div>
 
@@ -241,10 +290,37 @@ export function AdminTechniciansPage() {
                     </p>
                   </div>
 
-                  <div className="flex items-start justify-start md:justify-end">
-                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                      Active
+                  <div className="flex flex-col items-start gap-3 md:items-end">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                        technician.active
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                          : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      {technician.active ? 'Active' : 'Inactive'}
                     </span>
+                    <div className="flex flex-wrap gap-2 md:justify-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={technician.active ? 'outline' : 'secondary'}
+                        isLoading={actioningId === technician.id}
+                        onClick={() => handleToggleStatus(technician)}
+                      >
+                        {technician.active ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="danger"
+                        leftIcon={<Trash2 className="h-4 w-4" />}
+                        isLoading={actioningId === technician.id}
+                        onClick={() => handleDelete(technician)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))
