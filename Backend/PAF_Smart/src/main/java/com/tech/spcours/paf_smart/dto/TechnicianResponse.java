@@ -13,6 +13,8 @@ public record TechnicianResponse(
         String department,
         String specialization,
         boolean active,
+        boolean credentialsEmailSent,
+        String credentialsEmailStatus,
         Instant createdAt,
         Instant updatedAt) {
 }

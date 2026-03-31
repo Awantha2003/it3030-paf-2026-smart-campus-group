@@ -24,6 +24,10 @@ public class CreateTechnicianRequest {
             message = "Phone number must contain 7 to 20 valid characters")
     private String phone;
 
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, max = 64, message = "Password must be between 8 and 64 characters")
+    private String password;
+
     @NotBlank(message = "Department is required")
     @Size(max = 80, message = "Department must be 80 characters or less")
     private String department;

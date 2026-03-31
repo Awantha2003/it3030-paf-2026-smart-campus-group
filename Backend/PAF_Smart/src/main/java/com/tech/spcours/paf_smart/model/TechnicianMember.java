@@ -26,6 +26,8 @@ public class TechnicianMember {
     @Indexed(unique = true)
     private String email;
 
+    private String passwordHash;
+
     private String phone;
 
     private String department;

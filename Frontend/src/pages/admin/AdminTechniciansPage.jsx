@@ -9,6 +9,7 @@ const initialForm = {
   fullName: '',
   email: '',
   phone: '',
+  password: '',
   department: '',
   specialization: ''
 };
@@ -57,7 +58,11 @@ export function AdminTechniciansPage() {
       const createdTechnician = await createTechnician(formData);
       setTechnicians((current) => [createdTechnician, ...current]);
       setFormData(initialForm);
-      setSuccess('Technician member added successfully.');
+      setSuccess(
+        createdTechnician.credentialsEmailSent
+          ? 'Technician member added and credentials email sent.'
+          : `Technician member added, but email sending failed: ${createdTechnician.credentialsEmailStatus}`
+      );
     } catch (saveError) {
       setError(saveError.message);
     } finally {
@@ -122,6 +127,14 @@ export function AdminTechniciansPage() {
               name="phone"
               placeholder="+94 77 123 4567"
               value={formData.phone}
+              onChange={handleChange}
+            />
+            <Field
+              label="Password"
+              name="password"
+              type="password"
+              placeholder="Minimum 8 characters"
+              value={formData.password}
               onChange={handleChange}
             />
             <Field
