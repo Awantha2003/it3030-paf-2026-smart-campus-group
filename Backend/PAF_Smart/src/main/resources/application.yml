@@ -33,3 +33,5 @@ app:
     api-key: ${CLOUDINARY_API_KEY:942481757459519}
     api-secret: ${CLOUDINARY_API_SECRET:t7tMm0_KRERFz6bFtzMCZNJSINM}
     folder: ${CLOUDINARY_FOLDER:unistudyhub/profile-images}
+
+

@@ -103,12 +103,14 @@ public class MailjetEmailService {
 
                 Your Smart Campus technician account has been created.
 
+                Please use the temporary credentials below to sign in once and change your password immediately.
+
                 Email: %s
                 Password: %s
                 Department: %s
                 Specialization: %s
 
-                Please sign in and change this password as soon as possible.
+                If you were not expecting this email, please contact support.
                 """
                 .formatted(
                         technicianMember.getFullName(),
@@ -120,13 +122,19 @@ public class MailjetEmailService {
 
     private String buildHtmlPart(TechnicianMember technicianMember, String rawPassword) {
         return """
-                <h3>Hello %s,</h3>
-                <p>Your Smart Campus technician account has been created.</p>
-                <p><strong>Email:</strong> %s</p>
-                <p><strong>Password:</strong> %s</p>
-                <p><strong>Department:</strong> %s</p>
-                <p><strong>Specialization:</strong> %s</p>
-                <p>Please sign in and change this password as soon as possible.</p>
+                <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6; max-width: 560px; margin: 0 auto;">
+                  <h2 style="margin-bottom: 8px;">Smart Campus Technician Account</h2>
+                  <p>Hello %s,</p>
+                  <p>Your technician account has been created. Please use the temporary credentials below to sign in once and change your password immediately.</p>
+                  <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <p style="margin: 0 0 8px;"><strong>Email:</strong> %s</p>
+                    <p style="margin: 0 0 8px;"><strong>Password:</strong> %s</p>
+                    <p style="margin: 0 0 8px;"><strong>Department:</strong> %s</p>
+                    <p style="margin: 0;"><strong>Specialization:</strong> %s</p>
+                  </div>
+                  <p style="margin-top: 16px;">If you were not expecting this email, please contact support.</p>
+                  <p style="font-size: 12px; color: #6b7280; margin-top: 24px;">Smart Campus automated notification</p>
+                </div>
                 """
                 .formatted(
                         technicianMember.getFullName(),
