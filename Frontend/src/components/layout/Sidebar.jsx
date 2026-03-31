@@ -25,7 +25,8 @@ export function Sidebar() {
 
   const adminNav = [
     { name: 'Admin Dashboard', path: '/admin', icon: ShieldIcon },
-    { name: 'Manage Tickets', path: '/admin/tickets', icon: TicketIcon }
+    { name: 'Manage Tickets', path: '/admin/tickets', icon: TicketIcon },
+    { name: 'Technicians', path: '/admin/technicians', icon: WrenchIcon }
   ];
 
   const techNav = [{ name: 'My Assignments', path: '/technician', icon: WrenchIcon }];

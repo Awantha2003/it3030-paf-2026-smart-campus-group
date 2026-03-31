@@ -13,6 +13,7 @@ import { NotificationsPage } from './pages/notifications/NotificationsPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminTicketsPage } from './pages/admin/AdminTicketsPage';
+import { AdminTechniciansPage } from './pages/admin/AdminTechniciansPage';
 import { TechnicianDashboard } from './pages/technician/TechnicianDashboard';
 import { ErrorPage } from './pages/ErrorPage';
 
@@ -53,6 +54,7 @@ export function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/tickets" element={<AdminTicketsPage />} />
+              <Route path="/admin/technicians" element={<AdminTechniciansPage />} />
               <Route path="/technician" element={<TechnicianDashboard />} />
               <Route path="*" element={<ErrorPage />} />
             </Route>
