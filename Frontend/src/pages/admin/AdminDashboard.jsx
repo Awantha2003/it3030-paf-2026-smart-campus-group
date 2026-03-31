@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, CheckCircle2, Clock3, Users, ArrowRight } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock3, Users, ArrowRight, Wrench } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
 import { Badge, StatusBadge } from '../../components/ui/Badge';
@@ -128,6 +128,28 @@ export function AdminDashboard() {
             <div className="p-8 text-center text-slate-500">No critical tickets</div>
           )}
         </div>
+      </Card>
+
+      <Card className="p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-4">
+          <div className="rounded-xl bg-blue-100 p-3 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+            <Wrench className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Technician Team Setup
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Add technician members so admins can maintain the support roster from one place.
+            </p>
+          </div>
+        </div>
+        <Link
+          to="/admin/technicians"
+          className="inline-flex items-center justify-center rounded-lg bg-brand-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700"
+        >
+          Manage Technicians <ArrowRight className="ml-2 w-4 h-4" />
+        </Link>
       </Card>
     </motion.div>
   );
