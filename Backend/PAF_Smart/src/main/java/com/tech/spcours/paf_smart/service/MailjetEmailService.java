@@ -55,7 +55,7 @@ public class MailjetEmailService {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                return EmailDeliveryResult.sent();
+                return EmailDeliveryResult.success();
             }
 
             return EmailDeliveryResult.failed("Mailjet rejected the email request");
