@@ -16,8 +16,31 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private static final String ADMIN_EMAIL = "admin@gmail.com";
+    private static final String ADMIN_PASSWORD = "Admin123@";
+
     private final TechnicianMemberRepository technicianMemberRepository;
     private final PasswordEncoder passwordEncoder;
+
+    public LoginResponse loginAdmin(LoginRequest request) {
+        String username = request.getUsername().trim().toLowerCase();
+
+        if (!ADMIN_EMAIL.equals(username) || !ADMIN_PASSWORD.equals(request.getPassword())) {
+            throw new UnauthorizedException("Invalid admin email or password");
+        }
+
+        return LoginResponse.builder()
+                .message("Admin login successful")
+                .user(AuthUserResponse.builder()
+                        .id("admin-001")
+                        .name("System Admin")
+                        .email(ADMIN_EMAIL)
+                        .role("ADMIN")
+                        .department("Administration")
+                        .specialization("Campus Operations")
+                        .build())
+                .build();
+    }
 
     public LoginResponse loginTechnician(LoginRequest request) {
         String username = request.getUsername().trim().toLowerCase();
