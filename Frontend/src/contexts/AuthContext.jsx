@@ -1,6 +1,6 @@
 import React, { useEffect, useState, createContext, useContext } from 'react';
 import { mockUsers } from '../data/mockData';
-import { loginTechnician as loginTechnicianApi } from '../api/auth';
+import { loginAdmin as loginAdminApi, loginTechnician as loginTechnicianApi } from '../api/auth';
 
 const AuthContext = createContext(undefined);
 
@@ -28,6 +28,13 @@ export function AuthProvider({ children }) {
     return response.user;
   };
 
+  const loginAdmin = async (credentials) => {
+    const response = await loginAdminApi(credentials);
+    setUser(response.user);
+    localStorage.setItem('authUser', JSON.stringify(response.user));
+    return response.user;
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('authUser');
@@ -43,6 +50,7 @@ export function AuthProvider({ children }) {
         user,
         isAuthenticated: !!user,
         login,
+        loginAdmin,
         loginTechnician,
         logout,
         switchRole
