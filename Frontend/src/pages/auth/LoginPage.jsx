@@ -6,8 +6,6 @@ import {
   MailIcon,
   LockIcon,
   ArrowRightIcon,
-  UserIcon,
-  WrenchIcon,
   ShieldIcon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,18 +13,6 @@ import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
 
 const roleOptions = [
-  {
-    label: 'Student',
-    value: 'USER',
-    icon: UserIcon,
-    redirectTo: '/dashboard'
-  },
-  {
-    label: 'Technician',
-    value: 'TECHNICIAN',
-    icon: WrenchIcon,
-    redirectTo: '/technician'
-  },
   {
     label: 'Admin',
     value: 'ADMIN',
@@ -36,10 +22,10 @@ const roleOptions = [
 ];
 
 export function LoginPage() {
-  const { login, loginTechnician } = useAuth();
+  const { loginAdmin } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('USER');
+  const [selectedRole, setSelectedRole] = useState('ADMIN');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -50,19 +36,11 @@ export function LoginPage() {
     setError('');
 
     try {
-      if (selectedRole === 'TECHNICIAN') {
-        await loginTechnician({
-          username: email,
-          password
-        });
-        navigate('/technician');
-        return;
-      }
-
-      const selectedOption =
-        roleOptions.find((option) => option.value === selectedRole) || roleOptions[0];
-      login(selectedOption.value);
-      navigate(selectedOption.redirectTo);
+      await loginAdmin({
+        username: email,
+        password
+      });
+      navigate('/admin');
     } catch (loginError) {
       setError(loginError.message);
     } finally {
@@ -89,7 +67,7 @@ export function LoginPage() {
             Smart Campus Hub
           </h1>
           <p className="text-slate-500 dark:text-slate-400">
-            Sign in to manage your university operations
+            Admin sign in to manage campus operations
           </p>
         </div>
 
@@ -121,7 +99,7 @@ export function LoginPage() {
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Sign in as
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 {roleOptions.map((option) => {
                   const Icon = option.icon;
                   const isActive = selectedRole === option.value;
@@ -161,7 +139,7 @@ export function LoginPage() {
                   <MailIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                   <input
                     type="email"
-                    placeholder="name@university.edu"
+                    placeholder="admin@gmail.com"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 outline-none transition-all focus:border-brand-purple focus:ring-2 focus:ring-brand-purple dark:border-slate-700 dark:bg-slate-900/50 dark:text-white"
@@ -186,7 +164,7 @@ export function LoginPage() {
                   <LockIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                   <input
                     type="password"
-                    placeholder="Enter your password"
+                    placeholder="Admin123@"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 outline-none transition-all focus:border-brand-purple focus:ring-2 focus:ring-brand-purple dark:border-slate-700 dark:bg-slate-900/50 dark:text-white"
@@ -200,6 +178,14 @@ export function LoginPage() {
                   {error}
                 </div>
               )}
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+                Admin login:
+                <br />
+                Email: admin@gmail.com
+                <br />
+                Password: Admin123@
+              </div>
 
               <div className="flex items-center">
                 <input
