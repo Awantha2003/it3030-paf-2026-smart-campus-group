@@ -19,6 +19,11 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @PostMapping("/admin/login")
+    public LoginResponse loginAdmin(@Valid @RequestBody LoginRequest request) {
+        return authService.loginAdmin(request);
+    }
+
     @PostMapping("/technician/login")
     public LoginResponse loginTechnician(@Valid @RequestBody LoginRequest request) {
         return authService.loginTechnician(request);
