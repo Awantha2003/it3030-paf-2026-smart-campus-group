@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   PlusIcon,
@@ -11,18 +11,54 @@ import {
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge, Badge } from '../../components/ui/Badge';
-import { mockTickets } from '../../data/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { motion } from 'framer-motion';
+import { getStudentIssueReports } from '../../api/issues';
 export function MyTicketsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [tickets, setTickets] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [priorityFilter, setPriorityFilter] = useState('ALL');
-  // Filter tickets for current user
-  const userTickets = mockTickets.filter((t) => t.createdBy === user?.id);
-  const filteredTickets = userTickets.filter((ticket) => {
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadTickets() {
+      if (!user?.id) {
+        setTickets([]);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      setErrorMessage('');
+
+      try {
+        const response = await getStudentIssueReports(user.id);
+        if (!ignore) {
+          setTickets(response);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setErrorMessage(error.message || 'Failed to load tickets.');
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadTickets();
+
+    return () => {
+      ignore = true;
+    };
+  }, [user?.id]);
+  const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch =
     ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ticket.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -102,7 +138,13 @@ export function MyTicketsPage() {
         </div>
 
         <div className="divide-y divide-slate-200 dark:divide-slate-800">
-          {filteredTickets.length > 0 ?
+          {errorMessage ?
+          <div className="p-6 text-sm text-red-600 dark:text-red-400">{errorMessage}</div> :
+          null}
+          {isLoading ?
+          <div className="p-6 text-sm text-slate-500 dark:text-slate-400">Loading tickets...</div> :
+          null}
+          {!isLoading && filteredTickets.length > 0 ?
           filteredTickets.map((ticket, index) =>
           <motion.div
             initial={{
@@ -167,6 +209,7 @@ export function MyTicketsPage() {
                 </div>
               </motion.div>
           ) :
+          !isLoading &&
 
           <div className="p-12 text-center">
               <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
