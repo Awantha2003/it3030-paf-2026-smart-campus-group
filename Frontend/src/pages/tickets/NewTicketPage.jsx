@@ -4,9 +4,12 @@ import { ArrowLeftIcon, UploadCloudIcon, CheckCircle2Icon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardFooter } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../contexts/AuthContext';
+import { createIssueReport } from '../../api/issues';
 
 export function NewTicketPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [category, setCategory] = useState('');
@@ -14,20 +17,38 @@ export function NewTicketPage() {
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const isValid = title && location && category && description;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isValid) return;
+
+    setErrorMessage('');
     setIsSubmitting(true);
-    setTimeout(() => {
+
+    try {
+      await createIssueReport({
+        title,
+        description,
+        category,
+        location,
+        priority,
+        studentId: user?.id || '',
+        studentName: user?.name || '',
+        studentEmail: user?.email || ''
+      });
+
       setIsSubmitting(false);
       setShowSuccess(true);
       setTimeout(() => {
         navigate('/tickets');
       }, 1500);
-    }, 1000);
+    } catch (error) {
+      setIsSubmitting(false);
+      setErrorMessage(error.message || 'Failed to submit ticket.');
+    }
   };
 
   return (
@@ -53,6 +74,18 @@ export function NewTicketPage() {
           >
             <CheckCircle2Icon className="w-5 h-5" />
             <span className="font-medium">Ticket submitted successfully! Redirecting...</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {errorMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-800 dark:text-red-400"
+          >
+            <span className="font-medium">{errorMessage}</span>
           </motion.div>
         )}
       </AnimatePresence>
