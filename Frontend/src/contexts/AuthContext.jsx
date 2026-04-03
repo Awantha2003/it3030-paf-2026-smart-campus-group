@@ -1,6 +1,10 @@
 import React, { useEffect, useState, createContext, useContext } from 'react';
 import { mockUsers } from '../data/mockData';
-import { loginAdmin as loginAdminApi, loginTechnician as loginTechnicianApi } from '../api/auth';
+import {
+  loginAdmin as loginAdminApi,
+  loginStudent as loginStudentApi,
+  loginTechnician as loginTechnicianApi
+} from '../api/auth';
 
 const AuthContext = createContext(undefined);
 
@@ -19,6 +23,13 @@ export function AuthProvider({ children }) {
       Object.values(mockUsers).find((currentUser) => currentUser.role === role) || mockUsers.user;
     setUser(selectedUser);
     localStorage.setItem('authUser', JSON.stringify(selectedUser));
+  };
+
+  const loginStudent = async (credentials) => {
+    const response = await loginStudentApi(credentials);
+    setUser(response.user);
+    localStorage.setItem('authUser', JSON.stringify(response.user));
+    return response.user;
   };
 
   const loginTechnician = async (credentials) => {
@@ -50,6 +61,7 @@ export function AuthProvider({ children }) {
         user,
         isAuthenticated: !!user,
         login,
+        loginStudent,
         loginAdmin,
         loginTechnician,
         logout,

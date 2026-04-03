@@ -1,4 +1,7 @@
+import { mockUsers } from '../data/mockData';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const STUDENT_DEMO_PASSWORD = 'Student123@';
 
 async function parseResponse(response) {
   const contentType = response.headers.get('content-type') || '';
@@ -33,4 +36,18 @@ export async function loginAdmin(credentials) {
   });
 
   return parseResponse(response);
+}
+
+export async function loginStudent(credentials) {
+  const username = credentials?.username?.trim().toLowerCase();
+  const password = credentials?.password ?? '';
+
+  if (username !== mockUsers.user.email.toLowerCase() || password !== STUDENT_DEMO_PASSWORD) {
+    throw new Error('Invalid student email or password.');
+  }
+
+  return {
+    message: 'Student login successful',
+    user: mockUsers.user
+  };
 }
