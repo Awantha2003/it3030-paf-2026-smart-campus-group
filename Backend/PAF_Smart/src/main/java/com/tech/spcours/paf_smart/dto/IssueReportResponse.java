@@ -18,6 +18,8 @@ public record IssueReportResponse(
         String studentName,
         String studentEmail,
         List<String> attachmentUrls,
+        String assignedTo,
+        String adminNote,
         Instant createdAt,
         Instant updatedAt) {
 }
