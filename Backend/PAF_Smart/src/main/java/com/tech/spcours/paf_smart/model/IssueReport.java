@@ -41,6 +41,10 @@ public class IssueReport {
 
     private List<String> attachmentUrls;
 
+    private String assignedTo;
+
+    private String adminNote;
+
     private Instant createdAt;
 
     private Instant updatedAt;
