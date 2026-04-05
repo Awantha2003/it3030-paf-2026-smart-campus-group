@@ -1,7 +1,7 @@
 
 spring:
   mongodb:
-    uri: "${MONGODB_URI:mongodb+srv://awantha:ABdgpqSthXmK1k8K@cluster0wolfenox.aza9jrr.mongodb.net/smart_campus}"
+    uri: "${MONGODB_URI:mongodb+srv://awantha:ABdgpqSthXmK1k8K@cluster0wolfenox.aza9jrr.mongodb.net/smart_campus_dev}"
   data:
     mongodb:
       auto-index-creation: true

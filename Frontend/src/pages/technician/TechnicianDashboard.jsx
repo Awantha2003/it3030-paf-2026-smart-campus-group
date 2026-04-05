@@ -19,12 +19,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getTechnicianIssueReports, updateIssueReportStatus } from '../../api/issues';
 export function TechnicianDashboard() {
   const { user } = useAuth();
-  const techId = user?.id || 't1';
+  const techId = user?.id;
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadAssignedTickets() {
+      if (!techId) return;
       try {
         const data = await getTechnicianIssueReports(techId);
         setTickets(data);
@@ -40,7 +41,9 @@ export function TechnicianDashboard() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [updateStatus, setUpdateStatus] = useState('IN_PROGRESS');
   const [resolutionNotes, setResolutionNotes] = useState('');
-  const assignedTickets = tickets.filter((t) => t.assignedTo === techId);
+  
+  // The API already filters by assignedTo, so we just map tickets directly
+  const assignedTickets = tickets || [];
   const inProgressTickets = assignedTickets.filter(
     (t) => t.status === 'IN_PROGRESS'
   );

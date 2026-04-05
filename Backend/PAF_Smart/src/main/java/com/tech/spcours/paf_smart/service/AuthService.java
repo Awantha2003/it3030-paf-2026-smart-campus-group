@@ -52,7 +52,7 @@ public class AuthService {
             throw new UnauthorizedException("This technician account is inactive");
         }
 
-        if (!passwordEncoder.matches(request.getPassword(), technicianMember.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.getPassword().trim(), technicianMember.getPasswordHash())) {
             throw new UnauthorizedException("Invalid username or password");
         }
 
