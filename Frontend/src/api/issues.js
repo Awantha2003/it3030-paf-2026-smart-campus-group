@@ -36,3 +36,45 @@ export async function getIssueReportById(id) {
 
   return parseResponse(response, 'Failed to load issue report.');
 }
+
+export async function getAllIssueReports() {
+  const response = await fetch(`${API_BASE_URL}/issues/admin/all`);
+
+  return parseResponse(response, 'Failed to load admin issue reports.');
+}
+
+export async function assignIssueReport(id, technicianId) {
+  const response = await fetch(`${API_BASE_URL}/issues/admin/${id}/assign`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ technicianId })
+  });
+
+  return parseResponse(response, 'Failed to assign issue report.');
+}
+
+export async function updateIssueReportStatus(id, status) {
+  const response = await fetch(`${API_BASE_URL}/issues/admin/${id}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ status })
+  });
+
+  return parseResponse(response, 'Failed to update issue report status.');
+}
+
+export async function updateIssueReportAdminNote(id, adminNote) {
+  const response = await fetch(`${API_BASE_URL}/issues/admin/${id}/note`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ adminNote })
+  });
+
+  return parseResponse(response, 'Failed to save admin note.');
+}
