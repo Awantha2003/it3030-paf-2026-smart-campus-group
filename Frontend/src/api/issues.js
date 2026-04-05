@@ -31,6 +31,14 @@ export async function getStudentIssueReports(studentId) {
   return parseResponse(response, 'Failed to load issue reports.');
 }
 
+export async function getTechnicianIssueReports(technicianId) {
+  const response = await fetch(
+    `${API_BASE_URL}/issues/technician?technicianId=${encodeURIComponent(technicianId)}`
+  );
+
+  return parseResponse(response, 'Failed to load technician scheduled tasks.');
+}
+
 export async function getIssueReportById(id) {
   const response = await fetch(`${API_BASE_URL}/issues/${id}`);
 

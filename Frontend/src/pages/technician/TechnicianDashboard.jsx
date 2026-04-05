@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Wrench,
@@ -16,12 +16,26 @@ import { StatusBadge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { mockTickets } from '../../data/mockData';
 import { useAuth } from '../../contexts/AuthContext';
+import { getTechnicianIssueReports, updateIssueReportStatus } from '../../api/issues';
 export function TechnicianDashboard() {
   const { user } = useAuth();
   const techId = user?.id || 't1';
-  const [tickets, setTickets] = useState(
-    mockTickets.filter((t) => t.assignedTo === techId || t.status === 'OPEN')
-  );
+  const [tickets, setTickets] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadAssignedTickets() {
+      try {
+        const data = await getTechnicianIssueReports(techId);
+        setTickets(data);
+      } catch (error) {
+        console.error('Error fetching assigned tickets:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadAssignedTickets();
+  }, [techId]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [updateStatus, setUpdateStatus] = useState('IN_PROGRESS');
@@ -41,19 +55,19 @@ export function TechnicianDashboard() {
     setUpdateStatus(ticket.status === 'OPEN' ? 'IN_PROGRESS' : ticket.status);
     setIsUpdateModalOpen(true);
   };
-  const handleUpdateSubmit = (e) => {
+  const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     if (selectedTicket) {
-      setTickets(
-        tickets.map((t) =>
-        t.id === selectedTicket.id ?
-        {
-          ...t,
-          status: updateStatus
-        } :
-        t
-        )
-      );
+      try {
+        const updatedTicket = await updateIssueReportStatus(selectedTicket.id, updateStatus);
+        setTickets(
+          tickets.map((t) =>
+            t.id === selectedTicket.id ? updatedTicket : t
+          )
+        );
+      } catch (error) {
+        console.error('Error updating status:', error);
+      }
       setIsUpdateModalOpen(false);
       setSelectedTicket(null);
       setResolutionNotes('');
