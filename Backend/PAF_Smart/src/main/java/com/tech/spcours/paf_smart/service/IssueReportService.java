@@ -11,7 +11,9 @@ import com.tech.spcours.paf_smart.dto.IssueReportResponse;
 import com.tech.spcours.paf_smart.exception.ResourceConflictException;
 import com.tech.spcours.paf_smart.exception.ResourceNotFoundException;
 import com.tech.spcours.paf_smart.model.IssueReport;
+import com.tech.spcours.paf_smart.model.TechnicianMember;
 import com.tech.spcours.paf_smart.repository.IssueReportRepository;
+import com.tech.spcours.paf_smart.repository.TechnicianMemberRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +29,7 @@ public class IssueReportService {
             "CLOSED");
 
     private final IssueReportRepository issueReportRepository;
+    private final TechnicianMemberRepository technicianMemberRepository;
 
     public IssueReportResponse createIssueReport(CreateIssueReportRequest request) {
         Instant now = Instant.now();
@@ -42,6 +45,8 @@ public class IssueReportService {
                 .studentName(request.studentName().trim())
                 .studentEmail(request.studentEmail().trim().toLowerCase())
                 .attachmentUrls(request.attachmentUrls() == null ? List.of() : request.attachmentUrls())
+                .assignedTo(null)
+                .adminNote(null)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -82,6 +87,32 @@ public class IssueReportService {
         return toResponse(issueReportRepository.save(issueReport));
     }
 
+    public IssueReportResponse assignIssueReport(String id, String technicianId) {
+        IssueReport issueReport = findIssueReportById(id);
+        TechnicianMember technicianMember = technicianMemberRepository.findById(technicianId.trim())
+                .orElseThrow(() -> new ResourceNotFoundException("Technician account not found"));
+
+        if (!technicianMember.isActive()) {
+            throw new ResourceConflictException("Cannot assign an inactive technician");
+        }
+
+        issueReport.setAssignedTo(technicianMember.getId());
+        if ("OPEN".equals(issueReport.getStatus())) {
+            issueReport.setStatus("IN_PROGRESS");
+        }
+        issueReport.setUpdatedAt(Instant.now());
+
+        return toResponse(issueReportRepository.save(issueReport));
+    }
+
+    public IssueReportResponse updateIssueReportAdminNote(String id, String adminNote) {
+        IssueReport issueReport = findIssueReportById(id);
+        issueReport.setAdminNote(adminNote.trim());
+        issueReport.setUpdatedAt(Instant.now());
+
+        return toResponse(issueReportRepository.save(issueReport));
+    }
+
     private IssueReport findIssueReportById(String id) {
         return issueReportRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue report not found"));
@@ -114,6 +145,8 @@ public class IssueReportService {
                 .studentName(issueReport.getStudentName())
                 .studentEmail(issueReport.getStudentEmail())
                 .attachmentUrls(issueReport.getAttachmentUrls())
+                .assignedTo(issueReport.getAssignedTo())
+                .adminNote(issueReport.getAdminNote())
                 .createdAt(issueReport.getCreatedAt())
                 .updatedAt(issueReport.getUpdatedAt())
                 .build();
