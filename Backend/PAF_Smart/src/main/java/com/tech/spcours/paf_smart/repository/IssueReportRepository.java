@@ -9,4 +9,6 @@ import com.tech.spcours.paf_smart.model.IssueReport;
 public interface IssueReportRepository extends MongoRepository<IssueReport, String> {
 
     List<IssueReport> findByStudentIdOrderByCreatedAtDesc(String studentId);
+
+    List<IssueReport> findByAssignedToOrderByCreatedAtDesc(String technicianId);
 }

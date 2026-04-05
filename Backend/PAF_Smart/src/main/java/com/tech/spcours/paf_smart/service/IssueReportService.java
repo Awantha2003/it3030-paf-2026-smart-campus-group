@@ -61,6 +61,13 @@ public class IssueReportService {
                 .toList();
     }
 
+    public List<IssueReportResponse> getTechnicianIssueReports(String technicianId) {
+        return issueReportRepository.findByAssignedToOrderByCreatedAtDesc(technicianId.trim())
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     public List<IssueReportResponse> getAllIssueReports() {
         return issueReportRepository.findAll()
                 .stream()

@@ -41,6 +41,11 @@ public class IssueReportController {
         return issueReportService.getStudentIssueReports(studentId);
     }
 
+    @GetMapping("/technician")
+    public List<IssueReportResponse> getTechnicianIssueReports(@RequestParam String technicianId) {
+        return issueReportService.getTechnicianIssueReports(technicianId);
+    }
+
     @GetMapping("/{id}")
     public IssueReportResponse getIssueReportById(@PathVariable String id) {
         return issueReportService.getIssueReportById(id);
