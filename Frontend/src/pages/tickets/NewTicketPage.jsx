@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardFooter } from '../../components/ui/C
 import { Button } from '../../components/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import { createIssueReport } from '../../api/issues';
+import { createIssueReport, uploadFile } from '../../api/issues';
 
 export function NewTicketPage() {
   const navigate = useNavigate();
@@ -18,6 +18,8 @@ export function NewTicketPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreview, setFilePreview] = useState('');
 
   const isValid = title && location && category && description;
 
@@ -29,6 +31,14 @@ export function NewTicketPage() {
     setIsSubmitting(true);
 
     try {
+      let attachmentUrls = [];
+      if (selectedFile) {
+        const uploadRes = await uploadFile(selectedFile);
+        if (uploadRes && uploadRes.url) {
+          attachmentUrls.push(`http://localhost:8080${uploadRes.url}`);
+        }
+      }
+
       await createIssueReport({
         title,
         description,
@@ -37,7 +47,8 @@ export function NewTicketPage() {
         priority,
         studentId: user?.id || '',
         studentName: user?.name || '',
-        studentEmail: user?.email || ''
+        studentEmail: user?.email || '',
+        attachmentUrls
       });
 
       setIsSubmitting(false);
@@ -180,14 +191,37 @@ export function NewTicketPage() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Evidence / Photos (Optional)
               </label>
-              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-8 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
-                <UploadCloudIcon className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                <p className="text-sm font-medium text-slate-900 dark:text-white mb-1">
-                  Click to upload or drag and drop
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  SVG, PNG, JPG or GIF (max. 5MB)
-                </p>
+              <div className="relative border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-8 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer overflow-hidden">
+                <input 
+                  type="file" 
+                  accept="image/png, image/jpeg, image/gif, image/svg+xml" 
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                      const file = files[0];
+                      setSelectedFile(file);
+                      setFilePreview(URL.createObjectURL(file));
+                    }
+                  }}
+                />
+                {!filePreview ? (
+                  <>
+                    <UploadCloudIcon className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                    <p className="text-sm font-medium text-slate-900 dark:text-white mb-1">
+                      Click to upload or drag and drop
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      SVG, PNG, JPG or GIF (max. 5MB)
+                    </p>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center relative z-0">
+                    <img src={filePreview} alt="Preview" className="max-h-32 mb-2 rounded-md object-contain" />
+                    <p className="text-sm font-medium text-brand-purple truncate max-w-[200px]">{selectedFile.name}</p>
+                    <p className="text-xs text-slate-500">Click or drag to replace</p>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

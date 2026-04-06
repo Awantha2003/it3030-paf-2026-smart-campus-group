@@ -23,6 +23,18 @@ export async function createIssueReport(issueData) {
   return parseResponse(response, 'Failed to submit issue report.');
 }
 
+export async function uploadFile(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE_URL}/uploads`, {
+    method: 'POST',
+    body: formData
+  });
+
+  return parseResponse(response, 'Failed to upload file.');
+}
+
 export async function getStudentIssueReports(studentId) {
   const response = await fetch(
     `${API_BASE_URL}/issues?studentId=${encodeURIComponent(studentId)}`
