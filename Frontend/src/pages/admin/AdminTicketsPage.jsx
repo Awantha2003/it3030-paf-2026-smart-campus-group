@@ -375,28 +375,28 @@ export function AdminTicketsPage() {
               </div>
 
               {/* Scrollable details body */}
-              <div className="flex-1 space-y-8 overflow-y-auto p-6 md:p-8 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+              <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-5 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="group">
-                  <h3 className="mb-4 flex items-center text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
-                    <Navigation className="mr-3 h-5 w-5 text-purple-500" /> Incident Description
+                  <h3 className="mb-2 flex items-center text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200">
+                    <Navigation className="mr-2 h-4 w-4 text-purple-500" /> Incident Description
                   </h3>
-                  <div className="rounded-3xl border border-white/60 bg-white/70 p-8 min-h-[250px] leading-relaxed text-slate-700 shadow-sm backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-300 text-[16px]">
+                  <div className="rounded-xl border border-white/60 bg-white/70 p-4 min-h-[60px] leading-relaxed text-slate-700 shadow-sm backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-800/70 dark:text-slate-300 text-sm">
                     {selectedTicket.description}
                   </div>
                 </motion.div>
 
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                  <h3 className="mb-4 flex items-center text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
-                    <UserCircle className="mr-3 h-5 w-5 text-blue-500" /> Technician Assignment
+                  <h3 className="mb-2 flex items-center text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200">
+                    <UserCircle className="mr-2 h-4 w-4 text-blue-500" /> Technician Assignment
                   </h3>
-                  <div className="rounded-3xl border border-blue-100/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 p-6 shadow-sm backdrop-blur-md dark:border-blue-900/30 dark:from-blue-900/10 dark:to-indigo-900/10">
-                    <div className="flex flex-col md:flex-row md:items-center gap-6">
+                  <div className="rounded-xl border border-blue-100/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 p-4 shadow-sm backdrop-blur-md dark:border-blue-900/30 dark:from-blue-900/10 dark:to-indigo-900/10">
+                    <div className="flex flex-col md:flex-row md:items-center gap-4">
                       <div className="flex-1">
-                        <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">
-                          Assign to specific personnel
+                        <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                          Assign personnel
                         </label>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                          Select the best technician to resolve this issue promptly.
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Select the best technician to resolve this issue.
                         </p>
                       </div>
                       <div className="flex-[2]">
@@ -404,7 +404,7 @@ export function AdminTicketsPage() {
                           value={selectedTicket.assignedTo || ''}
                           onChange={(event) => handleAssign(selectedTicket.id, event.target.value)}
                           disabled={actioning === `assign-${selectedTicket.id}` || activeTechnicians.length === 0}
-                          className="w-full rounded-2xl border-2 border-white bg-white/80 px-5 py-4 font-bold text-slate-900 shadow-sm outline-none transition-all focus:border-blue-400 focus:ring-4 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white"
+                          className="w-full rounded-xl border-2 border-white bg-white/80 px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition-all focus:border-blue-400 focus:ring-4 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white"
                         >
                           <option value="" disabled>
                             {activeTechnicians.length === 0
@@ -423,17 +423,17 @@ export function AdminTicketsPage() {
                 </motion.div>
 
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                  <h3 className="mb-4 flex items-center text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
-                    <ShieldAlert className="mr-3 h-5 w-5 text-amber-500" /> Status Flow
+                  <h3 className="mb-2 flex items-center text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200">
+                    <ShieldAlert className="mr-2 h-4 w-4 text-amber-500" /> Status Flow
                   </h3>
-                  <div className="rounded-3xl border border-amber-100/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-6 shadow-sm backdrop-blur-md dark:border-amber-900/30 dark:from-amber-900/10 dark:to-orange-900/10">
-                     <div className="flex flex-col md:flex-row md:items-center gap-6">
+                  <div className="rounded-xl border border-amber-100/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-4 shadow-sm backdrop-blur-md dark:border-amber-900/30 dark:from-amber-900/10 dark:to-orange-900/10">
+                     <div className="flex flex-col md:flex-row md:items-center gap-4">
                        <div className="flex-1">
-                         <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">
-                           Current Lifecycle Stage
+                         <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                           Lifecycle Stage
                          </label>
-                         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                           Update the workflow status to keep stakeholders informed.
+                         <p className="text-xs text-slate-500 dark:text-slate-400">
+                           Update the workflow status.
                          </p>
                        </div>
                        <div className="flex-[2]">
@@ -441,7 +441,7 @@ export function AdminTicketsPage() {
                           value={selectedTicket.status}
                           onChange={(event) => handleStatusChange(selectedTicket.id, event.target.value)}
                           disabled={actioning === `status-${selectedTicket.id}`}
-                          className="w-full rounded-2xl border-2 border-white bg-white/80 px-5 py-4 font-bold text-slate-900 shadow-sm outline-none transition-all focus:border-amber-400 focus:ring-4 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white"
+                          className="w-full rounded-xl border-2 border-white bg-white/80 px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition-all focus:border-amber-400 focus:ring-4 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white"
                         >
                           <option value="OPEN">💡 Open</option>
                           <option value="IN_PROGRESS">⚙️ In Progress</option>
@@ -455,30 +455,30 @@ export function AdminTicketsPage() {
                 </motion.div>
 
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                  <h3 className="mb-4 flex items-center text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
-                    <MessageSquare className="mr-3 h-5 w-5 text-emerald-500" /> Administrative Notes
+                  <h3 className="mb-2 flex items-center text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200">
+                    <MessageSquare className="mr-2 h-4 w-4 text-emerald-500" /> Administrative Notes
                   </h3>
-                  <div className="relative rounded-3xl overflow-hidden shadow-lg border border-emerald-100/60 dark:border-emerald-900/30">
-                    <div className="absolute top-0 left-0 w-3 h-full bg-gradient-to-b from-emerald-400 to-teal-500 z-10"></div>
-                    <div className="bg-gradient-to-br from-emerald-50/80 to-teal-50/80 p-8 pl-10 dark:from-emerald-900/10 dark:to-teal-900/10 backdrop-blur-xl">
-                      <div className="flex items-center justify-between mb-4">
-                        <p className="text-sm font-black text-emerald-700 dark:text-emerald-500 uppercase tracking-widest bg-emerald-100/50 dark:bg-emerald-900/50 px-3 py-1 rounded-md inline-block">Confidential Log</p>
+                  <div className="relative rounded-xl overflow-hidden shadow-sm border border-emerald-100/60 dark:border-emerald-900/30">
+                    <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-emerald-400 to-teal-500 z-10"></div>
+                    <div className="bg-gradient-to-br from-emerald-50/80 to-teal-50/80 p-5 pl-6 dark:from-emerald-900/10 dark:to-teal-900/10 backdrop-blur-xl">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-widest bg-emerald-100/50 dark:bg-emerald-900/50 px-2 py-0.5 rounded inline-block">Confidential Log</p>
                       </div>
                       <textarea
                         value={adminNote}
                         onChange={(event) => setAdminNote(event.target.value)}
-                        placeholder="Document internal updates, follow-ups, or evidence notes here... (This is not visible to the reporter)"
-                        className="w-full min-h-[140px] resize-y bg-white/60 dark:bg-slate-900/40 rounded-2xl p-5 text-[15px] font-medium placeholder-emerald-700/40 dark:placeholder-emerald-400/30 text-slate-900 dark:text-emerald-100 outline-none border-2 border-transparent focus:border-emerald-400/50 focus:bg-white dark:focus:bg-slate-900 transition-all shadow-inner"
+                        placeholder="Document internal updates, follow-ups, or evidence notes here..."
+                        className="w-full min-h-[80px] bg-white/60 dark:bg-slate-900/40 rounded-xl p-3 text-sm font-medium placeholder-emerald-700/40 dark:placeholder-emerald-400/30 text-slate-900 dark:text-emerald-100 outline-none border-2 border-transparent focus:border-emerald-400/50 focus:bg-white dark:focus:bg-slate-900 transition-all shadow-inner"
                       />
-                      <div className="flex justify-end mt-5">
+                      <div className="flex justify-end mt-3">
                         <Button
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-md shadow-emerald-500/30 transition-all hover:-translate-y-0.5 px-6 py-2.5 rounded-xl font-bold"
-                          size="md"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-sm shadow-emerald-500/30 transition-all hover:-translate-y-0.5 px-4 py-1.5 rounded-lg text-sm font-semibold"
+                          size="sm"
                           onClick={handleSaveNote}
                           isLoading={actioning === `note-${selectedTicket.id}`}
                           disabled={!adminNote.trim() || adminNote === selectedTicket.adminNote}
                         >
-                          Save Confidential Note
+                          Save Note
                         </Button>
                       </div>
                     </div>
