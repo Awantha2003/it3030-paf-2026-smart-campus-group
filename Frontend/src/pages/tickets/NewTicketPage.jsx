@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { createIssueReport, uploadFile } from '../../api/issues';
+import { useJsApiLoader, GoogleMap, Marker } from '@react-google-maps/api';
 
 export function NewTicketPage() {
   const navigate = useNavigate();
@@ -20,6 +21,22 @@ export function NewTicketPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState('');
+
+  // Setup Google Maps for SLIIT Malabe or generic Campus 
+  const [mapCenter] = useState({ lat: 6.9147, lng: 79.9733 });
+  const [markerPos, setMarkerPos] = useState(null);
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyB_8qtKkSSvV07Jha3La6HPWI-i-cggnYQ'
+  });
+
+  const handleMapClick = (e) => {
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    setMarkerPos({ lat, lng });
+    setLocation(`GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+  };
 
   const isValid = title && location && category && description;
 
@@ -122,27 +139,52 @@ export function NewTicketPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Location <span className="text-red-500">*</span>
+                  Incident Location <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Building, Floor, Room"
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-purple text-slate-900 dark:text-white"
-                  required
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                  <div>
+                    <input
+                      type="text"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="Select on map or type (Building, Room)"
+                      className="w-full px-4 py-2.5 mb-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-purple text-slate-900 dark:text-white"
+                      required
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      You can type a description or click on the interactive map to pin identical coordinates. This helps our facility operations team deploy rapidly.
+                    </p>
+                  </div>
+                  <div className="h-64 rounded-xl overflow-hidden shadow-inner border-2 border-slate-200 dark:border-slate-700">
+                    {isLoaded ? (
+                      <GoogleMap
+                        mapContainerStyle={{ width: '100%', height: '100%' }}
+                        center={mapCenter}
+                        zoom={17}
+                        onClick={handleMapClick}
+                      >
+                        {markerPos && <Marker position={markerPos} />}
+                      </GoogleMap>
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-500">
+                        <div className="h-8 w-8 border-4 border-slate-300 border-t-brand-purple rounded-full animate-spin mb-2" />
+                        <span className="text-sm font-semibold">Loading Campus Map...</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Priority
+                  Urgency Level
                 </label>
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-purple text-slate-900 dark:text-white"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-purple text-slate-900 dark:text-white cursor-pointer"
                 >
                   <option value="LOW">Low - Not urgent</option>
                   <option value="MEDIUM">Medium - Needs attention soon</option>
