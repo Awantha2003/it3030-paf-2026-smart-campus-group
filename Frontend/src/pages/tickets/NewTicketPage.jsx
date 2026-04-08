@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, UploadCloudIcon, CheckCircle2Icon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardFooter } from '../../components/ui/Card';
@@ -7,6 +7,33 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { createIssueReport, uploadFile } from '../../api/issues';
 import { useJsApiLoader, GoogleMap, Marker } from '@react-google-maps/api';
+
+const DEFAULT_MAP_CENTER = { lat: 6.9147, lng: 79.9733 };
+const GEOLOCATION_OPTIONS = {
+  enableHighAccuracy: true,
+  timeout: 10000,
+  maximumAge: 30000
+};
+
+function formatGpsLocation(lat, lng) {
+  return `Current GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
+function getGeolocationErrorMessage(error) {
+  if (error?.code === 1) {
+    return 'Location access was blocked. Allow browser permission or enter the building and room manually.';
+  }
+
+  if (error?.code === 2) {
+    return 'Current location could not be detected. Check your GPS or network signal and try again.';
+  }
+
+  if (error?.code === 3) {
+    return 'Location detection timed out. Move to an open area or enter the location manually.';
+  }
+
+  return 'Current location could not be detected automatically. Enter the location manually.';
+}
 
 export function NewTicketPage() {
   const navigate = useNavigate();
@@ -21,9 +48,15 @@ export function NewTicketPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState('');
+  const [isAutoTracking, setIsAutoTracking] = useState(true);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationStatus, setLocationStatus] = useState(
+    'Automatic location tracking starts when the page opens.'
+  );
+  const watchIdRef = useRef(null);
 
-  // Setup Google Maps for SLIIT Malabe or generic Campus 
-  const [mapCenter] = useState({ lat: 6.9147, lng: 79.9733 });
+  // Setup Google Maps for SLIIT Malabe or generic Campus
+  const [mapCenter, setMapCenter] = useState(DEFAULT_MAP_CENTER);
   const [markerPos, setMarkerPos] = useState(null);
 
   const { isLoaded } = useJsApiLoader({
@@ -31,11 +64,71 @@ export function NewTicketPage() {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyB_8qtKkSSvV07Jha3La6HPWI-i-cggnYQ'
   });
 
+  useEffect(() => {
+    if (!isAutoTracking) {
+      return undefined;
+    }
+
+    if (!navigator.geolocation) {
+      setIsAutoTracking(false);
+      setLocationStatus('This browser does not support GPS access. Enter the location manually.');
+      return undefined;
+    }
+
+    setIsLocating(true);
+    setLocationStatus("Allow location access to track the student's current position automatically.");
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        const nextPosition = {
+          lat: coords.latitude,
+          lng: coords.longitude
+        };
+
+        setMarkerPos(nextPosition);
+        setMapCenter(nextPosition);
+        setLocation(formatGpsLocation(coords.latitude, coords.longitude));
+        setLocationStatus('Current location is being tracked automatically.');
+        setIsLocating(false);
+      },
+      (error) => {
+        setIsAutoTracking(false);
+        setIsLocating(false);
+        setLocationStatus(getGeolocationErrorMessage(error));
+      },
+      GEOLOCATION_OPTIONS
+    );
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, [isAutoTracking]);
+
   const handleMapClick = (e) => {
     const lat = e.latLng.lat();
     const lng = e.latLng.lng();
+    setIsAutoTracking(false);
     setMarkerPos({ lat, lng });
-    setLocation(`GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    setMapCenter({ lat, lng });
+    setLocation(`Pinned GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    setLocationStatus('Automatic tracking paused. The selected map pin will be submitted.');
+  };
+
+  const handleLocationChange = (e) => {
+    if (isAutoTracking) {
+      setIsAutoTracking(false);
+      setLocationStatus('Automatic tracking paused while you edit the location manually.');
+    }
+
+    setLocation(e.target.value);
+  };
+
+  const handleEnableAutoTracking = () => {
+    setIsAutoTracking(true);
+    setLocationStatus("Reconnecting to the student's current location...");
   };
 
   const isValid = title && location && category && description;
@@ -145,16 +238,30 @@ export function NewTicketPage() {
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                   <div>
+                    <div className="mb-3 flex flex-wrap items-center gap-3">
+                      <Button
+                        type="button"
+                        variant={isAutoTracking ? 'secondary' : 'outline'}
+                        size="sm"
+                        onClick={handleEnableAutoTracking}
+                        isLoading={isLocating}
+                      >
+                        {isAutoTracking ? 'Tracking Current Location' : 'Use Current Location'}
+                      </Button>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {locationStatus}
+                      </span>
+                    </div>
                     <input
                       type="text"
                       value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Select on map or type (Building, Room)"
+                      onChange={handleLocationChange}
+                      placeholder="Location is tracked automatically, or type Building / Room"
                       className="w-full px-4 py-2.5 mb-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-purple text-slate-900 dark:text-white"
                       required
                     />
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      You can type a description or click on the interactive map to pin identical coordinates. This helps our facility operations team deploy rapidly.
+                      The student location starts from live GPS. You can still type a room number or click the map to override it for more accurate dispatching.
                     </p>
                   </div>
                   <div className="h-64 rounded-xl overflow-hidden shadow-inner border-2 border-slate-200 dark:border-slate-700">
