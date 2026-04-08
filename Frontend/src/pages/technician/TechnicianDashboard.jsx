@@ -6,6 +6,7 @@ import {
   Clock,
   List,
   MapPin,
+  Navigation,
   AlertTriangle,
   MessageSquare } from
 'lucide-react';
@@ -17,6 +18,7 @@ import { Modal } from '../../components/ui/Modal';
 import { mockTickets } from '../../data/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { getTechnicianIssueReports, updateIssueReportStatus } from '../../api/issues';
+import { formatCoordinates, getGoogleMapsDirectionsUrl, parseCoordinatesFromLocation } from '../../utils/location';
 export function TechnicianDashboard() {
   const { user } = useAuth();
   const techId = user?.id;
@@ -182,6 +184,10 @@ export function TechnicianDashboard() {
           {sortedTickets.length > 0 ?
           <div className="space-y-4">
               {sortedTickets.map((ticket) =>
+            {
+              const coordinates = parseCoordinatesFromLocation(ticket.location);
+
+              return (
             <Card
               key={ticket.id}
               className="p-5 hover:shadow-md transition-shadow border-l-4"
@@ -222,6 +228,12 @@ export function TechnicianDashboard() {
                         <span className="flex items-center">
                           <MapPin className="w-4 h-4 mr-1" /> {ticket.location}
                         </span>
+                        {coordinates && (
+                          <span className="flex items-center text-emerald-600 dark:text-emerald-400">
+                            <Navigation className="w-4 h-4 mr-1" />
+                            {formatCoordinates(coordinates)}
+                          </span>
+                        )}
                         <span className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />{' '}
                           {new Date(ticket.createdAt).toLocaleDateString()}
@@ -229,7 +241,16 @@ export function TechnicianDashboard() {
                       </div>
                       <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                         <StatusBadge status={ticket.status} />
-                        <div className="flex space-x-2">
+                        <div className="flex flex-wrap gap-2">
+                          <a
+                            href={getGoogleMapsDirectionsUrl(ticket.location)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 h-8 px-3 text-xs"
+                          >
+                            <Navigation className="w-3.5 h-3.5 mr-1.5" />
+                            Open Location
+                          </a>
                           <Button
                         variant="outline"
                         size="sm"
@@ -254,6 +275,8 @@ export function TechnicianDashboard() {
                     </div>
                   </div>
                 </Card>
+              );
+            }
             )}
             </div> :
 
@@ -356,6 +379,17 @@ export function TechnicianDashboard() {
             <p className="text-xs text-slate-500 flex items-center">
               <MapPin className="w-3 h-3 mr-1" /> {selectedTicket?.location}
             </p>
+            {parseCoordinatesFromLocation(selectedTicket?.location) && (
+              <a
+                href={getGoogleMapsDirectionsUrl(selectedTicket?.location)}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700"
+              >
+                <Navigation className="w-3 h-3 mr-1" />
+                Open student location in Google Maps
+              </a>
+            )}
           </div>
 
           <div className="space-y-2">

@@ -6,12 +6,18 @@ import {
   ClockIcon,
   AlertTriangleIcon,
   UserIcon,
-  CheckCircle2Icon
+  CheckCircle2Icon,
+  NavigationIcon
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
 import { getIssueReportById } from '../../api/issues';
+import {
+  formatCoordinates,
+  getGoogleMapsDirectionsUrl,
+  parseCoordinatesFromLocation
+} from '../../utils/location';
 
 export function TicketDetailPage() {
   const { id } = useParams();
@@ -92,6 +98,9 @@ export function TicketDetailPage() {
     );
   }
 
+  const coordinates = parseCoordinatesFromLocation(ticket.location);
+  const mapsUrl = getGoogleMapsDirectionsUrl(ticket.location);
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
@@ -148,12 +157,29 @@ export function TicketDetailPage() {
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <div>
                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
-                    Location
+                    Student Location
                   </p>
-                  <p className="flex items-center gap-2 text-slate-900 dark:text-white text-sm">
-                    <MapPinIcon className="w-4 h-4 text-slate-400" />
-                    {ticket.location}
-                  </p>
+                  <div className="space-y-3">
+                    <p className="flex items-center gap-2 text-slate-900 dark:text-white text-sm">
+                      <MapPinIcon className="w-4 h-4 text-slate-400" />
+                      {ticket.location}
+                    </p>
+                    {coordinates && (
+                      <p className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+                        <NavigationIcon className="w-4 h-4" />
+                        GPS: {formatCoordinates(coordinates)}
+                      </p>
+                    )}
+                    <a
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    >
+                      <NavigationIcon className="w-4 h-4 mr-2" />
+                      Open in Google Maps
+                    </a>
+                  </div>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
