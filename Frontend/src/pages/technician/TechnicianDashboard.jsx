@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
+  ChevronLeft,
+  ChevronRight,
   Wrench,
   CheckCircle,
   Clock,
@@ -16,15 +18,16 @@ import { Badge } from '../../components/ui/Badge';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTechnicianTracking } from '../../contexts/TechnicianTrackingContext';
 import { getTechnicianIssueReports, updateIssueReportStatus } from '../../api/issues';
 import { RouteMap } from '../../components/maps/RouteMap';
-import { useTechnicianLiveTracking } from '../../hooks/useTechnicianLiveTracking';
 import { formatCoordinates, getGoogleMapsDirectionsUrl, parseCoordinatesFromLocation } from '../../utils/location';
 export function TechnicianDashboard() {
   const { user } = useAuth();
   const techId = user?.id;
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [focusedTicketId, setFocusedTicketId] = useState('');
 
   useEffect(() => {
     async function loadAssignedTickets() {
@@ -44,10 +47,7 @@ export function TechnicianDashboard() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [updateStatus, setUpdateStatus] = useState('IN_PROGRESS');
   const [resolutionNotes, setResolutionNotes] = useState('');
-  const { currentCoordinates, locationStatus, trackingUpdatedAt } = useTechnicianLiveTracking(
-    techId,
-    user?.role === 'TECHNICIAN'
-  );
+  const { currentCoordinates, locationStatus, trackingUpdatedAt } = useTechnicianTracking();
   
   // The API already filters by assignedTo, so we just map tickets directly
   const assignedTickets = tickets || [];
@@ -93,7 +93,36 @@ export function TechnicianDashboard() {
     };
     return priorityWeight[b.priority] - priorityWeight[a.priority];
   });
-  const activeRouteTicket = sortedTickets[0] || null;
+
+  useEffect(() => {
+    if (!sortedTickets.length) {
+      setFocusedTicketId('');
+      return;
+    }
+
+    setFocusedTicketId((current) =>
+      current && sortedTickets.some((ticket) => ticket.id === current) ? current : sortedTickets[0].id
+    );
+  }, [sortedTickets]);
+
+  const activeRouteTicket =
+    sortedTickets.find((ticket) => ticket.id === focusedTicketId) || sortedTickets[0] || null;
+  const activeRouteIndex = activeRouteTicket
+    ? sortedTickets.findIndex((ticket) => ticket.id === activeRouteTicket.id)
+    : -1;
+
+  const showPreviousTicket = () => {
+    if (activeRouteIndex > 0) {
+      setFocusedTicketId(sortedTickets[activeRouteIndex - 1].id);
+    }
+  };
+
+  const showNextTicket = () => {
+    if (activeRouteIndex >= 0 && activeRouteIndex < sortedTickets.length - 1) {
+      setFocusedTicketId(sortedTickets[activeRouteIndex + 1].id);
+    }
+  };
+
   return (
     <motion.div
       initial={{
@@ -196,7 +225,9 @@ export function TechnicianDashboard() {
               return (
             <Card
               key={ticket.id}
-              className="p-5 hover:shadow-md transition-shadow border-l-4"
+              className={`p-5 hover:shadow-md transition-shadow border-l-4 cursor-pointer ${
+                activeRouteTicket?.id === ticket.id ? 'ring-2 ring-blue-300 dark:ring-blue-700' : ''
+              }`}
               style={{
                 borderLeftColor:
                 ticket.priority === 'CRITICAL' ?
@@ -206,7 +237,8 @@ export function TechnicianDashboard() {
                 ticket.priority === 'MEDIUM' ?
                 '#3b82f6' :
                 '#94a3b8'
-              }}>
+              }}
+              onClick={() => setFocusedTicketId(ticket.id)}>
               
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div className="flex-1">
@@ -304,14 +336,51 @@ export function TechnicianDashboard() {
         {/* Right Sidebar */}
         <div className="space-y-6">
           <Card className="p-5">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              Live Route Guidance
-            </h3>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Live Route Guidance
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Review assigned tasks one by one while GPS tracking runs automatically.
+                </p>
+              </div>
+              {activeRouteTicket && (
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  {activeRouteIndex + 1} / {sortedTickets.length}
+                </span>
+              )}
+            </div>
             {activeRouteTicket ? (
               <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={showPreviousTicket}
+                    disabled={activeRouteIndex <= 0}
+                  >
+                    <ChevronLeft className="mr-1 h-4 w-4" />
+                    Previous
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={showNextTicket}
+                    disabled={activeRouteIndex === -1 || activeRouteIndex >= sortedTickets.length - 1}
+                  >
+                    Next
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/50">
                   <p className="text-sm font-semibold text-slate-900 dark:text-white">
                     Destination: {activeRouteTicket.title}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Focused task #{activeRouteTicket.id}
                   </p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     {locationStatus || 'Waiting for technician GPS permission.'}

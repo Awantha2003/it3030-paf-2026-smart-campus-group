@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { TechnicianTrackingProvider } from './contexts/TechnicianTrackingContext';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { LoginPage } from './pages/auth/LoginPage';
 import { UnauthorizedPage } from './pages/auth/UnauthorizedPage';
@@ -74,116 +75,118 @@ export function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route
-              path="/login"
-              element={
-                <PublicOnlyRoute>
-                  <LoginPage />
-                </PublicOnlyRoute>
-              }
-            />
-            <Route
-              path="/unauthorized"
-              element={
-                <ProtectedRoute>
-                  <UnauthorizedPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/" element={<RootRedirect />} />
+        <TechnicianTrackingProvider>
+          <BrowserRouter>
+            <Routes>
               <Route
-                path="/dashboard"
+                path="/login"
                 element={
-                  <RoleRoute allowedRoles={['USER']}>
-                    <UserDashboard />
-                  </RoleRoute>
+                  <PublicOnlyRoute>
+                    <LoginPage />
+                  </PublicOnlyRoute>
                 }
               />
               <Route
-                path="/tickets"
+                path="/unauthorized"
                 element={
-                  <RoleRoute allowedRoles={['USER']}>
-                    <MyTicketsPage />
-                  </RoleRoute>
+                  <ProtectedRoute>
+                    <UnauthorizedPage />
+                  </ProtectedRoute>
                 }
               />
               <Route
-                path="/tickets/new"
                 element={
-                  <RoleRoute allowedRoles={['USER']}>
-                    <NewTicketPage />
-                  </RoleRoute>
+                  <ProtectedRoute>
+                    <DashboardLayout />
+                  </ProtectedRoute>
                 }
-              />
-              <Route
-                path="/tickets/:id"
-                element={
-                  <RoleRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
-                    <TicketDetailPage />
-                  </RoleRoute>
-                }
-              />
-              <Route
-                path="/notifications"
-                element={
-                  <RoleRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
-                    <NotificationsPage />
-                  </RoleRoute>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <RoleRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
-                    <SettingsPage />
-                  </RoleRoute>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <RoleRoute allowedRoles={['ADMIN']}>
-                    <AdminDashboard />
-                  </RoleRoute>
-                }
-              />
-              <Route
-                path="/admin/tickets"
-                element={
-                  <RoleRoute allowedRoles={['ADMIN']}>
-                    <AdminTicketsPage />
-                  </RoleRoute>
-                }
-              />
-              <Route
-                path="/admin/technicians"
-                element={
-                  <RoleRoute allowedRoles={['ADMIN']}>
-                    <AdminTechniciansPage />
-                  </RoleRoute>
-                }
-              />
-              <Route
-                path="/technician"
-                element={
-                  <RoleRoute allowedRoles={['TECHNICIAN']}>
-                    <TechnicianDashboard />
-                  </RoleRoute>
-                }
-              />
-              <Route path="*" element={<ErrorPage />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+              >
+                <Route path="/" element={<RootRedirect />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <RoleRoute allowedRoles={['USER']}>
+                      <UserDashboard />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="/tickets"
+                  element={
+                    <RoleRoute allowedRoles={['USER']}>
+                      <MyTicketsPage />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="/tickets/new"
+                  element={
+                    <RoleRoute allowedRoles={['USER']}>
+                      <NewTicketPage />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="/tickets/:id"
+                  element={
+                    <RoleRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
+                      <TicketDetailPage />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="/notifications"
+                  element={
+                    <RoleRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
+                      <NotificationsPage />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <RoleRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
+                      <SettingsPage />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <RoleRoute allowedRoles={['ADMIN']}>
+                      <AdminDashboard />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="/admin/tickets"
+                  element={
+                    <RoleRoute allowedRoles={['ADMIN']}>
+                      <AdminTicketsPage />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="/admin/technicians"
+                  element={
+                    <RoleRoute allowedRoles={['ADMIN']}>
+                      <AdminTechniciansPage />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="/technician"
+                  element={
+                    <RoleRoute allowedRoles={['TECHNICIAN']}>
+                      <TechnicianDashboard />
+                    </RoleRoute>
+                  }
+                />
+                <Route path="*" element={<ErrorPage />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </TechnicianTrackingProvider>
       </AuthProvider>
     </ThemeProvider>
   );

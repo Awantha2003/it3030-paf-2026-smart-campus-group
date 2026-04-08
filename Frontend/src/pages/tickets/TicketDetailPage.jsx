@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { fetchTechnicians } from '../../api/technicians';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTechnicianLiveTracking } from '../../hooks/useTechnicianLiveTracking';
+import { useTechnicianTracking } from '../../contexts/TechnicianTrackingContext';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import { RouteMap } from '../../components/maps/RouteMap';
 import { Button } from '../../components/ui/Button';
@@ -32,10 +32,7 @@ export function TicketDetailPage() {
   const [assignedTechnician, setAssignedTechnician] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-  const { currentCoordinates } = useTechnicianLiveTracking(
-    user?.id,
-    user?.role === 'TECHNICIAN'
-  );
+  const { currentCoordinates } = useTechnicianTracking();
 
   useEffect(() => {
     let ignore = false;
