@@ -9,12 +9,17 @@ import {
   CheckCircle2Icon,
   NavigationIcon
 } from 'lucide-react';
+import { fetchTechnicians } from '../../api/technicians';
+import { useAuth } from '../../contexts/AuthContext';
+import { useTechnicianLiveTracking } from '../../hooks/useTechnicianLiveTracking';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
+import { RouteMap } from '../../components/maps/RouteMap';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
 import { getIssueReportById } from '../../api/issues';
 import {
   formatCoordinates,
+  getTechnicianCoordinates,
   getGoogleMapsDirectionsUrl,
   parseCoordinatesFromLocation
 } from '../../utils/location';
@@ -22,9 +27,15 @@ import {
 export function TicketDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [ticket, setTicket] = useState(null);
+  const [assignedTechnician, setAssignedTechnician] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const { currentCoordinates } = useTechnicianLiveTracking(
+    user?.id,
+    user?.role === 'TECHNICIAN'
+  );
 
   useEffect(() => {
     let ignore = false;
@@ -61,6 +72,36 @@ export function TicketDetailPage() {
       ignore = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadAssignedTechnician() {
+      if (!ticket?.assignedTo || user?.role === 'USER') {
+        setAssignedTechnician(null);
+        return;
+      }
+
+      try {
+        const technicians = await fetchTechnicians();
+        if (!ignore) {
+          setAssignedTechnician(
+            technicians.find((technician) => technician.id === ticket.assignedTo) || null
+          );
+        }
+      } catch (error) {
+        if (!ignore) {
+          setAssignedTechnician(null);
+        }
+      }
+    }
+
+    loadAssignedTechnician();
+
+    return () => {
+      ignore = true;
+    };
+  }, [ticket?.assignedTo, user?.role]);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -100,6 +141,8 @@ export function TicketDetailPage() {
 
   const coordinates = parseCoordinatesFromLocation(ticket.location);
   const mapsUrl = getGoogleMapsDirectionsUrl(ticket.location);
+  const liveTechnicianCoordinates =
+    user?.role === 'TECHNICIAN' ? currentCoordinates : getTechnicianCoordinates(assignedTechnician);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -190,6 +233,25 @@ export function TicketDetailPage() {
                   </p>
                 </div>
               </div>
+
+              {user?.role !== 'USER' && coordinates && (
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">
+                    Live Route Monitor
+                  </p>
+                  <RouteMap
+                    origin={liveTechnicianCoordinates}
+                    destination={coordinates}
+                    originLabel={
+                      user?.role === 'TECHNICIAN'
+                        ? 'Your Live Position'
+                        : assignedTechnician?.fullName || 'Assigned Technician'
+                    }
+                    destinationLabel="Student Location"
+                    height="280px"
+                  />
+                </div>
+              )}
 
               <div>
                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">

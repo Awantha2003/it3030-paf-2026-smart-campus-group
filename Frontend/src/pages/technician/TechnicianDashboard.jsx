@@ -15,9 +15,10 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
-import { mockTickets } from '../../data/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { getTechnicianIssueReports, updateIssueReportStatus } from '../../api/issues';
+import { RouteMap } from '../../components/maps/RouteMap';
+import { useTechnicianLiveTracking } from '../../hooks/useTechnicianLiveTracking';
 import { formatCoordinates, getGoogleMapsDirectionsUrl, parseCoordinatesFromLocation } from '../../utils/location';
 export function TechnicianDashboard() {
   const { user } = useAuth();
@@ -43,6 +44,10 @@ export function TechnicianDashboard() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [updateStatus, setUpdateStatus] = useState('IN_PROGRESS');
   const [resolutionNotes, setResolutionNotes] = useState('');
+  const { currentCoordinates, locationStatus, trackingUpdatedAt } = useTechnicianLiveTracking(
+    techId,
+    user?.role === 'TECHNICIAN'
+  );
   
   // The API already filters by assignedTo, so we just map tickets directly
   const assignedTickets = tickets || [];
@@ -88,6 +93,7 @@ export function TechnicianDashboard() {
     };
     return priorityWeight[b.priority] - priorityWeight[a.priority];
   });
+  const activeRouteTicket = sortedTickets[0] || null;
   return (
     <motion.div
       initial={{
@@ -297,6 +303,45 @@ export function TechnicianDashboard() {
 
         {/* Right Sidebar */}
         <div className="space-y-6">
+          <Card className="p-5">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+              Live Route Guidance
+            </h3>
+            {activeRouteTicket ? (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/50">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Destination: {activeRouteTicket.title}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {locationStatus || 'Waiting for technician GPS permission.'}
+                  </p>
+                  {currentCoordinates && (
+                    <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      Technician position: {formatCoordinates(currentCoordinates)}
+                    </p>
+                  )}
+                  {trackingUpdatedAt && (
+                    <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                      Updated {new Date(trackingUpdatedAt).toLocaleTimeString()}
+                    </p>
+                  )}
+                </div>
+                <RouteMap
+                  origin={currentCoordinates}
+                  destination={parseCoordinatesFromLocation(activeRouteTicket.location)}
+                  originLabel="Technician Live Position"
+                  destinationLabel="Student Ticket Location"
+                  height="260px"
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                No assigned ticket is available for route tracking.
+              </p>
+            )}
+          </Card>
+
           <Card className="p-5">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
               Today's Schedule

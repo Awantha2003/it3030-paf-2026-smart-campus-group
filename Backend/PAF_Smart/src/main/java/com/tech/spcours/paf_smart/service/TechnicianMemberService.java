@@ -8,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.tech.spcours.paf_smart.dto.CreateTechnicianRequest;
 import com.tech.spcours.paf_smart.dto.TechnicianResponse;
+import com.tech.spcours.paf_smart.dto.UpdateTechnicianLocationRequest;
 import com.tech.spcours.paf_smart.exception.ResourceConflictException;
 import com.tech.spcours.paf_smart.exception.ResourceNotFoundException;
 import com.tech.spcours.paf_smart.model.TechnicianMember;
@@ -65,6 +66,20 @@ public class TechnicianMemberService {
         return toResponse(updatedTechnician);
     }
 
+    public TechnicianResponse updateTechnicianLocation(String id, UpdateTechnicianLocationRequest request) {
+        TechnicianMember technicianMember = findTechnicianById(id);
+        Instant now = Instant.now();
+
+        technicianMember.setCurrentLatitude(request.latitude());
+        technicianMember.setCurrentLongitude(request.longitude());
+        technicianMember.setCurrentLocation(request.location().trim());
+        technicianMember.setTrackingUpdatedAt(now);
+        technicianMember.setUpdatedAt(now);
+
+        TechnicianMember updatedTechnician = technicianMemberRepository.save(technicianMember);
+        return toResponse(updatedTechnician);
+    }
+
     public void deleteTechnician(String id) {
         TechnicianMember technicianMember = findTechnicianById(id);
         technicianMemberRepository.delete(technicianMember);
@@ -88,6 +103,10 @@ public class TechnicianMemberService {
                 .department(technicianMember.getDepartment())
                 .specialization(technicianMember.getSpecialization())
                 .active(technicianMember.isActive())
+                .currentLatitude(technicianMember.getCurrentLatitude())
+                .currentLongitude(technicianMember.getCurrentLongitude())
+                .currentLocation(technicianMember.getCurrentLocation())
+                .trackingUpdatedAt(technicianMember.getTrackingUpdatedAt())
                 .credentialsEmailSent(emailDeliveryResult.sent())
                 .credentialsEmailStatus(emailDeliveryResult.message())
                 .createdAt(technicianMember.getCreatedAt())

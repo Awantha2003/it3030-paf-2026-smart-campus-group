@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle, Clock, MapPin, MessageSquare, RefreshCw, XC
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge, StatusBadge } from '../../components/ui/Badge';
+import { RouteMap } from '../../components/maps/RouteMap';
 import {
   assignIssueReport,
   getAllIssueReports,
@@ -11,6 +12,13 @@ import {
   updateIssueReportStatus
 } from '../../api/issues';
 import { fetchTechnicians } from '../../api/technicians';
+import {
+  calculateDistanceKm,
+  formatCoordinates,
+  getBearingDirection,
+  getTechnicianCoordinates,
+  parseCoordinatesFromLocation
+} from '../../utils/location';
 
 const ticketTabs = ['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'CLOSED'];
 
@@ -31,8 +39,25 @@ export function AdminTicketsPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      loadData(false, true);
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
   const selectedTicket = tickets.find((ticket) => ticket.id === selectedTicketId) || null;
   const activeTechnicians = technicians.filter((technician) => technician.active);
+  const assignedTechnician = technicians.find(
+    (technician) => technician.id === selectedTicket?.assignedTo
+  );
+  const studentCoordinates = parseCoordinatesFromLocation(selectedTicket?.location);
+  const technicianCoordinates = getTechnicianCoordinates(assignedTechnician);
+  const routeDistance = calculateDistanceKm(technicianCoordinates, studentCoordinates);
+  const routeDirection = getBearingDirection(technicianCoordinates, studentCoordinates);
 
   useEffect(() => {
     setAdminNote(selectedTicket?.adminNote || '');
@@ -48,14 +73,18 @@ export function AdminTicketsPage() {
     return matchesTab && matchesSearch;
   });
 
-  async function loadData(showRefreshState = false) {
-    if (showRefreshState) {
+  async function loadData(showRefreshState = false, silent = false) {
+    if (silent) {
+      setError('');
+    } else if (showRefreshState) {
       setRefreshing(true);
     } else {
       setLoading(true);
     }
 
-    setError('');
+    if (!silent) {
+      setError('');
+    }
 
     try {
       const [ticketData, technicianData] = await Promise.all([
@@ -75,8 +104,10 @@ export function AdminTicketsPage() {
     } catch (loadError) {
       setError(loadError.message);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!silent) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }
 
@@ -424,6 +455,66 @@ export function AdminTicketsPage() {
 
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                   <h3 className="mb-2 flex items-center text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200">
+                    <MapPin className="mr-2 h-4 w-4 text-rose-500" /> Live Location Monitor
+                  </h3>
+                  <div className="rounded-xl border border-rose-100/50 bg-gradient-to-br from-rose-50/50 to-blue-50/50 p-4 shadow-sm backdrop-blur-md dark:border-rose-900/30 dark:from-rose-900/10 dark:to-blue-900/10">
+                    {studentCoordinates ? (
+                      <div className="space-y-4">
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <div className="rounded-xl border border-rose-100 bg-white/70 p-4 dark:border-rose-900/30 dark:bg-slate-900/30">
+                            <p className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                              Student Destination
+                            </p>
+                            <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
+                              {selectedTicket.location}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              GPS {formatCoordinates(studentCoordinates)}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-blue-100 bg-white/70 p-4 dark:border-blue-900/30 dark:bg-slate-900/30">
+                            <p className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                              Assigned Technician
+                            </p>
+                            <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
+                              {assignedTechnician?.fullName || 'Not assigned yet'}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              {assignedTechnician?.currentLocation || 'Waiting for technician live GPS'}
+                            </p>
+                            {assignedTechnician?.trackingUpdatedAt && (
+                              <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                                Updated {new Date(assignedTechnician.trackingUpdatedAt).toLocaleTimeString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {(routeDistance || routeDirection) && technicianCoordinates && (
+                          <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-800 dark:border-emerald-900/30 dark:bg-emerald-900/10 dark:text-emerald-300">
+                            Technician is approximately {routeDistance?.toFixed(2) || '0.00'} km away
+                            {routeDirection ? `, moving toward the ${routeDirection}` : ''}.
+                          </div>
+                        )}
+
+                        <RouteMap
+                          origin={technicianCoordinates}
+                          destination={studentCoordinates}
+                          originLabel="Technician Live Position"
+                          destinationLabel="Student Issue Location"
+                          height="300px"
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        This ticket does not have GPS coordinates yet, so live route monitoring is unavailable.
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+                  <h3 className="mb-2 flex items-center text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200">
                     <ShieldAlert className="mr-2 h-4 w-4 text-amber-500" /> Status Flow
                   </h3>
                   <div className="rounded-xl border border-amber-100/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-4 shadow-sm backdrop-blur-md dark:border-amber-900/30 dark:from-amber-900/10 dark:to-orange-900/10">
@@ -454,7 +545,7 @@ export function AdminTicketsPage() {
                   </div>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
                   <h3 className="mb-2 flex items-center text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200">
                     <MessageSquare className="mr-2 h-4 w-4 text-emerald-500" /> Administrative Notes
                   </h3>

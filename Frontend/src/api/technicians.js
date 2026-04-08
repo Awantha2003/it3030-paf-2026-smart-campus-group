@@ -44,6 +44,18 @@ export async function updateTechnicianStatus(id, active) {
   return parseResponse(response);
 }
 
+export async function updateTechnicianLocation(id, locationData) {
+  const response = await fetch(`${API_BASE_URL}/technicians/${id}/location`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(locationData)
+  });
+
+  return parseResponse(response);
+}
+
 export async function deleteTechnician(id) {
   const response = await fetch(`${API_BASE_URL}/admin/technicians/${id}`, {
     method: 'DELETE'

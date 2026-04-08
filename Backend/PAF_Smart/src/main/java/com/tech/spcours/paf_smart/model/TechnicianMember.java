@@ -36,6 +36,14 @@ public class TechnicianMember {
 
     private boolean active;
 
+    private Double currentLatitude;
+
+    private Double currentLongitude;
+
+    private String currentLocation;
+
+    private Instant trackingUpdatedAt;
+
     private Instant createdAt;
 
     private Instant updatedAt;
