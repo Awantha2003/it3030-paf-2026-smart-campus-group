@@ -46,6 +46,18 @@ export function formatCoordinates(coordinates) {
   return `${coordinates.lat.toFixed(5)}, ${coordinates.lng.toFixed(5)}`;
 }
 
+export function formatDistanceKm(distanceKm) {
+  if (distanceKm === null || distanceKm === undefined || Number.isNaN(distanceKm)) {
+    return 'Distance unavailable';
+  }
+
+  if (distanceKm < 1) {
+    return `${Math.round(distanceKm * 1000)} m`;
+  }
+
+  return `${distanceKm.toFixed(2)} km`;
+}
+
 export function getTechnicianCoordinates(technician) {
   if (
     !technician ||
@@ -83,6 +95,32 @@ export function calculateDistanceKm(origin, destination) {
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+export function estimateTravelMinutes(distanceKm, mode = 'walking') {
+  if (distanceKm === null || distanceKm === undefined || Number.isNaN(distanceKm)) {
+    return null;
+  }
+
+  const speedKmPerHour = mode === 'service' ? 18 : 4.7;
+  return Math.max(1, Math.round((distanceKm / speedKmPerHour) * 60));
+}
+
+export function findNearestCoordinate(origin, candidates = [], getCoordinates = (item) => item) {
+  const start = parseCoordinates(origin);
+
+  if (!start || !Array.isArray(candidates) || candidates.length === 0) {
+    return null;
+  }
+
+  return candidates
+    .map((candidate) => ({
+      candidate,
+      coordinates: parseCoordinates(getCoordinates(candidate)),
+      distanceKm: calculateDistanceKm(start, getCoordinates(candidate))
+    }))
+    .filter((entry) => entry.coordinates && entry.distanceKm !== null)
+    .sort((left, right) => left.distanceKm - right.distanceKm)[0] || null;
+}
+
 export function getBearingDirection(origin, destination) {
   const start = parseCoordinates(origin);
   const end = parseCoordinates(destination);
@@ -111,4 +149,31 @@ export function getGoogleMapsDirectionsUrl(location) {
   }
 
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location || '')}`;
+}
+
+export function buildRichLocationLabel({
+  label = '',
+  coordinates = null,
+  zone = '',
+  extraDetails = ''
+}) {
+  const parts = [];
+
+  if (label?.trim()) {
+    parts.push(label.trim());
+  }
+
+  if (zone?.trim()) {
+    parts.push(zone.trim());
+  }
+
+  if (extraDetails?.trim()) {
+    parts.push(extraDetails.trim());
+  }
+
+  if (coordinates) {
+    parts.push(`GPS ${formatCoordinates(coordinates)}`);
+  }
+
+  return parts.filter(Boolean).join(' | ');
 }

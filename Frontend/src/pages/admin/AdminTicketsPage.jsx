@@ -14,11 +14,14 @@ import {
 import { fetchTechnicians } from '../../api/technicians';
 import {
   calculateDistanceKm,
+  estimateTravelMinutes,
+  formatDistanceKm,
   formatCoordinates,
   getBearingDirection,
   getTechnicianCoordinates,
   parseCoordinatesFromLocation
 } from '../../utils/location';
+import { rankTechniciansForTicket } from '../../utils/campusMap';
 
 const ticketTabs = ['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'CLOSED'];
 
@@ -58,6 +61,12 @@ export function AdminTicketsPage() {
   const technicianCoordinates = getTechnicianCoordinates(assignedTechnician);
   const routeDistance = calculateDistanceKm(technicianCoordinates, studentCoordinates);
   const routeDirection = getBearingDirection(technicianCoordinates, studentCoordinates);
+  const technicianRecommendations = selectedTicket
+    ? rankTechniciansForTicket(selectedTicket, activeTechnicians, tickets)
+    : [];
+  const assignmentOptions = technicianRecommendations.length
+    ? technicianRecommendations.map((entry) => entry.technician)
+    : activeTechnicians;
 
   useEffect(() => {
     setAdminNote(selectedTicket?.adminNote || '');
@@ -421,33 +430,75 @@ export function AdminTicketsPage() {
                     <UserCircle className="mr-2 h-4 w-4 text-blue-500" /> Technician Assignment
                   </h3>
                   <div className="rounded-xl border border-blue-100/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 p-4 shadow-sm backdrop-blur-md dark:border-blue-900/30 dark:from-blue-900/10 dark:to-indigo-900/10">
-                    <div className="flex flex-col md:flex-row md:items-center gap-4">
-                      <div className="flex-1">
-                        <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                          Assign personnel
-                        </label>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Select the best technician to resolve this issue.
-                        </p>
-                      </div>
-                      <div className="flex-[2]">
-                        <select
-                          value={selectedTicket.assignedTo || ''}
-                          onChange={(event) => handleAssign(selectedTicket.id, event.target.value)}
-                          disabled={actioning === `assign-${selectedTicket.id}` || activeTechnicians.length === 0}
-                          className="w-full rounded-xl border-2 border-white bg-white/80 px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition-all focus:border-blue-400 focus:ring-4 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white"
-                        >
-                          <option value="" disabled>
-                            {activeTechnicians.length === 0
-                              ? 'No active technicians available'
-                              : 'Select a skilled professional...'}
-                          </option>
-                          {activeTechnicians.map((technician) => (
-                            <option key={technician.id} value={technician.id}>
-                              {technician.fullName}
-                            </option>
+                    <div className="space-y-4">
+                      {selectedTicket && technicianRecommendations.length > 0 && (
+                        <div className="grid gap-3 xl:grid-cols-3">
+                          {technicianRecommendations.slice(0, 3).map((entry, index) => (
+                            <button
+                              key={entry.technician.id}
+                              type="button"
+                              onClick={() => handleAssign(selectedTicket.id, entry.technician.id)}
+                              disabled={actioning === `assign-${selectedTicket.id}`}
+                              className={`rounded-xl border p-3 text-left transition ${
+                                index === 0
+                                  ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/10'
+                                  : 'border-slate-200 bg-white/70 dark:border-slate-700 dark:bg-slate-900/30'
+                              }`}
+                            >
+                              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                {index === 0 ? 'Best Fit' : `Option ${index + 1}`}
+                              </p>
+                              <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
+                                {entry.technician.fullName}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                {entry.technician.specialization || 'General support'}
+                              </p>
+                              <p className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                                {entry.distanceKm !== null
+                                  ? `${formatDistanceKm(entry.distanceKm)} away | ${entry.travelMinutes} min | ${entry.activeLoad} active jobs`
+                                  : `${entry.activeLoad} active jobs | GPS unavailable`}
+                              </p>
+                            </button>
                           ))}
-                        </select>
+                        </div>
+                      )}
+                      <div className="flex flex-col md:flex-row md:items-center gap-4">
+                        <div className="flex-1">
+                          <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                            Assign personnel
+                          </label>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Select the best technician to resolve this issue.
+                          </p>
+                        </div>
+                        <div className="flex-[2]">
+                          <select
+                            value={selectedTicket.assignedTo || ''}
+                            onChange={(event) => handleAssign(selectedTicket.id, event.target.value)}
+                            disabled={actioning === `assign-${selectedTicket.id}` || activeTechnicians.length === 0}
+                            className="w-full rounded-xl border-2 border-white bg-white/80 px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition-all focus:border-blue-400 focus:ring-4 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white"
+                          >
+                            <option value="" disabled>
+                              {activeTechnicians.length === 0
+                                ? 'No active technicians available'
+                                : 'Select a skilled professional...'}
+                            </option>
+                            {assignmentOptions.map((technician) => {
+                              const recommendation = technicianRecommendations.find(
+                                (entry) => entry.technician.id === technician.id
+                              );
+
+                              return (
+                                <option key={technician.id} value={technician.id}>
+                                  {recommendation
+                                    ? `${technician.fullName} | ${recommendation.distanceKm !== null ? formatDistanceKm(recommendation.distanceKm) : 'No GPS'} | ${recommendation.activeLoad} active`
+                                    : technician.fullName}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -494,6 +545,9 @@ export function AdminTicketsPage() {
                           <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-800 dark:border-emerald-900/30 dark:bg-emerald-900/10 dark:text-emerald-300">
                             Technician is approximately {routeDistance?.toFixed(2) || '0.00'} km away
                             {routeDirection ? `, moving toward the ${routeDirection}` : ''}.
+                            {routeDistance !== null
+                              ? ` Estimated walking arrival ${estimateTravelMinutes(routeDistance)} min.`
+                              : ''}
                           </div>
                         )}
 
@@ -534,11 +588,11 @@ export function AdminTicketsPage() {
                           disabled={actioning === `status-${selectedTicket.id}`}
                           className="w-full rounded-xl border-2 border-white bg-white/80 px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition-all focus:border-amber-400 focus:ring-4 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white"
                         >
-                          <option value="OPEN">💡 Open</option>
-                          <option value="IN_PROGRESS">⚙️ In Progress</option>
-                          <option value="RESOLVED">✅ Resolved</option>
-                          <option value="REJECTED">❌ Rejected</option>
-                          <option value="CLOSED">🔒 Closed</option>
+                          <option value="OPEN">Open</option>
+                          <option value="IN_PROGRESS">In Progress</option>
+                          <option value="RESOLVED">Resolved</option>
+                          <option value="REJECTED">Rejected</option>
+                          <option value="CLOSED">Closed</option>
                         </select>
                       </div>
                     </div>

@@ -9,6 +9,7 @@ import {
   List,
   MapPin,
   Navigation,
+  Route,
   AlertTriangle,
   MessageSquare } from
 'lucide-react';
@@ -21,7 +22,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTechnicianTracking } from '../../contexts/TechnicianTrackingContext';
 import { getTechnicianIssueReports, updateIssueReportStatus } from '../../api/issues';
 import { RouteMap } from '../../components/maps/RouteMap';
-import { formatCoordinates, getGoogleMapsDirectionsUrl, parseCoordinatesFromLocation } from '../../utils/location';
+import {
+  formatCoordinates,
+  formatDistanceKm,
+  getGoogleMapsDirectionsUrl,
+  parseCoordinatesFromLocation
+} from '../../utils/location';
+import { rankTicketsForTechnician } from '../../utils/campusMap';
 export function TechnicianDashboard() {
   const { user } = useAuth();
   const techId = user?.id;
@@ -83,16 +90,7 @@ export function TechnicianDashboard() {
       setResolutionNotes('');
     }
   };
-  // Sort by priority (CRITICAL first)
-  const sortedTickets = [...assignedTickets].sort((a, b) => {
-    const priorityWeight = {
-      CRITICAL: 4,
-      HIGH: 3,
-      MEDIUM: 2,
-      LOW: 1
-    };
-    return priorityWeight[b.priority] - priorityWeight[a.priority];
-  });
+  const sortedTickets = rankTicketsForTechnician(assignedTickets, currentCoordinates);
 
   useEffect(() => {
     if (!sortedTickets.length) {
@@ -110,6 +108,10 @@ export function TechnicianDashboard() {
   const activeRouteIndex = activeRouteTicket
     ? sortedTickets.findIndex((ticket) => ticket.id === activeRouteTicket.id)
     : -1;
+  const nextBestEta =
+    activeRouteTicket?.travelMinutes !== null && activeRouteTicket?.travelMinutes !== undefined
+      ? `${activeRouteTicket.travelMinutes} min`
+      : 'Waiting for GPS';
 
   const showPreviousTicket = () => {
     if (activeRouteIndex > 0) {
@@ -204,6 +206,20 @@ export function TechnicianDashboard() {
             </h3>
           </div>
         </Card>
+
+        <Card className="p-4 flex items-center space-x-4 border-l-4 border-emerald-500 sm:col-span-2 lg:col-span-1">
+          <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
+            <Navigation className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              Next Route ETA
+            </p>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+              {nextBestEta}
+            </h3>
+          </div>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -270,6 +286,12 @@ export function TechnicianDashboard() {
                           <span className="flex items-center text-emerald-600 dark:text-emerald-400">
                             <Navigation className="w-4 h-4 mr-1" />
                             {formatCoordinates(coordinates)}
+                          </span>
+                        )}
+                        {ticket.distanceKm !== null && (
+                          <span className="flex items-center text-blue-600 dark:text-blue-400">
+                            <Route className="w-4 h-4 mr-1" />
+                            {formatDistanceKm(ticket.distanceKm)} | {ticket.travelMinutes} min
                           </span>
                         )}
                         <span className="flex items-center">
@@ -382,6 +404,11 @@ export function TechnicianDashboard() {
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     Focused task #{activeRouteTicket.id}
                   </p>
+                  {activeRouteTicket.distanceKm !== null && (
+                    <p className="mt-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+                      {formatDistanceKm(activeRouteTicket.distanceKm)} away | {activeRouteTicket.travelMinutes} min
+                    </p>
+                  )}
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     {locationStatus || 'Waiting for technician GPS permission.'}
                   </p>

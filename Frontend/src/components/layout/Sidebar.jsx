@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboardIcon,
+  MapIcon,
   TicketIcon,
   BellIcon,
   SettingsIcon,
@@ -20,16 +21,21 @@ export function Sidebar() {
   const mainNav = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboardIcon },
     { name: 'Tickets', path: '/tickets', icon: TicketIcon },
+    { name: 'Campus Map', path: '/campus-map', icon: MapIcon },
     { name: 'Notifications', path: '/notifications', icon: BellIcon }
   ];
 
   const adminNav = [
     { name: 'Admin Dashboard', path: '/admin', icon: ShieldIcon },
+    { name: 'Campus Map', path: '/campus-map', icon: MapIcon },
     { name: 'Manage Tickets', path: '/admin/tickets', icon: TicketIcon },
     { name: 'Technicians', path: '/admin/technicians', icon: WrenchIcon }
   ];
 
-  const techNav = [{ name: 'My Assignments', path: '/technician', icon: WrenchIcon }];
+  const techNav = [
+    { name: 'My Assignments', path: '/technician', icon: WrenchIcon },
+    { name: 'Campus Map', path: '/campus-map', icon: MapIcon }
+  ];
 
   const NavItem = ({ item }) => {
     const Icon = item.icon;

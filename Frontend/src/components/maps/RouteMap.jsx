@@ -1,7 +1,9 @@
 import React from 'react';
-import { GoogleMap, Marker, Polyline, useJsApiLoader } from '@react-google-maps/api';
+import { GoogleMap, Polyline } from '@react-google-maps/api';
 import { MapPin, Navigation } from 'lucide-react';
 import { calculateDistanceKm, formatCoordinates, getBearingDirection, parseCoordinates } from '../../utils/location';
+import { CAMPUS_GOOGLE_MAP_ID, useCampusGoogleMaps } from '../../hooks/useCampusGoogleMaps';
+import { CampusMarker } from './CampusMarker';
 
 const DEFAULT_CENTER = { lat: 6.9147, lng: 79.9733 };
 
@@ -29,10 +31,7 @@ export function RouteMap({
   const direction = getBearingDirection(start, end);
   const center = getMapCenter(start, end);
 
-  const { isLoaded } = useJsApiLoader({
-    id: 'smart-campus-route-map',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyB_8qtKkSSvV07Jha3La6HPWI-i-cggnYQ'
-  });
+  const { isLoaded } = useCampusGoogleMaps();
 
   if (!start && !end) {
     return (
@@ -78,17 +77,20 @@ export function RouteMap({
             mapContainerStyle={{ width: '100%', height }}
             center={center}
             zoom={16}
+            options={{ mapId: CAMPUS_GOOGLE_MAP_ID }}
           >
             {start && (
-              <Marker
+              <CampusMarker
                 position={start}
-                label={{ text: 'T', color: 'white', fontWeight: '700' }}
+                glyph="T"
+                background="#2563eb"
               />
             )}
             {end && (
-              <Marker
+              <CampusMarker
                 position={end}
-                label={{ text: 'S', color: 'white', fontWeight: '700' }}
+                glyph="S"
+                background="#e11d48"
               />
             )}
             {start && end && (

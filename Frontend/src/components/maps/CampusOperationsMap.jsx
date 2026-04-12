@@ -1,0 +1,380 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Circle, GoogleMap, InfoWindow } from '@react-google-maps/api';
+import { Activity, MapPin, ShieldCheck, Wrench } from 'lucide-react';
+import { CAMPUS_LANDMARKS, CAMPUS_MAP_CENTER, CAMPUS_ZONES } from '../../data/campusMapData';
+import {
+  calculateDistanceKm,
+  estimateTravelMinutes,
+  formatCoordinates,
+  getTechnicianCoordinates,
+  parseCoordinatesFromLocation
+} from '../../utils/location';
+import { CAMPUS_GOOGLE_MAP_ID, useCampusGoogleMaps } from '../../hooks/useCampusGoogleMaps';
+import { CampusMarker } from './CampusMarker';
+
+function getTicketColor(ticket) {
+  if (ticket.priority === 'CRITICAL') return '#dc2626';
+  if (ticket.priority === 'HIGH') return '#f59e0b';
+  if (ticket.priority === 'MEDIUM') return '#2563eb';
+  return '#64748b';
+}
+
+function getTicketLabel(ticket) {
+  if (ticket.priority === 'CRITICAL') {
+    return '!';
+  }
+
+  return (ticket.id || 'T').slice(0, 1).toUpperCase();
+}
+
+function getTechnicianColor(technician) {
+  return technician.active ? '#059669' : '#94a3b8';
+}
+
+function buildSelection(kind, payload) {
+  if (!payload) {
+    return null;
+  }
+
+  return { kind, payload };
+}
+
+export function CampusOperationsMap({
+  tickets = [],
+  technicians = [],
+  landmarks = CAMPUS_LANDMARKS,
+  selectedTicket = null,
+  selectedTechnician = null,
+  selectedLandmark = null,
+  onTicketSelect,
+  onTechnicianSelect,
+  onLandmarkSelect,
+  showTickets = true,
+  showTechnicians = true,
+  showLandmarks = true,
+  showZones = true,
+  userCoordinates = null,
+  height = '520px'
+}) {
+  const [activeSelection, setActiveSelection] = useState(null);
+  const mapRef = useRef(null);
+
+  const visibleTickets = showTickets
+    ? tickets
+        .map((ticket) => ({
+          ...ticket,
+          coordinates: parseCoordinatesFromLocation(ticket.location)
+        }))
+        .filter((ticket) => ticket.coordinates)
+    : [];
+
+  const visibleTechnicians = showTechnicians
+    ? technicians
+        .map((technician) => ({
+          ...technician,
+          coordinates: getTechnicianCoordinates(technician)
+        }))
+        .filter((technician) => technician.coordinates)
+    : [];
+
+  const visibleLandmarks = showLandmarks ? landmarks : [];
+
+  const explicitFocus =
+    parseCoordinatesFromLocation(selectedTicket?.location) ||
+    getTechnicianCoordinates(selectedTechnician) ||
+    selectedLandmark?.position ||
+    userCoordinates ||
+    null;
+
+  const pointSignature = [
+    ...visibleTickets.map((ticket) => `${ticket.id}:${formatCoordinates(ticket.coordinates)}`),
+    ...visibleTechnicians.map(
+      (technician) => `${technician.id}:${formatCoordinates(technician.coordinates)}`
+    ),
+    ...visibleLandmarks.map((landmark) => `${landmark.id}:${formatCoordinates(landmark.position)}`)
+  ].join('|');
+
+  const { isLoaded, loadError } = useCampusGoogleMaps();
+
+  useEffect(() => {
+    if (!isLoaded || !mapRef.current || !window.google?.maps) {
+      return;
+    }
+
+    if (explicitFocus) {
+      mapRef.current.panTo(explicitFocus);
+      mapRef.current.setZoom(17);
+      return;
+    }
+
+    const bounds = new window.google.maps.LatLngBounds();
+    let pointsAdded = 0;
+
+    visibleTickets.forEach((ticket) => {
+      bounds.extend(ticket.coordinates);
+      pointsAdded += 1;
+    });
+
+    visibleTechnicians.forEach((technician) => {
+      bounds.extend(technician.coordinates);
+      pointsAdded += 1;
+    });
+
+    visibleLandmarks.forEach((landmark) => {
+      bounds.extend(landmark.position);
+      pointsAdded += 1;
+    });
+
+    if (userCoordinates) {
+      bounds.extend(userCoordinates);
+      pointsAdded += 1;
+    }
+
+    if (pointsAdded > 1) {
+      mapRef.current.fitBounds(bounds, 72);
+    }
+  }, [
+    explicitFocus,
+    isLoaded,
+    pointSignature,
+    userCoordinates,
+    visibleLandmarks,
+    visibleTechnicians,
+    visibleTickets
+  ]);
+
+  useEffect(() => {
+    if (selectedTicket) {
+      setActiveSelection(buildSelection('ticket', selectedTicket));
+      return;
+    }
+
+    if (selectedTechnician) {
+      setActiveSelection(buildSelection('technician', selectedTechnician));
+      return;
+    }
+
+    if (selectedLandmark) {
+      setActiveSelection(buildSelection('landmark', selectedLandmark));
+    }
+  }, [selectedLandmark, selectedTechnician, selectedTicket]);
+
+  if (loadError) {
+    return (
+      <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/10 dark:text-red-300">
+        Google Maps failed to load. Check `VITE_GOOGLE_MAPS_API_KEY` and reload the app.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <Activity className="h-4 w-4 text-rose-500" />
+            Live Tickets
+          </div>
+          <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{visibleTickets.length}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <Wrench className="h-4 w-4 text-emerald-500" />
+            Live Technicians
+          </div>
+          <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{visibleTechnicians.length}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <MapPin className="h-4 w-4 text-blue-500" />
+            Landmarks
+          </div>
+          <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{visibleLandmarks.length}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <ShieldCheck className="h-4 w-4 text-violet-500" />
+            Map Layers
+          </div>
+          <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
+            {[
+              showTickets ? 'Tickets' : null,
+              showTechnicians ? 'Technicians' : null,
+              showLandmarks ? 'Landmarks' : null,
+              showZones ? 'Zones' : null
+            ]
+              .filter(Boolean)
+              .join(', ')}
+          </p>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900/60">
+        {isLoaded ? (
+          <GoogleMap
+            mapContainerStyle={{ width: '100%', height }}
+            center={explicitFocus || CAMPUS_MAP_CENTER}
+            zoom={16}
+            onLoad={(mapInstance) => {
+              mapRef.current = mapInstance;
+            }}
+            options={{
+              mapId: CAMPUS_GOOGLE_MAP_ID,
+              streetViewControl: false,
+              fullscreenControl: false,
+              mapTypeControl: false,
+              clickableIcons: false
+            }}
+          >
+            {showZones &&
+              CAMPUS_ZONES.map((zone) => (
+                <Circle
+                  key={zone.id}
+                  center={zone.center}
+                  radius={zone.radius}
+                  options={{
+                    fillColor: zone.color,
+                    fillOpacity: 0.1,
+                    strokeColor: zone.color,
+                    strokeOpacity: 0.4,
+                    strokeWeight: 2
+                  }}
+                />
+              ))}
+
+            {userCoordinates && (
+              <CampusMarker
+                position={userCoordinates}
+                glyph="Y"
+                background="#0f172a"
+                scale={1.2}
+                onClick={() =>
+                  setActiveSelection(
+                    buildSelection('user', {
+                      location: `Current user position | GPS ${formatCoordinates(userCoordinates)}`,
+                      coordinates: userCoordinates
+                    })
+                  )
+                }
+              />
+            )}
+
+            {visibleLandmarks.map((landmark) => (
+              <CampusMarker
+                key={landmark.id}
+                position={landmark.position}
+                glyph={landmark.shortName}
+                background="#1d4ed8"
+                scale={1}
+                onClick={() => {
+                  setActiveSelection(buildSelection('landmark', landmark));
+                  onLandmarkSelect?.(landmark);
+                }}
+              />
+            ))}
+
+            {visibleTickets.map((ticket) => (
+              <CampusMarker
+                key={ticket.id}
+                position={ticket.coordinates}
+                glyph={getTicketLabel(ticket)}
+                background={getTicketColor(ticket)}
+                scale={1.2}
+                onClick={() => {
+                  setActiveSelection(buildSelection('ticket', ticket));
+                  onTicketSelect?.(ticket);
+                }}
+              />
+            ))}
+
+            {visibleTechnicians.map((technician) => (
+              <CampusMarker
+                key={technician.id}
+                position={technician.coordinates}
+                glyph="T"
+                background={getTechnicianColor(technician)}
+                scale={1.1}
+                onClick={() => {
+                  setActiveSelection(buildSelection('technician', technician));
+                  onTechnicianSelect?.(technician);
+                }}
+              />
+            ))}
+
+            {activeSelection && (
+              <InfoWindow
+                position={
+                  parseCoordinatesFromLocation(activeSelection.payload.location) ||
+                  getTechnicianCoordinates(activeSelection.payload) ||
+                  activeSelection.payload.position ||
+                  activeSelection.payload.coordinates
+                }
+                onCloseClick={() => setActiveSelection(null)}
+              >
+                <div className="max-w-[240px] space-y-2 pr-2 text-xs text-slate-700">
+                  <p className="text-sm font-bold text-slate-900">
+                    {activeSelection.kind === 'ticket' && activeSelection.payload.title}
+                    {activeSelection.kind === 'technician' && activeSelection.payload.fullName}
+                    {activeSelection.kind === 'landmark' && activeSelection.payload.name}
+                    {activeSelection.kind === 'user' && 'Current Position'}
+                  </p>
+                  {activeSelection.kind === 'ticket' && (
+                    <>
+                      <p>{activeSelection.payload.location}</p>
+                      <p>
+                        Priority: {activeSelection.payload.priority} | Status:{' '}
+                        {activeSelection.payload.status}
+                      </p>
+                    </>
+                  )}
+                  {activeSelection.kind === 'technician' && (
+                    <>
+                      <p>{activeSelection.payload.specialization || 'General field support'}</p>
+                      <p>{activeSelection.payload.currentLocation || 'Live GPS active'}</p>
+                    </>
+                  )}
+                  {activeSelection.kind === 'landmark' && <p>{activeSelection.payload.description}</p>}
+                  {(activeSelection.kind === 'ticket' || activeSelection.kind === 'user') &&
+                    activeSelection.payload.coordinates && (
+                      <p>GPS {formatCoordinates(activeSelection.payload.coordinates)}</p>
+                    )}
+                  {activeSelection.kind === 'technician' && selectedTicket && (() => {
+                    const distanceKm = calculateDistanceKm(
+                      getTechnicianCoordinates(activeSelection.payload),
+                      parseCoordinatesFromLocation(selectedTicket.location)
+                    );
+
+                    if (distanceKm === null) {
+                      return null;
+                    }
+
+                    return <p>ETA: {estimateTravelMinutes(distanceKm)} min</p>;
+                  })()}
+                </div>
+              </InfoWindow>
+            )}
+          </GoogleMap>
+        ) : (
+          <div
+            className="flex items-center justify-center bg-slate-100 text-sm text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+            style={{ height }}
+          >
+            Loading campus intelligence map...
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+        <span className="rounded-full bg-rose-100 px-3 py-1 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300">
+          Red markers: critical or urgent tickets
+        </span>
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
+          Green markers: technicians with live GPS
+        </span>
+        <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+          Blue markers: campus landmarks and service points
+        </span>
+      </div>
+    </div>
+  );
+}

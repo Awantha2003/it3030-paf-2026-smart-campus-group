@@ -16,6 +16,7 @@ import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminTicketsPage } from './pages/admin/AdminTicketsPage';
 import { AdminTechniciansPage } from './pages/admin/AdminTechniciansPage';
 import { TechnicianDashboard } from './pages/technician/TechnicianDashboard';
+import { CampusMapPage } from './pages/maps/CampusMapPage';
 import { ErrorPage } from './pages/ErrorPage';
 
 function PublicOnlyRoute({ children }) {
@@ -76,7 +77,7 @@ export function App() {
     <ThemeProvider>
       <AuthProvider>
         <TechnicianTrackingProvider>
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               <Route
                 path="/login"
@@ -139,6 +140,14 @@ export function App() {
                   element={
                     <RoleRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
                       <NotificationsPage />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="/campus-map"
+                  element={
+                    <RoleRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
+                      <CampusMapPage />
                     </RoleRoute>
                   }
                 />

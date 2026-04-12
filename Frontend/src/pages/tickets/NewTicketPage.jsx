@@ -6,7 +6,11 @@ import { Button } from '../../components/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { createIssueReport, uploadFile } from '../../api/issues';
-import { useJsApiLoader, GoogleMap, Marker } from '@react-google-maps/api';
+import { GoogleMap } from '@react-google-maps/api';
+import { CAMPUS_LANDMARKS, findCampusLandmarkById } from '../../data/campusMapData';
+import { buildRichLocationLabel, findNearestCoordinate, formatCoordinates } from '../../utils/location';
+import { CAMPUS_GOOGLE_MAP_ID, useCampusGoogleMaps } from '../../hooks/useCampusGoogleMaps';
+import { CampusMarker } from '../../components/maps/CampusMarker';
 
 const DEFAULT_MAP_CENTER = { lat: 6.9147, lng: 79.9733 };
 const GEOLOCATION_OPTIONS = {
@@ -53,16 +57,18 @@ export function NewTicketPage() {
   const [locationStatus, setLocationStatus] = useState(
     'Automatic location tracking starts when the page opens.'
   );
+  const [selectedLandmarkId, setSelectedLandmarkId] = useState('');
   const watchIdRef = useRef(null);
 
   // Setup Google Maps for SLIIT Malabe or generic Campus
   const [mapCenter, setMapCenter] = useState(DEFAULT_MAP_CENTER);
   const [markerPos, setMarkerPos] = useState(null);
 
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyB_8qtKkSSvV07Jha3La6HPWI-i-cggnYQ'
-  });
+  const { isLoaded } = useCampusGoogleMaps();
+  const nearestLandmark = markerPos
+    ? findNearestCoordinate(markerPos, CAMPUS_LANDMARKS, (landmark) => landmark.position)
+    : null;
+  const selectedLandmark = findCampusLandmarkById(selectedLandmarkId);
 
   useEffect(() => {
     if (!isAutoTracking) {
@@ -88,6 +94,7 @@ export function NewTicketPage() {
         setMarkerPos(nextPosition);
         setMapCenter(nextPosition);
         setLocation(formatGpsLocation(coords.latitude, coords.longitude));
+        setSelectedLandmarkId('');
         setLocationStatus('Current location is being tracked automatically.');
         setIsLocating(false);
       },
@@ -113,8 +120,40 @@ export function NewTicketPage() {
     setIsAutoTracking(false);
     setMarkerPos({ lat, lng });
     setMapCenter({ lat, lng });
-    setLocation(`Pinned GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    setSelectedLandmarkId('');
+    setLocation(buildRichLocationLabel({ coordinates: { lat, lng }, label: 'Pinned location' }));
     setLocationStatus('Automatic tracking paused. The selected map pin will be submitted.');
+  };
+
+  const handleMarkerDragEnd = (e) => {
+    const latLng = e?.latLng || e?.detail?.latLng;
+
+    if (!latLng) {
+      return;
+    }
+
+    const lat = typeof latLng.lat === 'function' ? latLng.lat() : latLng.lat;
+    const lng = typeof latLng.lng === 'function' ? latLng.lng() : latLng.lng;
+    const draggedCoordinates = { lat, lng };
+    const nearestToDraggedPoint = findNearestCoordinate(
+      draggedCoordinates,
+      CAMPUS_LANDMARKS,
+      (landmark) => landmark.position
+    );
+    setIsAutoTracking(false);
+    setMarkerPos(draggedCoordinates);
+    setMapCenter(draggedCoordinates);
+    setSelectedLandmarkId('');
+    setLocation(
+      buildRichLocationLabel({
+        label: 'Adjusted pin',
+        coordinates: draggedCoordinates,
+        extraDetails: nearestToDraggedPoint?.candidate?.name
+          ? `Near ${nearestToDraggedPoint.candidate.name}`
+          : ''
+      })
+    );
+    setLocationStatus('Map pin adjusted manually for more precise dispatch.');
   };
 
   const handleLocationChange = (e) => {
@@ -123,12 +162,35 @@ export function NewTicketPage() {
       setLocationStatus('Automatic tracking paused while you edit the location manually.');
     }
 
+    setSelectedLandmarkId('');
     setLocation(e.target.value);
   };
 
   const handleEnableAutoTracking = () => {
     setIsAutoTracking(true);
+    setSelectedLandmarkId('');
     setLocationStatus("Reconnecting to the student's current location...");
+  };
+
+  const handleLandmarkSelect = (landmarkId) => {
+    const landmark = findCampusLandmarkById(landmarkId);
+
+    if (!landmark) {
+      return;
+    }
+
+    setIsAutoTracking(false);
+    setSelectedLandmarkId(landmark.id);
+    setMarkerPos(landmark.position);
+    setMapCenter(landmark.position);
+    setLocation(
+      buildRichLocationLabel({
+        label: landmark.name,
+        extraDetails: landmark.description,
+        coordinates: landmark.position
+      })
+    );
+    setLocationStatus('Campus landmark selected. Technicians can use this as a reliable dispatch point.');
   };
 
   const isValid = title && location && category && description;
@@ -260,9 +322,45 @@ export function NewTicketPage() {
                       className="w-full px-4 py-2.5 mb-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-purple text-slate-900 dark:text-white"
                       required
                     />
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      {CAMPUS_LANDMARKS.slice(0, 6).map((landmark) => (
+                        <button
+                          key={landmark.id}
+                          type="button"
+                          onClick={() => handleLandmarkSelect(landmark.id)}
+                          className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                            selectedLandmarkId === landmark.id
+                              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                          }`}
+                        >
+                          {landmark.name}
+                        </button>
+                      ))}
+                    </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      The student location starts from live GPS. You can still type a room number or click the map to override it for more accurate dispatching.
+                      The student location starts from live GPS. You can still type a room number, use a campus landmark, or drag the map pin to improve dispatch accuracy.
                     </p>
+                    {(markerPos || nearestLandmark || selectedLandmark) && (
+                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/60">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Dispatch Summary
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
+                          {selectedLandmark?.name || nearestLandmark?.candidate?.name || 'Pinned campus location'}
+                        </p>
+                        {markerPos && (
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            GPS {formatCoordinates(markerPos)}
+                          </p>
+                        )}
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          {selectedLandmark?.description ||
+                            nearestLandmark?.candidate?.description ||
+                            'Manual pin helps technicians locate the issue faster than a text-only address.'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <div className="h-64 rounded-xl overflow-hidden shadow-inner border-2 border-slate-200 dark:border-slate-700">
                     {isLoaded ? (
@@ -271,8 +369,22 @@ export function NewTicketPage() {
                         center={mapCenter}
                         zoom={17}
                         onClick={handleMapClick}
+                        options={{
+                          mapId: CAMPUS_GOOGLE_MAP_ID,
+                          streetViewControl: false,
+                          fullscreenControl: false,
+                          mapTypeControl: false
+                        }}
                       >
-                        {markerPos && <Marker position={markerPos} />}
+                        {markerPos && (
+                          <CampusMarker
+                            position={markerPos}
+                            draggable
+                            glyph="!"
+                            background="#2563eb"
+                            onDragEnd={handleMarkerDragEnd}
+                          />
+                        )}
                       </GoogleMap>
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-500">
