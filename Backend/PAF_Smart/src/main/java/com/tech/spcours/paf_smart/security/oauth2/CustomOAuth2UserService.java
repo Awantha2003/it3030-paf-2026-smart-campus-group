@@ -18,25 +18,41 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-        OAuth2User oAuth2User = super.loadUser(userRequest);
+        try {
+            System.out.println("Processing OAuth2 Login for registration ID: " + userRequest.getClientRegistration().getRegistrationId());
+            
+            OAuth2User oAuth2User = super.loadUser(userRequest);
 
-        String email      = oAuth2User.getAttribute("email");
-        String name       = oAuth2User.getAttribute("name");
-        String providerId = oAuth2User.getAttribute("sub"); // Google's unique user ID
+            String email      = oAuth2User.getAttribute("email");
+            String name       = oAuth2User.getAttribute("name");
+            String providerId = oAuth2User.getAttribute("sub"); // Google's unique user ID
 
-        // Find existing user or create a new one
-        User user = userRepository.findByEmail(email).orElseGet(() -> {
-            User newUser = User.builder()
-                    .name(name)
-                    .email(email)
-                    .role(Role.USER)          // Default role
-                    .provider("google")
-                    .providerId(providerId)
-                    .enabled(true)
-                    .build();
-            return userRepository.save(newUser);
-        });
+            System.out.println("OAuth2 User loaded: email=" + email + ", name=" + name);
 
-        return oAuth2User;
+            if (email == null) {
+                System.err.println("ERROR: Email attribute missing from OAuth2 provider response!");
+                throw new OAuth2AuthenticationException("Email not found from OAuth2 provider");
+            }
+
+            // Find existing user or create a new one
+            User user = userRepository.findByEmail(email).orElseGet(() -> {
+                System.out.println("Creating new OAuth2 user in database: " + email);
+                User newUser = User.builder()
+                        .name(name)
+                        .email(email)
+                        .role(Role.USER)          // Default role
+                        .provider("google")
+                        .providerId(providerId)
+                        .enabled(true)
+                        .build();
+                return userRepository.save(newUser);
+            });
+
+            return oAuth2User;
+        } catch (Exception e) {
+            System.err.println("CRITICAL ERROR during OAuth2 login: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
-}
+}

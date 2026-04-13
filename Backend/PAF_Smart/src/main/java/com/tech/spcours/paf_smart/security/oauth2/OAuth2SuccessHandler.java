@@ -45,8 +45,9 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         String token = jwtTokenProvider.generateToken(user);
 
-        // Redirect to frontend with token as query param
-        String redirectUrl = frontendUrl + "/oauth2/callback?token=" + token;
+        // Redirect to frontend with token and role as query params
+        String redirectUrl = frontendUrl + "/oauth2/callback?token=" + token + "&role=" + user.getRole().name();
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+
     }
 }
