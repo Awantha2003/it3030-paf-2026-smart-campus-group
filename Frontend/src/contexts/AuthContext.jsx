@@ -1,81 +1,103 @@
-import React, { useEffect, useState, createContext, useContext } from 'react';
-import { mockUsers } from '../data/mockData';
-import {
-  loginAdmin as loginAdminApi,
-  loginStudent as loginStudentApi,
-  loginTechnician as loginTechnicianApi
-} from '../api/auth';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import api from '../api/axiosInstance';
 
-const AuthContext = createContext(undefined);
+const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('authUser');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    const checkUser = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await api.get('/api/auth/me');
+          setUser(res.data);
+        } catch (err) {
+          localStorage.removeItem('token');
+        }
+      }
+      setLoading(false);
+    };
+    checkUser();
   }, []);
 
-  const login = (role = 'USER') => {
-    const selectedUser =
-      Object.values(mockUsers).find((currentUser) => currentUser.role === role) || mockUsers.user;
-    setUser(selectedUser);
-    localStorage.setItem('authUser', JSON.stringify(selectedUser));
+  const login = async (email, password) => {
+    try {
+      const res = await api.post('/api/auth/login', { email, password });
+      
+      if (res.data.status === 'MFA_SETUP_REQUIRED' || res.data.status === 'MFA_CODE_REQUIRED') {
+        return res.data;
+      }
+
+      localStorage.setItem('token', res.data.token);
+      setUser({
+        name: res.data.name,
+        email: res.data.email,
+        role: res.data.role
+      });
+      return { status: 'SUCCESS' };
+    } catch (err) {
+      throw err;
+    }
   };
 
-  const loginStudent = async (credentials) => {
-    const response = await loginStudentApi(credentials);
-    setUser(response.user);
-    localStorage.setItem('authUser', JSON.stringify(response.user));
-    return response.user;
+  const register = async (userData) => {
+    try {
+      const res = await api.post('/api/auth/register', userData);
+      return res.data;
+    } catch (err) {
+      throw err;
+    }
   };
 
-  const loginTechnician = async (credentials) => {
-    const response = await loginTechnicianApi(credentials);
-    setUser(response.user);
-    localStorage.setItem('authUser', JSON.stringify(response.user));
-    return response.user;
+  const verifyMfaLogin = async (userId, code) => {
+    try {
+      const res = await api.post('/api/auth/login/verify-mfa', { userId, code: parseInt(code, 10) });
+      localStorage.setItem('token', res.data.token);
+      setUser({
+        name: res.data.name,
+        email: res.data.email,
+        role: res.data.role
+      });
+      return { status: 'SUCCESS' };
+    } catch (err) {
+      throw err;
+    }
   };
 
-  const loginAdmin = async (credentials) => {
-    const response = await loginAdminApi(credentials);
-    setUser(response.user);
-    localStorage.setItem('authUser', JSON.stringify(response.user));
-    return response.user;
+  const verifyMfaSetup = async (code) => {
+    try {
+      const res = await api.post('/api/auth/mfa/verify', { code: parseInt(code, 10) });
+      localStorage.setItem('token', res.data.token);
+      setUser({
+        name: res.data.name,
+        email: res.data.email,
+        role: res.data.role
+      });
+      return { status: 'SUCCESS' };
+    } catch (err) {
+      throw err;
+    }
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
     setUser(null);
-    localStorage.removeItem('authUser');
-  };
-
-  const switchRole = (role) => {
-    login(role);
+    window.location.href = '/login';
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        login,
-        loginStudent,
-        loginAdmin,
-        loginTechnician,
-        logout,
-        switchRole
-      }}
-    >
+    <AuthContext.Provider value={{ user, loading, login, register, verifyMfaLogin, verifyMfaSetup, logout }}>
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
