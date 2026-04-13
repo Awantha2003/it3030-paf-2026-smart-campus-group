@@ -14,6 +14,7 @@ const OAuth2RedirectHandler = () => {
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         };
 
+        const role = getUrlParameter('role');
         const token = getUrlParameter('token');
         const error = getUrlParameter('error');
         const mfaRequired = getUrlParameter('mfaRequired');
@@ -25,8 +26,17 @@ const OAuth2RedirectHandler = () => {
         } else if (token) {
             console.log("Token found, saving to localStorage...");
             localStorage.setItem('token', token);
-            window.location.href = '/dashboard';
-        } else {
+            
+            // Role-based redirection
+            if (role === 'ADMIN') {
+              navigate('/Admin/dashboard');
+            } else if (role === 'TECHNICIAN') {
+              navigate('/Technician/dashboard');
+            } else {
+              navigate('/Student/dashboard');
+            }
+        }
+ else {
             console.warn("No token or MFA found in URL. Error:", error);
             navigate('/login');
         }
