@@ -11,8 +11,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:YOUR_GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET:YOUR_GOOGLE_CLIENT_SECRET}
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
             scope:
               - email
               - profile
@@ -28,8 +28,8 @@ spring:
 
 app:
   jwt:
-    secret: change-me-in-prod
-    expiration-seconds: 3600
+    secret: MzY0ZTc2YmYzODlmZjZjMDRlN2M0YzZkZTI0MGE1NTVlNzViNzEwNDE3MDVlMzViOGQwYzFhZjJkOWFiNTkyMw==
+    expiration: 3600000 # 1 hour in ms
   auth:
     seed-admin: true
     admin-registration-code: ${ADMIN_REGISTRATION_CODE:ADMIN-ACCESS-2026}
