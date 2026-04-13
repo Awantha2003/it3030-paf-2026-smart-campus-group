@@ -196,42 +196,6 @@ export const mockTickets = [
   assignedTo: 't1',
   createdAt: '2026-03-25T14:00:00Z'
 }];
-
-
-export const mockNotifications = [
-{
-  id: 'n1',
-  userId: 'u1',
-  title: 'Maintenance Alert',
-  message: 'A scheduled maintenance window will begin tonight at 10 PM.',
-  type: 'SUCCESS',
-  read: false,
-  createdAt: '2026-03-28T11:00:00Z',
-  link: '/notifications'
-},
-{
-  id: 'n2',
-  userId: 'u1',
-  title: 'Ticket Updated',
-  message: 'Ticket "AC leaking" is now IN_PROGRESS.',
-  type: 'INFO',
-  read: false,
-  createdAt: '2026-03-28T10:35:00Z',
-  link: '/tickets/t2'
-},
-{
-  id: 'n3',
-  userId: 'u1',
-  title: 'System Update',
-  message:
-  'The support portal has been updated with faster technician assignment flow.',
-  type: 'ERROR',
-  read: true,
-  createdAt: '2026-03-27T15:00:00Z',
-  link: '/settings'
-}];
-
-
 export const mockChartData = {
   bookingTrends: [
   { name: 'Mon', bookings: 12 },

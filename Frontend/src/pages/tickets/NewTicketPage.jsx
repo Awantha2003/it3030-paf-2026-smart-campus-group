@@ -226,7 +226,7 @@ export function NewTicketPage() {
       setIsSubmitting(false);
       setShowSuccess(true);
       setTimeout(() => {
-        navigate('/tickets');
+        navigate('/Student/tickets');
       }, 1500);
     } catch (error) {
       setIsSubmitting(false);

@@ -315,7 +315,7 @@ export function TechnicianDashboard() {
                         variant="outline"
                         size="sm"
                         onClick={() =>
-                        window.location.href = `/tickets/${ticket.id}`
+                        window.location.href = `/Student/tickets/${ticket.id}`
                         }>
                         
                             View Details

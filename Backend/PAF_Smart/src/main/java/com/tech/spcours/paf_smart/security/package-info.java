@@ -1,4 +1,4 @@
 /**
- * Security components such as JWT handling, filters, and auth utilities.
+ * Security-related configuration helpers.
  */
 package com.tech.spcours.paf_smart.security;

@@ -1,10 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { WrenchIcon, BellIcon, AlertCircleIcon, ChevronRightIcon } from 'lucide-react';
+import { WrenchIcon, AlertCircleIcon, ChevronRightIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
-import { mockTickets, mockNotifications } from '../../data/mockData';
+import { mockTickets } from '../../data/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 
 export function UserDashboard() {
@@ -17,13 +17,6 @@ export function UserDashboard() {
       trend: '1 requires attention',
       icon: WrenchIcon,
       color: 'bg-orange-500'
-    },
-    {
-      label: 'Unread Alerts',
-      value: '3',
-      trend: 'Since last login',
-      icon: BellIcon,
-      color: 'bg-purple-500'
     }
   ];
 
@@ -114,38 +107,6 @@ export function UserDashboard() {
           </div>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <h3 className="font-semibold text-slate-900 dark:text-white">Recent Notifications</h3>
-        </CardHeader>
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {mockNotifications.map((notif) => (
-            <div
-              key={notif.id}
-              className={`p-4 flex gap-4 ${!notif.read ? 'bg-brand-purple/5 dark:bg-brand-purple/10' : ''}`}
-            >
-              <div
-                className={`w-2 h-2 mt-2 rounded-full flex-shrink-0 ${!notif.read ? 'bg-brand-purple' : 'bg-transparent'}`}
-              />
-
-              <div>
-                <p
-                  className={`text-sm ${!notif.read ? 'font-semibold text-slate-900 dark:text-white' : 'font-medium text-slate-700 dark:text-slate-300'}`}
-                >
-                  {notif.title}
-                </p>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                  {notif.message}
-                </p>
-                <p className="text-xs text-slate-400 mt-2">
-                  {new Date(notif.createdAt).toLocaleString()}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
     </div>
   );
 }

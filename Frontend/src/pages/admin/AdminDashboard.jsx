@@ -93,7 +93,7 @@ export function AdminDashboard() {
             Priority Queue
           </h3>
           <Link
-            to="/admin/tickets"
+            to="/Admin/tickets"
             className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center"
           >
             View All <ArrowRight className="w-4 h-4 ml-1" />
@@ -145,7 +145,7 @@ export function AdminDashboard() {
           </div>
         </div>
         <Link
-          to="/admin/technicians"
+          to="/Admin/technicians"
           className="inline-flex items-center justify-center rounded-lg bg-brand-purple px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700"
         >
           Manage Technicians <ArrowRight className="ml-2 w-4 h-4" />

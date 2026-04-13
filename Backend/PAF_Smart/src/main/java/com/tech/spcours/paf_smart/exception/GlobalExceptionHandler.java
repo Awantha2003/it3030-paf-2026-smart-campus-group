@@ -43,12 +43,4 @@ public class GlobalExceptionHandler {
                 "status", HttpStatus.NOT_FOUND.value(),
                 "message", exception.getMessage()));
     }
-
-    @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException exception) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                "timestamp", Instant.now(),
-                "status", HttpStatus.UNAUTHORIZED.value(),
-                "message", exception.getMessage()));
-    }
 }

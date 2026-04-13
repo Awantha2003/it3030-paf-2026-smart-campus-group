@@ -5,7 +5,6 @@ import {
   LayoutDashboardIcon,
   MapIcon,
   TicketIcon,
-  BellIcon,
   SettingsIcon,
   ShieldIcon,
   WrenchIcon,
@@ -19,22 +18,21 @@ export function Sidebar() {
   const { user } = useAuth();
 
   const mainNav = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboardIcon },
-    { name: 'Tickets', path: '/tickets', icon: TicketIcon },
-    { name: 'Campus Map', path: '/campus-map', icon: MapIcon },
-    { name: 'Notifications', path: '/notifications', icon: BellIcon }
+    { name: 'Dashboard', path: '/Student/dashboard', icon: LayoutDashboardIcon },
+    { name: 'Tickets', path: '/Student/tickets', icon: TicketIcon },
+    { name: 'Campus Map', path: '/Student/campus-map', icon: MapIcon }
   ];
 
   const adminNav = [
-    { name: 'Admin Dashboard', path: '/admin', icon: ShieldIcon },
-    { name: 'Campus Map', path: '/campus-map', icon: MapIcon },
-    { name: 'Manage Tickets', path: '/admin/tickets', icon: TicketIcon },
-    { name: 'Technicians', path: '/admin/technicians', icon: WrenchIcon }
+    { name: 'Admin Dashboard', path: '/Admin/dashboard', icon: ShieldIcon },
+    { name: 'Campus Map', path: '/Admin/campus-map', icon: MapIcon },
+    { name: 'Manage Tickets', path: '/Admin/tickets', icon: TicketIcon },
+    { name: 'Technicians', path: '/Admin/technicians', icon: WrenchIcon }
   ];
 
   const techNav = [
-    { name: 'My Assignments', path: '/technician', icon: WrenchIcon },
-    { name: 'Campus Map', path: '/campus-map', icon: MapIcon }
+    { name: 'My Assignments', path: '/Technician/dashboard', icon: WrenchIcon },
+    { name: 'Campus Map', path: '/Technician/campus-map', icon: MapIcon }
   ];
 
   const NavItem = ({ item }) => {
@@ -150,7 +148,18 @@ export function Sidebar() {
       </div>
 
       <div className="p-3 border-t border-slate-200 dark:border-slate-800">
-        <NavItem item={{ name: 'Settings', path: '/settings', icon: SettingsIcon }} />
+        <NavItem
+          item={{
+            name: 'Settings',
+            path:
+              user?.role === 'ADMIN'
+                ? '/Admin/settings'
+                : user?.role === 'TECHNICIAN'
+                  ? '/Technician/settings'
+                  : '/Student/settings',
+            icon: SettingsIcon
+          }}
+        />
       </div>
     </motion.aside>
   );

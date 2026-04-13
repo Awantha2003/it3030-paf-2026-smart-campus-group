@@ -129,7 +129,7 @@ export function TicketDetailPage() {
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
           {errorMessage || 'Ticket not found'}
         </h2>
-        <Button className="mt-4" onClick={() => navigate('/tickets')}>
+        <Button className="mt-4" onClick={() => navigate('/Student/tickets')}>
           Back to Tickets
         </Button>
       </div>
@@ -147,7 +147,7 @@ export function TicketDetailPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate('/tickets')}
+          onClick={() => navigate('/Student/tickets')}
           className="px-2"
         >
           <ArrowLeftIcon className="w-5 h-5" />

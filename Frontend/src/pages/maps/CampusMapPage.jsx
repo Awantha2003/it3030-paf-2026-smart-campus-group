@@ -263,12 +263,12 @@ export function CampusMapPage() {
             Refresh Map
           </Button>
           {role === 'USER' && (
-            <Button size="sm" onClick={() => navigate('/tickets/new')} leftIcon={<Ticket className="h-4 w-4" />}>
+            <Button size="sm" onClick={() => navigate('/Student/tickets/new')} leftIcon={<Ticket className="h-4 w-4" />}>
               Report Issue
             </Button>
           )}
           {role === 'ADMIN' && (
-            <Button size="sm" onClick={() => navigate('/admin/tickets')} leftIcon={<Wrench className="h-4 w-4" />}>
+            <Button size="sm" onClick={() => navigate('/Admin/tickets')} leftIcon={<Wrench className="h-4 w-4" />}>
               Open Dispatch Board
             </Button>
           )}
@@ -423,7 +423,7 @@ export function CampusMapPage() {
                       type="button"
                       onClick={() => {
                         setSelectedTicketId(ticket.id);
-                        navigate(`/tickets/${ticket.id}`);
+                        navigate(`/Student/tickets/${ticket.id}`);
                       }}
                       className="w-full rounded-2xl border border-slate-200 p-3 text-left transition hover:border-slate-400 dark:border-slate-800"
                     >
@@ -477,7 +477,7 @@ export function CampusMapPage() {
                     <Button
                       size="sm"
                       className="mt-4"
-                      onClick={() => navigate(`/tickets/${selectedTicket.id}`)}
+                      onClick={() => navigate(`/Student/tickets/${selectedTicket.id}`)}
                       leftIcon={<Navigation className="h-4 w-4" />}
                     >
                       Open Task

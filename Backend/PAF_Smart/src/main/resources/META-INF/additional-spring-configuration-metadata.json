@@ -1,16 +1,6 @@
 {
   "groups": [
     {
-      "name": "app.jwt",
-      "type": "java.util.Map",
-      "sourceType": "manual"
-    },
-    {
-      "name": "app.auth",
-      "type": "java.util.Map",
-      "sourceType": "manual"
-    },
-    {
       "name": "app.mailjet",
       "type": "java.util.Map",
       "sourceType": "manual"
@@ -27,31 +17,6 @@
     }
   ],
   "properties": [
-    {
-      "name": "app.jwt.secret",
-      "type": "java.lang.String",
-      "sourceType": "manual"
-    },
-    {
-      "name": "app.jwt.expiration-seconds",
-      "type": "java.lang.Integer",
-      "sourceType": "manual"
-    },
-    {
-      "name": "app.auth.seed-admin",
-      "type": "java.lang.Boolean",
-      "sourceType": "manual"
-    },
-    {
-      "name": "app.auth.admin-registration-code",
-      "type": "java.lang.String",
-      "sourceType": "manual"
-    },
-    {
-      "name": "app.auth.sub-admin-registration-code",
-      "type": "java.lang.String",
-      "sourceType": "manual"
-    },
     {
       "name": "app.mailjet.enabled",
       "type": "java.lang.Boolean",
