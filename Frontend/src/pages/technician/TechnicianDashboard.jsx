@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ChevronLeft,
@@ -29,8 +30,10 @@ import {
   parseCoordinatesFromLocation
 } from '../../utils/location';
 import { rankTicketsForTechnician } from '../../utils/campusMap';
+import { getTicketDetailPathForRole } from '../../utils/routes';
 export function TechnicianDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const techId = user?.id;
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -314,9 +317,7 @@ export function TechnicianDashboard() {
                           <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                        window.location.href = `/tickets/${ticket.id}`
-                        }>
+                        onClick={() => navigate(getTicketDetailPathForRole(user?.role, ticket.id))}>
                         
                             View Details
                           </Button>

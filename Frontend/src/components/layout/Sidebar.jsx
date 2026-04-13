@@ -13,28 +13,36 @@ import {
   GraduationCapIcon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  adminRoutes,
+  getSettingsPathForRole,
+  studentRoutes,
+  technicianRoutes
+} from '../../utils/routes';
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuth();
 
   const mainNav = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboardIcon },
-    { name: 'Tickets', path: '/tickets', icon: TicketIcon },
-    { name: 'Campus Map', path: '/campus-map', icon: MapIcon },
-    { name: 'Notifications', path: '/notifications', icon: BellIcon }
+    { name: 'Dashboard', path: studentRoutes.dashboard, icon: LayoutDashboardIcon },
+    { name: 'Tickets', path: studentRoutes.tickets, icon: TicketIcon },
+    { name: 'Campus Map', path: studentRoutes.campusMap, icon: MapIcon },
+    { name: 'Notifications', path: studentRoutes.notifications, icon: BellIcon }
   ];
 
   const adminNav = [
-    { name: 'Admin Dashboard', path: '/admin', icon: ShieldIcon },
-    { name: 'Campus Map', path: '/campus-map', icon: MapIcon },
-    { name: 'Manage Tickets', path: '/admin/tickets', icon: TicketIcon },
-    { name: 'Technicians', path: '/admin/technicians', icon: WrenchIcon }
+    { name: 'Admin Dashboard', path: adminRoutes.dashboard, icon: ShieldIcon },
+    { name: 'Campus Map', path: adminRoutes.campusMap, icon: MapIcon },
+    { name: 'Manage Tickets', path: adminRoutes.tickets, icon: TicketIcon },
+    { name: 'Technicians', path: adminRoutes.technicians, icon: WrenchIcon },
+    { name: 'Notifications', path: adminRoutes.notifications, icon: BellIcon }
   ];
 
   const techNav = [
-    { name: 'My Assignments', path: '/technician', icon: WrenchIcon },
-    { name: 'Campus Map', path: '/campus-map', icon: MapIcon }
+    { name: 'My Assignments', path: technicianRoutes.dashboard, icon: WrenchIcon },
+    { name: 'Campus Map', path: technicianRoutes.campusMap, icon: MapIcon },
+    { name: 'Notifications', path: technicianRoutes.notifications, icon: BellIcon }
   ];
 
   const NavItem = ({ item }) => {
@@ -150,7 +158,13 @@ export function Sidebar() {
       </div>
 
       <div className="p-3 border-t border-slate-200 dark:border-slate-800">
-        <NavItem item={{ name: 'Settings', path: '/settings', icon: SettingsIcon }} />
+        <NavItem
+          item={{
+            name: 'Settings',
+            path: getSettingsPathForRole(user?.role),
+            icon: SettingsIcon
+          }}
+        />
       </div>
     </motion.aside>
   );

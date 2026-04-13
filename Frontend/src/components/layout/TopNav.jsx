@@ -18,6 +18,7 @@ import { Button } from '../ui/Button';
 import { mockNotifications } from '../../data/mockData';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getNotificationsPathForRole, resolvePathForRole } from '../../utils/routes';
 export function TopNav() {
   const { isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
@@ -130,7 +131,9 @@ export function TopNav() {
                     key={notification.id}
                     onClick={() => {
                       setShowNotifications(false);
-                      if (notification.link) navigate(notification.link);
+                      if (notification.link) {
+                        navigate(resolvePathForRole(notification.link, user?.role));
+                      }
                     }}
                     className={`flex gap-3 p-4 border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors ${!notification.read ? 'bg-slate-50/50 dark:bg-slate-800/30' : ''}`}>
                     
@@ -172,7 +175,7 @@ export function TopNav() {
                     <button
                     onClick={() => {
                       setShowNotifications(false);
-                      navigate('/notifications');
+                      navigate(getNotificationsPathForRole(user?.role));
                     }}
                     className="w-full text-center px-2 py-2 text-sm text-brand-purple hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-md transition-colors">
                     

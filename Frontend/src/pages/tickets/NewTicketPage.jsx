@@ -11,6 +11,7 @@ import { CAMPUS_LANDMARKS, findCampusLandmarkById } from '../../data/campusMapDa
 import { buildRichLocationLabel, findNearestCoordinate, formatCoordinates } from '../../utils/location';
 import { CAMPUS_GOOGLE_MAP_ID, useCampusGoogleMaps } from '../../hooks/useCampusGoogleMaps';
 import { CampusMarker } from '../../components/maps/CampusMarker';
+import { studentRoutes } from '../../utils/routes';
 
 const DEFAULT_MAP_CENTER = { lat: 6.9147, lng: 79.9733 };
 const GEOLOCATION_OPTIONS = {
@@ -226,7 +227,7 @@ export function NewTicketPage() {
       setIsSubmitting(false);
       setShowSuccess(true);
       setTimeout(() => {
-        navigate('/tickets');
+        navigate(studentRoutes.tickets);
       }, 1500);
     } catch (error) {
       setIsSubmitting(false);

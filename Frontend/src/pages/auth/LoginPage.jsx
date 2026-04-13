@@ -13,13 +13,14 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
+import { adminRoutes, studentRoutes, technicianRoutes } from '../../utils/routes';
 
 const roleOptions = [
   {
     label: 'Student',
     value: 'USER',
     icon: UserIcon,
-    redirectTo: '/dashboard',
+    redirectTo: studentRoutes.dashboard,
     subtitle: 'Access your dashboard, tickets, and support requests.',
     helperTitle: 'Student demo login:',
     credentials: ['Email: alex@university.edu', 'Password: Student123@']
@@ -28,7 +29,7 @@ const roleOptions = [
     label: 'Admin',
     value: 'ADMIN',
     icon: ShieldIcon,
-    redirectTo: '/admin',
+    redirectTo: adminRoutes.dashboard,
     subtitle: 'Manage campus operations, tickets, and technicians.',
     helperTitle: 'Admin login:',
     credentials: ['Email: admin@gmail.com', 'Password: Admin123@']
@@ -37,7 +38,7 @@ const roleOptions = [
     label: 'Technician',
     value: 'TECHNICIAN',
     icon: WrenchIcon,
-    redirectTo: '/technician',
+    redirectTo: technicianRoutes.dashboard,
     subtitle: 'View assignments and handle support work.',
     helperTitle: 'Technician login:',
     credentials: ['Use the technician email and password created by an admin.']

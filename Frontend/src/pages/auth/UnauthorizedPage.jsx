@@ -3,21 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { ShieldAlertIcon, ArrowLeftIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
+import { getHomePathForRole } from '../../utils/routes';
 export function UnauthorizedPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const getHomePath = () => {
-    if (user?.role === 'ADMIN') {
-      return '/admin';
-    }
-
-    if (user?.role === 'TECHNICIAN') {
-      return '/technician';
-    }
-
-    return '/dashboard';
-  };
+  const getHomePath = () => getHomePathForRole(user?.role);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-brand-bg dark:bg-brand-dark p-4">

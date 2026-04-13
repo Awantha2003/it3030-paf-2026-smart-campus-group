@@ -14,6 +14,7 @@ import { StatusBadge, Badge } from '../../components/ui/Badge';
 import { useAuth } from '../../contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { getStudentIssueReports } from '../../api/issues';
+import { studentRoutes } from '../../utils/routes';
 export function MyTicketsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -94,7 +95,7 @@ export function MyTicketsPage() {
           </p>
         </div>
         <Button
-          onClick={() => navigate('/tickets/new')}
+          onClick={() => navigate(studentRoutes.newTicket)}
           leftIcon={<PlusIcon className="w-4 h-4" />}>
           
           Report Issue
@@ -159,7 +160,7 @@ export function MyTicketsPage() {
               delay: index * 0.05
             }}
             key={ticket.id}
-            onClick={() => navigate(`/tickets/${ticket.id}`)}
+            onClick={() => navigate(studentRoutes.ticketDetail(ticket.id))}
             className="p-4 sm:p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             
                 <div className="flex-1">
@@ -222,7 +223,7 @@ export function MyTicketsPage() {
                 You haven't reported any issues that match your filters.
               </p>
               <Button
-              onClick={() => navigate('/tickets/new')}
+              onClick={() => navigate(studentRoutes.newTicket)}
               leftIcon={<PlusIcon className="w-4 h-4" />}>
               
                 Report an Issue

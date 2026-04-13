@@ -32,6 +32,7 @@ import {
   getTechnicianCoordinates,
   parseCoordinatesFromLocation
 } from '../../utils/location';
+import { adminRoutes, getTicketDetailPathForRole, studentRoutes } from '../../utils/routes';
 
 function FilterChip({ active, children, onClick }) {
   return (
@@ -263,12 +264,20 @@ export function CampusMapPage() {
             Refresh Map
           </Button>
           {role === 'USER' && (
-            <Button size="sm" onClick={() => navigate('/tickets/new')} leftIcon={<Ticket className="h-4 w-4" />}>
+            <Button
+              size="sm"
+              onClick={() => navigate(studentRoutes.newTicket)}
+              leftIcon={<Ticket className="h-4 w-4" />}
+            >
               Report Issue
             </Button>
           )}
           {role === 'ADMIN' && (
-            <Button size="sm" onClick={() => navigate('/admin/tickets')} leftIcon={<Wrench className="h-4 w-4" />}>
+            <Button
+              size="sm"
+              onClick={() => navigate(adminRoutes.tickets)}
+              leftIcon={<Wrench className="h-4 w-4" />}
+            >
               Open Dispatch Board
             </Button>
           )}
@@ -423,7 +432,7 @@ export function CampusMapPage() {
                       type="button"
                       onClick={() => {
                         setSelectedTicketId(ticket.id);
-                        navigate(`/tickets/${ticket.id}`);
+                        navigate(getTicketDetailPathForRole(role, ticket.id));
                       }}
                       className="w-full rounded-2xl border border-slate-200 p-3 text-left transition hover:border-slate-400 dark:border-slate-800"
                     >
@@ -477,7 +486,7 @@ export function CampusMapPage() {
                     <Button
                       size="sm"
                       className="mt-4"
-                      onClick={() => navigate(`/tickets/${selectedTicket.id}`)}
+                      onClick={() => navigate(getTicketDetailPathForRole(role, selectedTicket.id))}
                       leftIcon={<Navigation className="h-4 w-4" />}
                     >
                       Open Task

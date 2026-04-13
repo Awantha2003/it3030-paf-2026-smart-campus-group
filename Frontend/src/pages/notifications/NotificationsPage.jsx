@@ -6,6 +6,8 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { mockNotifications } from '../../data/mockData';
+import { useAuth } from '../../contexts/AuthContext';
+import { resolvePathForRole } from '../../utils/routes';
 
 const extendedNotifications = [
   ...mockNotifications,
@@ -64,6 +66,7 @@ const filterTabs = ['ALL', 'UNREAD', 'TICKETS', 'SYSTEM'];
 
 export function NotificationsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState(extendedNotifications);
   const [activeTab, setActiveTab] = useState('ALL');
 
@@ -89,7 +92,9 @@ export function NotificationsPage() {
         notifications.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
       );
     }
-    if (notification.link) navigate(notification.link);
+    if (notification.link) {
+      navigate(resolvePathForRole(notification.link, user?.role));
+    }
   };
 
   const filteredNotifications = notifications.filter((n) => {

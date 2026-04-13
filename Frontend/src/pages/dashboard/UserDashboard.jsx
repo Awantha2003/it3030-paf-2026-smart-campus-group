@@ -1,14 +1,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { WrenchIcon, BellIcon, AlertCircleIcon, ChevronRightIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
 import { mockTickets, mockNotifications } from '../../data/mockData';
 import { useAuth } from '../../contexts/AuthContext';
+import { studentRoutes } from '../../utils/routes';
 
 export function UserDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const stats = [
     {
@@ -39,7 +42,11 @@ export function UserDashboard() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="secondary" leftIcon={<AlertCircleIcon className="w-4 h-4" />}>
+          <Button
+            variant="secondary"
+            leftIcon={<AlertCircleIcon className="w-4 h-4" />}
+            onClick={() => navigate(studentRoutes.newTicket)}
+          >
             Report Issue
           </Button>
         </div>
@@ -85,6 +92,7 @@ export function UserDashboard() {
               variant="ghost"
               size="sm"
               rightIcon={<ChevronRightIcon className="w-4 h-4" />}
+              onClick={() => navigate(studentRoutes.tickets)}
             >
               View All
             </Button>
