@@ -41,6 +41,13 @@ public class User implements UserDetails {
     @Builder.Default
     private boolean enabled = true;
 
+    // TOTP MFA Secret
+    private String mfaSecret;
+
+    // Is MFA setup complete
+    @Builder.Default
+    private boolean isMfaEnabled = false;
+
     // ─── UserDetails overrides ───────────────────────────
 
     @Override
