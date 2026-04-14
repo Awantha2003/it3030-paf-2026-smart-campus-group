@@ -51,7 +51,7 @@ const LoginPage = () => {
       title="Welcome Back" 
       subtitle="Sign in to your account to manage your campus life."
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
         <div className="space-y-1.5">
           <label className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500 ml-1" htmlFor="email">
             Email Address
@@ -64,6 +64,7 @@ const LoginPage = () => {
               id="email"
               type="email"
               required
+              autoComplete="new-email"
               className="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-900 placeholder:text-slate-300 focus:border-blue-500 focus:bg-blue-50/5 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
               placeholder="e.g. john@university.edu"
               value={formData.email}
@@ -86,6 +87,7 @@ const LoginPage = () => {
               id="password"
               type={showPassword ? 'text' : 'password'}
               required
+              autoComplete="new-password"
               className="block w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-11 text-sm text-slate-900 placeholder:text-slate-300 focus:border-blue-500 focus:bg-blue-50/5 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
               placeholder="Enter your password"
               value={formData.password}
