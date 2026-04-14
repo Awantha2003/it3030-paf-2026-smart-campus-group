@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
         email: res.data.email,
         role: res.data.role
       });
-      return { status: 'SUCCESS' };
+      return { status: 'SUCCESS', role: res.data.role };
     } catch (err) {
       throw err;
     }
@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
         email: res.data.email,
         role: res.data.role
       });
-      return { status: 'SUCCESS' };
+      return { status: 'SUCCESS', role: res.data.role };
     } catch (err) {
       throw err;
     }
@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }) => {
         email: res.data.email,
         role: res.data.role
       });
-      return { status: 'SUCCESS' };
+      return { status: 'SUCCESS', role: res.data.role };
     } catch (err) {
       throw err;
     }

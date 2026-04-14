@@ -35,7 +35,9 @@ public class AuthService {
         Role assignedRole = Role.USER;
         boolean isEnabled = true;
 
-        if ("TECHNICIAN".equalsIgnoreCase(request.getRole())) {
+        if ("ADMIN".equalsIgnoreCase(request.getRole())) {
+            assignedRole = Role.ADMIN;
+        } else if ("TECHNICIAN".equalsIgnoreCase(request.getRole())) {
             if (!request.getEmail().toLowerCase().matches("^[a-z0-9._%+-]+\\.tech@gmail\\.com$")) {
                 throw new RuntimeException("Technician email must be in the format: username.tech@gmail.com");
             }
