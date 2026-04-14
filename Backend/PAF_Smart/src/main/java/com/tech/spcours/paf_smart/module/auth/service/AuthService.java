@@ -89,18 +89,11 @@ public class AuthService {
 
         boolean isHighPrivilege = user.getRole() == Role.ADMIN || user.getRole() == Role.TECHNICIAN;
 
-        if (isHighPrivilege || user.isMfaEnabled()) {
-            if (!user.isMfaEnabled()) {
-                return AuthResponse.builder()
-                        .status("MFA_SETUP_REQUIRED")
-                        .userId(user.getId())
-                        .build();
-            } else {
-                return AuthResponse.builder()
-                        .status("MFA_CODE_REQUIRED")
-                        .userId(user.getId())
-                        .build();
-            }
+        if (user.isMfaEnabled()) {
+            return AuthResponse.builder()
+                    .status("MFA_CODE_REQUIRED")
+                    .userId(user.getId())
+                    .build();
         }
 
         String token = jwtTokenProvider.generateToken(user);
