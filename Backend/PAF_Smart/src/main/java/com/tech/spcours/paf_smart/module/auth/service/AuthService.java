@@ -35,7 +35,9 @@ public class AuthService {
         Role assignedRole = Role.USER;
         boolean isEnabled = true;
 
-        if ("TECHNICIAN".equalsIgnoreCase(request.getRole())) {
+        if ("ADMIN".equalsIgnoreCase(request.getRole())) {
+            assignedRole = Role.ADMIN;
+        } else if ("TECHNICIAN".equalsIgnoreCase(request.getRole())) {
             if (!request.getEmail().toLowerCase().matches("^[a-z0-9._%+-]+\\.tech@gmail\\.com$")) {
                 throw new RuntimeException("Technician email must be in the format: username.tech@gmail.com");
             }
@@ -87,18 +89,18 @@ public class AuthService {
 
         boolean isHighPrivilege = user.getRole() == Role.ADMIN || user.getRole() == Role.TECHNICIAN;
 
-        if (isHighPrivilege || user.isMfaEnabled()) {
-            if (!user.isMfaEnabled()) {
-                return AuthResponse.builder()
-                        .status("MFA_SETUP_REQUIRED")
-                        .userId(user.getId())
-                        .build();
-            } else {
-                return AuthResponse.builder()
-                        .status("MFA_CODE_REQUIRED")
-                        .userId(user.getId())
-                        .build();
-            }
+        if (isHighPrivilege && !user.isMfaEnabled()) {
+            return AuthResponse.builder()
+                    .status("MFA_SETUP_REQUIRED")
+                    .userId(user.getId())
+                    .build();
+        }
+
+        if (user.isMfaEnabled()) {
+            return AuthResponse.builder()
+                    .status("MFA_CODE_REQUIRED")
+                    .userId(user.getId())
+                    .build();
         }
 
         String token = jwtTokenProvider.generateToken(user);

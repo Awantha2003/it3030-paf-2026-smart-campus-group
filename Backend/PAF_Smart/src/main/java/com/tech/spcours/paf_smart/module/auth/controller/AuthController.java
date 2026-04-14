@@ -68,6 +68,45 @@ public class AuthController {
         return ResponseEntity.ok("Auth Controller is working!");
     }
 
+    // Public setup for pre-auth (MFA required)
+    @GetMapping("/mfa/setup/{userId}")
+    public ResponseEntity<?> generateMfaSetupById(@PathVariable String userId) {
+        try {
+            MfaSetupResponse response = mfaService.generateMfaSetupById(userId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
+    }
+
+    // Public verify for pre-auth
+    @PostMapping("/mfa/verify-setup")
+    public ResponseEntity<?> verifyMfaSetupById(@RequestBody MfaLoginVerificationRequest request) {
+        try {
+            var user = userRepository.findById(request.getUserId())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (!mfaService.verifyCode(user.getMfaSecret(), request.getCode())) {
+                return ResponseEntity.status(401).body("Invalid MFA code");
+            }
+
+            user.setMfaEnabled(true);
+            userRepository.save(user);
+
+            String token = jwtTokenProvider.generateToken(user);
+            return ResponseEntity.ok(AuthResponse.builder()
+                    .token(token)
+                    .name(user.getName())
+                    .email(user.getEmail())
+                    .role(user.getRole().name())
+                    .build());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/mfa/setup")
     public ResponseEntity<?> generateMfaSetup() {
         try {
