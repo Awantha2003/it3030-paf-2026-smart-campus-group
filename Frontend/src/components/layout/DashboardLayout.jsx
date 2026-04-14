@@ -5,7 +5,7 @@ import { TopNav } from './TopNav';
 
 export function DashboardLayout() {
     return (
-        <div className="min-h-screen bg-brand-bg dark:bg-brand-dark">
+        <div className="min-h-screen bg-brand-bg dark:bg-brand-dark text-slate-900 dark:text-slate-100 transition-colors duration-200">
             <div className="flex min-h-screen">
                 <Sidebar />
                 <div className="flex min-w-0 flex-1 flex-col">

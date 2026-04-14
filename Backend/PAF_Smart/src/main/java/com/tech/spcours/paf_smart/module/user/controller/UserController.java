@@ -63,4 +63,25 @@ public class UserController {
         userRepository.deleteById(id);
         return ResponseEntity.ok(Map.of("message", "User deleted"));
     }
+
+    // PATCH /api/admin/users/{id}/status
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Map<String, Object>> updateStatus(
+            @PathVariable String id,
+            @RequestBody Map<String, Boolean> body) {
+        
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));     
+
+        Boolean isEnabled = body.get("enabled");
+        if (isEnabled != null) {
+            user.setEnabled(isEnabled);
+            userRepository.save(user);
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "message", "User status updated",
+                "enabled", user.isEnabled()
+        ));
+    }
 }

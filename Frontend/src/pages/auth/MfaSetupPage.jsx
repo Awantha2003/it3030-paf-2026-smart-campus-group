@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { ShieldCheck, Smartphone, Copy, CheckCircle2 } from 'lucide-react';
 import AuthLayout from './AuthLayout';
@@ -8,6 +8,8 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const MfaSetupPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const userId = location.state?.userId;
   const { verifyMfaSetup } = useAuth();
   const [setupData, setSetupData] = useState(null);
   const [code, setCode] = useState('');
@@ -18,13 +20,12 @@ const MfaSetupPage = () => {
   useEffect(() => {
     const fetchSetupData = async () => {
       // Guard: if no token, must login first
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login', { state: { message: 'Please login before setting up MFA.' } });
+      if (!userId) {
+        navigate('/login', { state: { message: 'Missing user context. Please login again.' } });
         return;
       }
       try {
-        const res = await api.get('/api/auth/mfa/setup');
+        const res = await api.get(`/api/auth/mfa/setup/${userId}`);
         setSetupData(res.data);
       } catch (err) {
         setError('Failed to initialize MFA setup. Please try again.');
@@ -40,10 +41,25 @@ const MfaSetupPage = () => {
     setLoading(true);
     setError('');
     try {
-      await verifyMfaSetup(code);
-      navigate('/dashboard');
+      const result = await verifyMfaSetup(userId, code);
+      const role = result.role;
+      if (role === 'ADMIN') {
+        navigate('/Admin/dashboard');
+      } else if (role === 'TECHNICIAN') {
+        navigate('/Student/dashboard'); // Temporary fallback if Technician doesn't have a unique dash
+      } else {
+        navigate('/Student/dashboard');
+      }
     } catch (err) {
-      setError('Invalid verification code. Please try again.');
+      // Don't redirect — show the error on this page
+      const status = err.response?.status;
+      if (status === 401) {
+        setError('Invalid code. Please check your Authenticator app and try again.');
+      } else if (status === 500) {
+        setError('Server error. Please try again.');
+      } else {
+        setError('Verification failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

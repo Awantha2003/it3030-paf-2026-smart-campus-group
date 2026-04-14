@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { SearchIcon, SunIcon, MoonIcon, PlusIcon } from 'lucide-react';
+import { Search, Sun, Moon, Plus } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
@@ -19,7 +19,7 @@ export function TopNav() {
             : 'Dashboard';
 
     return (
-        <header className="h-16 bg-white/80 dark:bg-brand-surface/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 sticky top-0 z-10">
+        <header className="h-16 bg-white/80 dark:bg-brand-surface/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 sticky top-0 z-50">
             <div className="flex items-center gap-4">
                 <h1 className="text-lg font-semibold text-slate-800 dark:text-white capitalize">
                     {breadcrumb.replace('-', ' ')}
@@ -28,26 +28,22 @@ export function TopNav() {
 
             <div className="flex items-center gap-4">
                 <div className="relative hidden md:block">
-                    <SearchIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                         type="text"
                         placeholder="Search resources, tickets..."
+
                         className="pl-9 pr-4 py-2 w-64 bg-slate-100 dark:bg-slate-800 border-transparent focus:bg-white dark:focus:bg-brand-dark focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 rounded-lg text-sm transition-all outline-none text-slate-700 dark:text-slate-200"
                     />
-
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                        <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-medium text-slate-400 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded">
-                            Ctrl K
-                        </kbd>
-                    </div>
                 </div>
 
                 <Button
                     variant="primary"
                     size="sm"
-                    leftIcon={<PlusIcon className="w-4 h-4" />}
+                    leftIcon={<Plus className="w-4 h-4" />}
                     className="hidden sm:flex"
                 >
+
                     Quick Add
                 </Button>
 
@@ -57,19 +53,18 @@ export function TopNav() {
                     onClick={toggleTheme}
                     className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
                 >
-                    {isDark ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
+                    {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
+
 
                 <div className="relative">
                     <button
                         onClick={() => setShowProfileMenu(!showProfileMenu)}
                         className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
-                        <img
-                            src={user?.avatar}
-                            alt={user?.name}
-                            className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700"
-                        />
+                        <div className="w-8 h-8 rounded-full bg-brand-purple text-white flex items-center justify-center font-bold text-sm">
+                            {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                        </div>
                     </button>
 
                     {showProfileMenu && (
@@ -81,14 +76,25 @@ export function TopNav() {
                             <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-brand-surface rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 z-20 overflow-hidden">
                                 <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
                                     <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                                        {user?.name}
+                                        {user?.name || 'Unknown User'}
                                     </p>
                                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                        {user?.email}
+                                        {user?.email || 'No email provided'}
+                                    </p>
+                                    <p className="text-xs font-bold text-brand-purple mt-1 uppercase">
+                                        {user?.role || 'Guest'}
                                     </p>
                                 </div>
-                                <div className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
-                                    Login UI has been removed. This app now opens with a local demo profile.
+                                <div className="p-2">
+                                    <button 
+                                        onClick={() => {
+                                            localStorage.removeItem('token');
+                                            window.location.href = '/login';
+                                        }}
+                                        className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors font-medium"
+                                    >
+                                        Logout
+                                    </button>
                                 </div>
                             </div>
                         </>

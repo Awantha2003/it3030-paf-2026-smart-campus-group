@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
         email: res.data.email,
         role: res.data.role
       });
-      return { status: 'SUCCESS' };
+      return { status: 'SUCCESS', role: res.data.role };
     } catch (err) {
       throw err;
     }
@@ -61,22 +61,25 @@ export const AuthProvider = ({ children }) => {
         email: res.data.email,
         role: res.data.role
       });
-      return { status: 'SUCCESS' };
+      return { status: 'SUCCESS', role: res.data.role };
     } catch (err) {
       throw err;
     }
   };
 
-  const verifyMfaSetup = async (code) => {
+  const verifyMfaSetup = async (userId, code) => {
     try {
-      const res = await api.post('/api/auth/mfa/verify', { code: parseInt(code, 10) });
+      const res = await api.post('/api/auth/mfa/verify-setup', { 
+        userId, 
+        code: parseInt(code, 10) 
+      });
       localStorage.setItem('token', res.data.token);
       setUser({
         name: res.data.name,
         email: res.data.email,
         role: res.data.role
       });
-      return { status: 'SUCCESS' };
+      return { status: 'SUCCESS', role: res.data.role };
     } catch (err) {
       throw err;
     }
