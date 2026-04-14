@@ -67,9 +67,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const verifyMfaSetup = async (code) => {
+  const verifyMfaSetup = async (userId, code) => {
     try {
-      const res = await api.post('/api/auth/mfa/verify', { code: parseInt(code, 10) });
+      const res = await api.post('/api/auth/mfa/verify-setup', { 
+        userId, 
+        code: parseInt(code, 10) 
+      });
       localStorage.setItem('token', res.data.token);
       setUser({
         name: res.data.name,

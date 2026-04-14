@@ -19,20 +19,19 @@ export function UserManagementPage() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            // Assuming your backend has an endpoint like /api/admin/users
             const response = await api.get('/api/admin/users');
-            setUsers(response.data);
+            setUsers(response.data.map(u => ({
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                role: u.role,
+                mfaEnabled: u.isMfaEnabled || u.mfaEnabled,
+                status: u.enabled ? 'ACTIVE' : 'PENDING'
+            })));
             setError(null);
         } catch (err) {
             console.error('Failed to fetch users:', err);
-            // Mock data fallback if backend is not ready
-            setUsers([
-                { id: '1', name: 'Admin User', email: 'admin@smartcampus.edu', role: 'ADMIN', mfaEnabled: true, status: 'ACTIVE' },
-                { id: '2', name: 'John Tech', email: 'john.t@smartcampus.edu', role: 'TECHNICIAN', mfaEnabled: true, status: 'ACTIVE' },
-                { id: '3', name: 'Sarah Student', email: 'sarah.s@smartcampus.edu', role: 'USER', mfaEnabled: false, status: 'ACTIVE' },
-                { id: '4', name: 'Mike Student', email: 'mike.m@smartcampus.edu', role: 'USER', mfaEnabled: false, status: 'PENDING' },
-            ]);
-            // setError('Failed to load users from the server. Showing mock data.');
+            setError(`Failed to load users from the server: ${err.message}`);
         } finally {
             setLoading(false);
         }
@@ -40,14 +39,21 @@ export function UserManagementPage() {
 
     const handleRoleChange = async (userId, newRole) => {
         try {
-            // Assuming your backend has a PATCH endpoint to update role
-            // await api.patch(`/api/admin/users/${userId}/role`, { role: newRole });
-            
-            // Optimistic UI update
+            await api.patch(`/api/admin/users/${userId}/role`, { role: newRole });
             setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
         } catch (err) {
             console.error('Failed to update role:', err);
             alert('Failed to update user role');
+        }
+    };
+
+    const handleStatusChange = async (userId, isNowEnabled) => {
+        try {
+            await api.patch(`/api/admin/users/${userId}/status`, { enabled: isNowEnabled });
+            setUsers(users.map(u => u.id === userId ? { ...u, status: isNowEnabled ? 'ACTIVE' : 'PENDING' } : u));
+        } catch (err) {
+            console.error('Failed to update status:', err);
+            alert('Failed to update user status');
         }
     };
 
@@ -184,14 +190,17 @@ export function UserManagementPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tooltip" aria-label="Edit User">
-                                                    <FiEdit2 className="w-4 h-4" />
-                                                </button>
+                                                {user.status === 'PENDING' ? (
+                                                    <button onClick={() => handleStatusChange(user.id, true)} className="text-xs px-3 py-1.5 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors">
+                                                        Approve
+                                                    </button>
+                                                ) : (
+                                                    <button onClick={() => handleStatusChange(user.id, false)} className="text-xs px-3 py-1.5 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors">
+                                                        Suspend
+                                                    </button>
+                                                )}
                                                 <button className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors tooltip" aria-label="Delete User">
                                                     <FiTrash2 className="w-4 h-4" />
-                                                </button>
-                                                <button className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-                                                    <FiMoreVertical className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         </td>
@@ -205,3 +214,4 @@ export function UserManagementPage() {
         </motion.div>
     );
 }
+

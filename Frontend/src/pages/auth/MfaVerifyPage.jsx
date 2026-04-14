@@ -27,8 +27,15 @@ const MfaVerifyPage = () => {
     setLoading(true);
     setError('');
     try {
-      await verifyMfaLogin(userId, code);
-      navigate('/dashboard');
+      const result = await verifyMfaLogin(userId, code);
+      const role = result.role;
+      if (role === 'ADMIN') {
+        navigate('/Admin/dashboard');
+      } else if (role === 'TECHNICIAN') {
+        navigate('/Student/dashboard');
+      } else {
+        navigate('/Student/dashboard');
+      }
     } catch (err) {
       setError('Invalid verification code. Please check your authenticator app.');
     } finally {
