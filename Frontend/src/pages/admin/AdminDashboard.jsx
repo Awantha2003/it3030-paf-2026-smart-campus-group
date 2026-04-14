@@ -93,10 +93,14 @@ export function AdminDashboard() {
                             <h3 className="text-4xl font-extrabold text-slate-900 dark:text-white mb-1">{activeUsers}</h3>
                             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Active Users</p>
                             {pendingRoles > 0 && (
-                                <span className="inline-flex mt-3 items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300">
-                                    {pendingRoles} Pending Verifications
-                                </span>
+                                <Link to="/Admin/users" className="mt-4 inline-flex items-center gap-2 text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-3 py-1.5 rounded-full hover:bg-amber-200 transition-colors">
+                                    <FiAlertTriangle className="w-3.5 h-3.5" />
+                                    {pendingRoles} Pending Approvals
+                                </Link>
                             )}
+                            <Link to="/Admin/users" className="text-sm text-blue-600 dark:text-blue-400 font-bold hover:underline flex flex-col mt-4">
+                                <span className="flex items-center">Manage Users <FiArrowRight className="ml-1" /></span>
+                            </Link>
                         </div>
                     </Card>
 

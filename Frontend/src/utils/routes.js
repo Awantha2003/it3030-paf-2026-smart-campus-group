@@ -3,6 +3,7 @@ export const adminRoutes = {
     tickets: '/Admin/tickets',
     campusMap: '/Admin/campus-map',
     technicians: '/Admin/technicians',
+    users: '/Admin/users',
     settings: '/Admin/settings'
 };
 
