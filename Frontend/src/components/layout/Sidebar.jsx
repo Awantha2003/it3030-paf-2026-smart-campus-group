@@ -1,38 +1,65 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import {
-    LayoutDashboardIcon,
-    MapIcon,
-    TicketIcon,
-    SettingsIcon,
-    ShieldIcon,
-    WrenchIcon,
-    ChevronLeftIcon,
-    GraduationCapIcon
-} from 'lucide-react';
+import { FiLayout, FiMap, FiTool, FiChevronLeft, FiSettings, FiShield } from 'react-icons/fi';
+import { FaGraduationCap, FaTicketAlt } from 'react-icons/fa';
+import { RiAdminFill } from 'react-icons/ri';
+import { MdEngineering } from 'react-icons/md';
+import { PiStudentFill } from 'react-icons/pi';
+
 import { useAuth } from '../../contexts/AuthContext';
 
 export function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const { user } = useAuth();
+    
+    // User role fallback
+    const role = user?.role || 'USER';
+
+    const getRoleDesign = (role) => {
+        switch (role) {
+            case 'ADMIN':
+                return {
+                    color: 'from-orange-500 to-red-600',
+                    bg: 'bg-red-500/10 text-red-500',
+                    icon: <RiAdminFill className="text-xl" />,
+                    label: 'Administrator'
+                };
+            case 'TECHNICIAN':
+                return {
+                    color: 'from-emerald-400 to-emerald-600',
+                    bg: 'bg-emerald-500/10 text-emerald-500',
+                    icon: <MdEngineering className="text-xl" />,
+                    label: 'Technician'
+                };
+            default:
+                return {
+                    color: 'from-blue-500 to-indigo-600',
+                    bg: 'bg-blue-500/10 text-blue-500',
+                    icon: <PiStudentFill className="text-xl" />,
+                    label: 'Student'
+                };
+        }
+    };
+
+    const currentRoleDesign = getRoleDesign(role);
 
     const mainNav = [
-        { name: 'Dashboard', path: '/Student/dashboard', icon: LayoutDashboardIcon },
-        { name: 'Tickets', path: '/Student/tickets', icon: TicketIcon },
-        { name: 'Campus Map', path: '/Student/campus-map', icon: MapIcon }
+        { name: 'Dashboard', path: '/Student/dashboard', icon: FiLayout },
+        { name: 'Tickets', path: '/Student/tickets', icon: FaTicketAlt },
+        { name: 'Campus Map', path: '/Student/campus-map', icon: FiMap }
     ];
 
     const adminNav = [
-        { name: 'Admin Dashboard', path: '/Admin/dashboard', icon: ShieldIcon },
-        { name: 'Campus Map', path: '/Admin/campus-map', icon: MapIcon },
-        { name: 'Manage Tickets', path: '/Admin/tickets', icon: TicketIcon },
-        { name: 'Technicians', path: '/Admin/technicians', icon: WrenchIcon }
+        { name: 'Admin Dashboard', path: '/Admin/dashboard', icon: FiShield },
+        { name: 'Campus Map', path: '/Admin/campus-map', icon: FiMap },
+        { name: 'Manage Tickets', path: '/Admin/tickets', icon: FaTicketAlt },
+        { name: 'Technicians', path: '/Admin/technicians', icon: FiTool }
     ];
 
     const techNav = [
-        { name: 'My Assignments', path: '/Technician/dashboard', icon: WrenchIcon },
-        { name: 'Campus Map', path: '/Technician/campus-map', icon: MapIcon }
+        { name: 'My Assignments', path: '/Technician/dashboard', icon: FiTool },
+        { name: 'Campus Map', path: '/Technician/campus-map', icon: FiMap }
     ];
 
     const NavItem = ({ item }) => {
@@ -41,30 +68,34 @@ export function Sidebar() {
             <NavLink
                 to={item.path}
                 className={({ isActive }) =>
-                    `flex items-center px-3 py-2.5 rounded-lg mb-1 transition-all duration-200 group ${isActive
-                        ? 'bg-brand-purple/10 text-brand-purple dark:text-purple-400 font-medium relative'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-brand-surface-hover'
+                    `flex items-center px-4 py-3 rounded-xl mb-2 transition-all duration-300 group relative overflow-hidden ${isActive
+                        ? 'bg-gradient-to-r ' + currentRoleDesign.color + ' text-white shadow-lg shadow-current/20'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                     }`
                 }
             >
                 {({ isActive }) => (
                     <>
-                        {isActive && (
+                        <Icon
+                            className={`w-5 h-5 flex-shrink-0 transition-transform duration-300 ${collapsed ? 'mx-auto scale-110' : 'mr-4'} ${
+                                isActive ? 'text-white drop-shadow-md' : 'text-slate-400 group-hover:text-current'
+                            } ${isActive && !collapsed && 'scale-110'}`}
+                        />
+                        {!collapsed && (
+                            <span className={`font-medium tracking-wide ${isActive ? 'font-semibold' : ''}`}>
+                                {item.name}
+                            </span>
+                        )}
+                        {isActive && !collapsed && (
                             <motion.div
-                                layoutId="activeNav"
-                                className="absolute left-0 top-0 bottom-0 w-1 bg-brand-purple rounded-r-full"
-                                initial={false}
-                                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                layoutId="activeNavHighlight"
+                                className="absolute inset-0 bg-white/20 z-[-1]"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.3 }}
                             />
                         )}
-                        <Icon
-                            className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : 'mr-3'
-                                } ${isActive
-                                    ? 'text-brand-purple dark:text-purple-400'
-                                    : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'
-                                }`}
-                        />
-                        {!collapsed && <span className="truncate">{item.name}</span>}
                     </>
                 )}
             </NavLink>
@@ -74,39 +105,58 @@ export function Sidebar() {
     return (
         <motion.aside
             initial={false}
-            animate={{ width: collapsed ? 80 : 260 }}
-            className="h-screen bg-white dark:bg-brand-surface border-r border-slate-200 dark:border-slate-800 flex flex-col z-20 sticky top-0"
+            animate={{ width: collapsed ? 90 : 280 }}
+            className={`h-screen bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-800/50 flex flex-col z-20 sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.2)]`}
         >
-            <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="h-20 flex items-center justify-between px-6 border-b border-slate-200/50 dark:border-slate-800/50 relative">
                 {!collapsed && (
-                    <div className="flex items-center gap-2 overflow-hidden">
-                        <div className="bg-brand-purple p-1.5 rounded-lg">
-                            <GraduationCapIcon className="w-5 h-5 text-white" />
+                    <div className="flex items-center gap-3 overflow-hidden">
+                        <div className={`p-2.5 rounded-xl bg-gradient-to-br ${currentRoleDesign.color} shadow-lg`}>
+                            <FaGraduationCap className="w-6 h-6 text-white" />
                         </div>
-                        <span className="font-semibold text-sm text-slate-900 dark:text-white truncate">
-                            Smart Campus Hub
-                        </span>
+                        <div className="flex flex-col">
+                            <span className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">
+                                Smart Campus
+                            </span>
+                        </div>
                     </div>
                 )}
                 {collapsed && (
-                    <div className="mx-auto bg-brand-purple p-1.5 rounded-lg">
-                        <GraduationCapIcon className="w-5 h-5 text-white" />
+                    <div className={`mx-auto p-2.5 rounded-xl bg-gradient-to-br ${currentRoleDesign.color} shadow-lg cursor-pointer`} onClick={() => setCollapsed(!collapsed)}>
+                        <FaGraduationCap className="w-6 h-6 text-white" />
                     </div>
                 )}
                 <button
                     onClick={() => setCollapsed(!collapsed)}
-                    className={`p-1.5 rounded-md text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 ${collapsed ? 'hidden' : 'block'
-                        }`}
+                    className={`absolute -right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-900 dark:hover:text-white shadow-md z-30 transition-transform hover:scale-110 ${collapsed ? 'rotate-180 translate-x-2' : ''}`}
                 >
-                    <ChevronLeftIcon className="w-5 h-5" />
+                    <FiChevronLeft className="w-4 h-4" />
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
-                {user?.role === 'USER' && (
-                    <div className="mb-6">
+            <div className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar">
+                
+                {/* ROLE HIGHLIGHT CARD */}
+                {!collapsed && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`mb-8 p-4 rounded-2xl flex items-center gap-4 border border-slate-100 dark:border-slate-800/60 ${currentRoleDesign.bg}`}
+                    >
+                        <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 shadow-sm">
+                            {currentRoleDesign.icon}
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-xs font-bold uppercase tracking-wider opacity-80">Current Role</span>
+                            <span className="text-sm font-semibold">{currentRoleDesign.label}</span>
+                        </div>
+                    </motion.div>
+                )}
+
+                {role === 'USER' && (
+                    <div className="mb-8">
                         {!collapsed && (
-                            <p className="px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                            <p className="px-4 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                                 Main Menu
                             </p>
                         )}
@@ -116,10 +166,10 @@ export function Sidebar() {
                     </div>
                 )}
 
-                {user?.role === 'ADMIN' && (
-                    <div className="mb-6">
+                {role === 'ADMIN' && (
+                    <div className="mb-8">
                         {!collapsed && (
-                            <p className="px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                            <p className="px-4 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                                 Administration
                             </p>
                         )}
@@ -129,10 +179,10 @@ export function Sidebar() {
                     </div>
                 )}
 
-                {user?.role === 'TECHNICIAN' && (
-                    <div className="mb-6">
+                {role === 'TECHNICIAN' && (
+                    <div className="mb-8">
                         {!collapsed && (
-                            <p className="px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                            <p className="px-4 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
                                 Operations
                             </p>
                         )}
@@ -143,20 +193,21 @@ export function Sidebar() {
                 )}
             </div>
 
-            <div className="p-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="p-4 border-t border-slate-200/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-md">
                 <NavItem
                     item={{
                         name: 'Settings',
                         path:
-                            user?.role === 'ADMIN'
+                            role === 'ADMIN'
                                 ? '/Admin/settings'
-                                : user?.role === 'TECHNICIAN'
+                                : role === 'TECHNICIAN'
                                     ? '/Technician/settings'
                                     : '/Student/settings',
-                        icon: SettingsIcon
+                        icon: FiSettings
                     }}
                 />
             </div>
+
         </motion.aside>
     );
 }
