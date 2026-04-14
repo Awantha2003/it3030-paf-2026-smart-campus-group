@@ -8,6 +8,7 @@ import OAuth2RedirectHandler from './pages/auth/OAuth2RedirectHandler';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { UserDashboard } from './pages/dashboard/UserDashboard';
+import { TechnicianDashboard } from './pages/technician/TechnicianDashboard';
 import { UserManagementPage } from './pages/admin/UserManagementPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -32,7 +33,8 @@ export const App = () => {
                   <Route path="/Admin/dashboard" element={<AdminDashboard />} />
                   <Route path="/Admin/users" element={<UserManagementPage />} />
               </Route>
-              <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'TECHNICIAN', 'USER']} />}>
+              <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'TECHNICIAN']} />}>
+                  <Route path="/Technician/dashboard" element={<TechnicianDashboard />} />
                   <Route path="/Student/dashboard" element={<UserDashboard />} />
               </Route>
             </Route>

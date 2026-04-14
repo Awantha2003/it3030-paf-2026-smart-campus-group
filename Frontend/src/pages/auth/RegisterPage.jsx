@@ -71,7 +71,7 @@ const RegisterPage = () => {
       title="Create Account" 
       subtitle="Join the community and simplify your campus life."
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
         <div className="space-y-1.5">
           <label className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500 ml-1" htmlFor="name">Full Name</label>
           <div className="relative group">
@@ -82,6 +82,7 @@ const RegisterPage = () => {
               id="name"
               type="text"
               required
+              autoComplete="none"
               className="block w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-[15px] text-slate-900 placeholder:text-slate-300 focus:border-blue-500 focus:bg-blue-50/5 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
               placeholder="e.g. John Doe"
               value={formData.name}
@@ -100,6 +101,7 @@ const RegisterPage = () => {
               id="email"
               type="email"
               required
+              autoComplete="new-email"
               className="block w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-[15px] text-slate-900 placeholder:text-slate-300 focus:border-blue-500 focus:bg-blue-50/5 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
               placeholder="e.g. john@university.edu"
               value={formData.email}
@@ -142,6 +144,7 @@ const RegisterPage = () => {
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 required
+                autoComplete="new-password"
                 className="block w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-3 text-[15px] text-slate-900 placeholder:text-slate-300 focus:border-blue-500 focus:bg-blue-50/5 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
                 placeholder="••••••••"
                 value={formData.password}
@@ -159,6 +162,7 @@ const RegisterPage = () => {
                 id="confirmPassword"
                 type={showPassword ? 'text' : 'password'}
                 required
+                autoComplete="new-password"
                 className="block w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-3 text-[15px] text-slate-900 placeholder:text-slate-300 focus:border-blue-500 focus:bg-blue-50/5 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
                 placeholder="••••••••"
                 value={formData.confirmPassword}

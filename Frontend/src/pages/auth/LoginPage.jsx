@@ -33,7 +33,7 @@ const LoginPage = () => {
         if (role === 'ADMIN') {
           navigate('/Admin/dashboard');
         } else if (role === 'TECHNICIAN') {
-          navigate('/Student/dashboard');
+          navigate('/Technician/dashboard');
         } else {
           navigate('/Student/dashboard');
         }

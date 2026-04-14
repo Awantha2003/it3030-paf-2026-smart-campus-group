@@ -19,3 +19,11 @@ export const techRoutes = {
     campusMap: '/Technician/campus-map',
     settings: '/Technician/settings'
 };
+
+export const getTicketDetailPathForRole = (role, ticketId) => {
+    switch (role) {
+        case 'ADMIN': return `/Admin/tickets/${ticketId}`;
+        case 'TECHNICIAN': return `/Technician/tickets/${ticketId}`;
+        default: return `/Student/tickets/${ticketId}`;
+    }
+};

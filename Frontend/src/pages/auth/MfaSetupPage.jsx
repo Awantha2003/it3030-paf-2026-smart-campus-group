@@ -46,7 +46,7 @@ const MfaSetupPage = () => {
       if (role === 'ADMIN') {
         navigate('/Admin/dashboard');
       } else if (role === 'TECHNICIAN') {
-        navigate('/Student/dashboard'); // Temporary fallback if Technician doesn't have a unique dash
+        navigate('/Technician/dashboard'); 
       } else {
         navigate('/Student/dashboard');
       }
