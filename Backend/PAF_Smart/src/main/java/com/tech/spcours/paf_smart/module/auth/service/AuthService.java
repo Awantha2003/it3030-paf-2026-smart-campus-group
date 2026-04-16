@@ -61,6 +61,7 @@ public class AuthService {
         if (!user.isEnabled()) {
             return AuthResponse.builder()
                     .status("PENDING_APPROVAL")
+                    .userId(user.getId())
                     .name(user.getName())
                     .email(user.getEmail())
                     .role(user.getRole().name())
@@ -70,6 +71,7 @@ public class AuthService {
         String token = jwtTokenProvider.generateToken(user);
         return AuthResponse.builder()
                 .token(token)
+                .userId(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole().name())
@@ -106,6 +108,7 @@ public class AuthService {
         String token = jwtTokenProvider.generateToken(user);
         return AuthResponse.builder()
                 .token(token)
+                .userId(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole().name())

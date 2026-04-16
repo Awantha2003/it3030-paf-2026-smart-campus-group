@@ -10,6 +10,13 @@ import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { UserDashboard } from './pages/dashboard/UserDashboard';
 import { TechnicianDashboard } from './pages/technician/TechnicianDashboard';
 import { UserManagementPage } from './pages/admin/UserManagementPage';
+import { AdminTicketsPage } from './pages/admin/AdminTicketsPage';
+import { AdminTechniciansPage } from './pages/admin/AdminTechniciansPage';
+import { MyTicketsPage } from './pages/tickets/MyTicketsPage';
+import { NewTicketPage } from './pages/tickets/NewTicketPage';
+import { TicketDetailPage } from './pages/tickets/TicketDetailPage';
+import { CampusMapPage } from './pages/maps/CampusMapPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 import { AuthProvider } from './contexts/AuthContext';
@@ -27,15 +34,36 @@ export const App = () => {
             <Route path="/mfa-verify" element={<MfaVerifyPage />} />
             <Route path="/oauth2/callback" element={<OAuth2RedirectHandler />} />
 
-            {/* Unified Dashboard Entry Point */}
-            <Route element={<DashboardLayout />}>
+            <Route path="/Admin" element={<DashboardLayout />}>
               <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-                  <Route path="/Admin/dashboard" element={<AdminDashboard />} />
-                  <Route path="/Admin/users" element={<UserManagementPage />} />
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="users" element={<UserManagementPage />} />
+                <Route path="tickets" element={<AdminTicketsPage />} />
+                <Route path="tickets/:id" element={<TicketDetailPage />} />
+                <Route path="technicians" element={<AdminTechniciansPage />} />
+                <Route path="campus-map" element={<CampusMapPage />} />
+                <Route path="settings" element={<SettingsPage />} />
               </Route>
-              <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'TECHNICIAN']} />}>
-                  <Route path="/Technician/dashboard" element={<TechnicianDashboard />} />
-                  <Route path="/Student/dashboard" element={<UserDashboard />} />
+            </Route>
+
+            <Route path="/Technician" element={<DashboardLayout />}>
+              <Route element={<ProtectedRoute allowedRoles={['TECHNICIAN']} />}>
+                <Route path="dashboard" element={<TechnicianDashboard />} />
+                <Route path="tickets" element={<TechnicianDashboard />} />
+                <Route path="tickets/:id" element={<TicketDetailPage />} />
+                <Route path="campus-map" element={<CampusMapPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+              </Route>
+            </Route>
+
+            <Route path="/Student" element={<DashboardLayout />}>
+              <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
+                <Route path="dashboard" element={<UserDashboard />} />
+                <Route path="tickets" element={<MyTicketsPage />} />
+                <Route path="tickets/new" element={<NewTicketPage />} />
+                <Route path="tickets/:id" element={<TicketDetailPage />} />
+                <Route path="campus-map" element={<CampusMapPage />} />
+                <Route path="settings" element={<SettingsPage />} />
               </Route>
             </Route>
 

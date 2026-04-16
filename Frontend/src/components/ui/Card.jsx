@@ -23,3 +23,11 @@ export function CardContent({ children, className = '' }) {
     </div>
   );
 }
+
+export function CardFooter({ children, className = '' }) {
+  return (
+    <div className={`px-8 py-6 border-t border-slate-100 dark:border-slate-800 ${className}`}>
+      {children}
+    </div>
+  );
+}

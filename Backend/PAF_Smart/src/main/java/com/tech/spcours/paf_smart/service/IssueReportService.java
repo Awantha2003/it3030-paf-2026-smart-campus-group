@@ -44,6 +44,12 @@ public class IssueReportService {
                 .studentId(request.studentId().trim())
                 .studentName(request.studentName().trim())
                 .studentEmail(request.studentEmail().trim().toLowerCase())
+                .registrationNumber(request.registrationNumber().trim())
+                .faculty(request.faculty().trim())
+                .contactNumber(request.contactNumber().trim())
+                .requestType(request.requestType().trim())
+                .requestSubType(normalizeOptionalValue(request.requestSubType()))
+                .department(request.department().trim())
                 .attachmentUrls(request.attachmentUrls() == null ? List.of() : request.attachmentUrls())
                 .assignedTo(null)
                 .adminNote(null)
@@ -151,11 +157,26 @@ public class IssueReportService {
                 .studentId(issueReport.getStudentId())
                 .studentName(issueReport.getStudentName())
                 .studentEmail(issueReport.getStudentEmail())
+                .registrationNumber(issueReport.getRegistrationNumber())
+                .faculty(issueReport.getFaculty())
+                .contactNumber(issueReport.getContactNumber())
+                .requestType(issueReport.getRequestType())
+                .requestSubType(issueReport.getRequestSubType())
+                .department(issueReport.getDepartment())
                 .attachmentUrls(issueReport.getAttachmentUrls())
                 .assignedTo(issueReport.getAssignedTo())
                 .adminNote(issueReport.getAdminNote())
                 .createdAt(issueReport.getCreatedAt())
                 .updatedAt(issueReport.getUpdatedAt())
                 .build();
+    }
+
+    private String normalizeOptionalValue(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

@@ -46,7 +46,7 @@ export function Sidebar() {
 
     const mainNav = [
         { name: 'Dashboard', path: '/Student/dashboard', icon: FiLayout },
-        { name: 'Tickets', path: '/Student/tickets', icon: FaTicketAlt },
+        { name: 'Tickets', path: '/Student/tickets/new', icon: FaTicketAlt },
         { name: 'Campus Map', path: '/Student/campus-map', icon: FiMap }
     ];
 

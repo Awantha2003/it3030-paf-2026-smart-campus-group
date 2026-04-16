@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import AuthLayout from './AuthLayout';
 import { useAuth } from '../../contexts/AuthContext';
+import { SERVER_BASE_URL } from '../../api/baseUrl';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -123,7 +124,7 @@ const LoginPage = () => {
 
         <button
           type="button"
-          onClick={() => window.location.href = 'http://localhost:8080/oauth2/authorization/google'}
+          onClick={() => window.location.href = `${SERVER_BASE_URL}/oauth2/authorization/google`}
           className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 active:scale-[0.98] transition-all"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24">

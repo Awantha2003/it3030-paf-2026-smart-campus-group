@@ -1,4 +1,19 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+import { API_BASE_URL } from './baseUrl';
+
+function getAuthHeaders(includeJson = true) {
+  const headers = {};
+  const token = localStorage.getItem('token');
+
+  if (includeJson) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
 
 async function parseResponse(response) {
   const contentType = response.headers.get('content-type') || '';
@@ -16,16 +31,16 @@ async function parseResponse(response) {
 }
 
 export async function fetchTechnicians() {
-  const response = await fetch(`${API_BASE_URL}/admin/technicians`);
+  const response = await fetch(`${API_BASE_URL}/admin/technicians`, {
+    headers: getAuthHeaders(false)
+  });
   return parseResponse(response);
 }
 
 export async function createTechnician(technicianData) {
   const response = await fetch(`${API_BASE_URL}/admin/technicians`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(technicianData)
   });
 
@@ -35,9 +50,7 @@ export async function createTechnician(technicianData) {
 export async function updateTechnicianStatus(id, active) {
   const response = await fetch(`${API_BASE_URL}/admin/technicians/${id}/status`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ active })
   });
 
@@ -47,9 +60,7 @@ export async function updateTechnicianStatus(id, active) {
 export async function updateTechnicianLocation(id, locationData) {
   const response = await fetch(`${API_BASE_URL}/technicians/${id}/location`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(locationData)
   });
 
@@ -58,7 +69,8 @@ export async function updateTechnicianLocation(id, locationData) {
 
 export async function deleteTechnician(id) {
   const response = await fetch(`${API_BASE_URL}/admin/technicians/${id}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: getAuthHeaders(false)
   });
 
   if (!response.ok) {

@@ -1,4 +1,19 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+import { API_BASE_URL } from './baseUrl';
+
+function getAuthHeaders(includeJson = true) {
+  const headers = {};
+  const token = localStorage.getItem('token');
+
+  if (includeJson) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
 
 async function parseResponse(response, fallbackMessage) {
   const contentType = response.headers.get('content-type') || '';
@@ -14,9 +29,7 @@ async function parseResponse(response, fallbackMessage) {
 export async function createIssueReport(issueData) {
   const response = await fetch(`${API_BASE_URL}/issues`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(issueData)
   });
 
@@ -29,6 +42,7 @@ export async function uploadFile(file) {
 
   const response = await fetch(`${API_BASE_URL}/uploads`, {
     method: 'POST',
+    headers: getAuthHeaders(false),
     body: formData
   });
 
@@ -36,29 +50,47 @@ export async function uploadFile(file) {
 }
 
 export async function getStudentIssueReports(studentId) {
+  if (!studentId) {
+    return [];
+  }
+
   const response = await fetch(
-    `${API_BASE_URL}/issues?studentId=${encodeURIComponent(studentId)}`
+    `${API_BASE_URL}/issues?studentId=${encodeURIComponent(studentId)}`,
+    {
+      headers: getAuthHeaders(false)
+    }
   );
 
   return parseResponse(response, 'Failed to load issue reports.');
 }
 
 export async function getTechnicianIssueReports(technicianId) {
+  if (!technicianId) {
+    return [];
+  }
+
   const response = await fetch(
-    `${API_BASE_URL}/issues/technician?technicianId=${encodeURIComponent(technicianId)}`
+    `${API_BASE_URL}/issues/technician?technicianId=${encodeURIComponent(technicianId)}`,
+    {
+      headers: getAuthHeaders(false)
+    }
   );
 
   return parseResponse(response, 'Failed to load technician scheduled tasks.');
 }
 
 export async function getIssueReportById(id) {
-  const response = await fetch(`${API_BASE_URL}/issues/${id}`);
+  const response = await fetch(`${API_BASE_URL}/issues/${id}`, {
+    headers: getAuthHeaders(false)
+  });
 
   return parseResponse(response, 'Failed to load issue report.');
 }
 
 export async function getAllIssueReports() {
-  const response = await fetch(`${API_BASE_URL}/issues/admin/all`);
+  const response = await fetch(`${API_BASE_URL}/issues/admin/all`, {
+    headers: getAuthHeaders(false)
+  });
 
   return parseResponse(response, 'Failed to load admin issue reports.');
 }
@@ -66,9 +98,7 @@ export async function getAllIssueReports() {
 export async function assignIssueReport(id, technicianId) {
   const response = await fetch(`${API_BASE_URL}/issues/admin/${id}/assign`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ technicianId })
   });
 
@@ -78,9 +108,7 @@ export async function assignIssueReport(id, technicianId) {
 export async function updateIssueReportStatus(id, status) {
   const response = await fetch(`${API_BASE_URL}/issues/admin/${id}/status`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ status })
   });
 
@@ -90,9 +118,7 @@ export async function updateIssueReportStatus(id, status) {
 export async function updateIssueReportAdminNote(id, adminNote) {
   const response = await fetch(`${API_BASE_URL}/issues/admin/${id}/note`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ adminNote })
   });
 

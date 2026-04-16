@@ -34,5 +34,28 @@ public record CreateIssueReportRequest(
         @NotBlank(message = "Student email is required")
         String studentEmail,
 
+        @NotBlank(message = "Registration number is required")
+        @Size(max = 50, message = "Registration number must not exceed 50 characters")
+        String registrationNumber,
+
+        @NotBlank(message = "Faculty is required")
+        @Size(max = 100, message = "Faculty must not exceed 100 characters")
+        String faculty,
+
+        @NotBlank(message = "Contact number is required")
+        @Size(max = 30, message = "Contact number must not exceed 30 characters")
+        String contactNumber,
+
+        @NotBlank(message = "Request type is required")
+        @Size(max = 100, message = "Request type must not exceed 100 characters")
+        String requestType,
+
+        @Size(max = 120, message = "Request sub type must not exceed 120 characters")
+        String requestSubType,
+
+        @NotBlank(message = "Department is required")
+        @Size(max = 100, message = "Department must not exceed 100 characters")
+        String department,
+
         List<String> attachmentUrls) {
 }

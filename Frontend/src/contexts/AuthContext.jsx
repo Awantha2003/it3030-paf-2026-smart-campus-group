@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }) => {
 
       localStorage.setItem('token', res.data.token);
       setUser({
+        id: res.data.userId || res.data.id || null,
         name: res.data.name,
         email: res.data.email,
         role: res.data.role
@@ -59,6 +60,7 @@ export const AuthProvider = ({ children }) => {
       const res = await api.post('/api/auth/login/verify-mfa', { userId, code: parseInt(code, 10) });
       localStorage.setItem('token', res.data.token);
       setUser({
+        id: res.data.userId || res.data.id || null,
         name: res.data.name,
         email: res.data.email,
         role: res.data.role
@@ -77,6 +79,7 @@ export const AuthProvider = ({ children }) => {
       });
       localStorage.setItem('token', res.data.token);
       setUser({
+        id: res.data.userId || res.data.id || null,
         name: res.data.name,
         email: res.data.email,
         role: res.data.role

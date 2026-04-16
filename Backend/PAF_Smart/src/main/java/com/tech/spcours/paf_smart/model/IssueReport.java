@@ -39,6 +39,18 @@ public class IssueReport {
 
     private String studentEmail;
 
+    private String registrationNumber;
+
+    private String faculty;
+
+    private String contactNumber;
+
+    private String requestType;
+
+    private String requestSubType;
+
+    private String department;
+
     private List<String> attachmentUrls;
 
     private String assignedTo;

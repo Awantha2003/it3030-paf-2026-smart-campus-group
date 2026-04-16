@@ -55,6 +55,7 @@ public class AuthController {
             org.springframework.security.core.Authentication auth) {
         var user = (com.tech.spcours.paf_smart.module.user.model.User) auth.getPrincipal();
         return ResponseEntity.ok(Map.of(
+                "id", user.getId(),
                 "name", user.getName(),
                 "email", user.getEmail(),
                 "role", user.getRole().name(),
@@ -97,6 +98,7 @@ public class AuthController {
             String token = jwtTokenProvider.generateToken(user);
             return ResponseEntity.ok(AuthResponse.builder()
                     .token(token)
+                    .userId(user.getId())
                     .name(user.getName())
                     .email(user.getEmail())
                     .role(user.getRole().name())
@@ -148,6 +150,7 @@ public class AuthController {
             String token = jwtTokenProvider.generateToken(user);
             return ResponseEntity.ok(AuthResponse.builder()
                     .token(token)
+                    .userId(user.getId())
                     .name(user.getName())
                     .email(user.getEmail())
                     .role(user.getRole().name())
@@ -174,6 +177,7 @@ public class AuthController {
         String token = jwtTokenProvider.generateToken(user);
         return ResponseEntity.ok(AuthResponse.builder()
                 .token(token)
+                .userId(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole().name())

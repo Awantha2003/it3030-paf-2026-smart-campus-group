@@ -206,6 +206,13 @@ export function CampusMapPage() {
   }, [visibleTechnicians]);
 
   async function loadMapData(isBackgroundRefresh = false) {
+    const requiresUserId = role === 'USER' || role === 'TECHNICIAN';
+    if (!role || (requiresUserId && !user?.id)) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     if (isBackgroundRefresh) {
       setRefreshing(true);
     } else {
@@ -230,7 +237,11 @@ export function CampusMapPage() {
         setTickets(ticketData);
       }
     } catch (loadError) {
-      setError(loadError.message || 'Failed to load the campus map view.');
+      const message =
+        loadError?.message === 'Failed to fetch'
+          ? 'Unable to reach backend. Make sure the backend is running and your API base URL points to it.'
+          : loadError?.message || 'Failed to load the campus map view.';
+      setError(message);
     } finally {
       setLoading(false);
       setRefreshing(false);
