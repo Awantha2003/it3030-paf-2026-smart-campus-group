@@ -82,8 +82,8 @@ const CURATED_EQUIPMENT_RESOURCES = [
     subtitle: 'Wireless and wired microphones',
     location: 'Event Desk',
     capacity: 1,
-    totalUnits: 20,
-    availableUnits: 14,
+    totalUnits: 40,
+    availableUnits: 40,
     approvalRequired: false,
     bookingWindow: 'Up to 14 days',
     tags: ['Audio'],
@@ -201,7 +201,7 @@ const GENERIC_BOOKING_CONFIG = {
     bookingLabel: 'Equipment Request Form',
     quantityLabel: 'Requested Units',
     quantityMin: 1,
-    quantityMax: 10,
+    quantityMax: 40,
     supportsDurationHours: true,
     durationLabel: 'Required Hours',
     durationMin: 1,
@@ -289,6 +289,16 @@ function timeToMinutes(timeValue) {
   const hours = Number.parseInt(hoursPart || '0', 10);
   const minutes = Number.parseInt(minutesPart || '0', 10);
   return hours * 60 + minutes;
+}
+
+function getReturnSlotLabel(pickupTime, durationHours) {
+  const startMinutes = timeToMinutes(pickupTime);
+  const totalMinutes = startMinutes + Number(durationHours || 0) * 60;
+  const dayOffset = Math.floor(totalMinutes / (24 * 60));
+  const normalizedMinutes = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+  const hours = String(Math.floor(normalizedMinutes / 60)).padStart(2, '0');
+  const minutes = String(normalizedMinutes % 60).padStart(2, '0');
+  return `${hours}:${minutes}${dayOffset > 0 ? ` (+${dayOffset}d)` : ''}`;
 }
 
 function getBookingApprovalMeta(status) {
@@ -479,6 +489,47 @@ export function BookingResourcesPage() {
     [genericBookings, selectedType, user?.id]
   );
 
+  const equipmentActiveBookings = useMemo(() => {
+    const todayIso = getTodayIsoDate();
+    return genericBookings.filter((booking) => {
+      if (booking.type !== 'EQUIPMENT') {
+        return false;
+      }
+      const normalizedStatus = String(booking.status || '').toUpperCase();
+      if (normalizedStatus === 'REJECTED' || normalizedStatus === 'CANCELLED') {
+        return false;
+      }
+      return (booking.bookingDate || '') >= todayIso;
+    });
+  }, [genericBookings]);
+
+  const equipmentReservedUnitsByResourceId = useMemo(() => {
+    return equipmentActiveBookings.reduce((accumulator, booking) => {
+      const resourceId = booking.resourceId;
+      if (!resourceId) {
+        return accumulator;
+      }
+      const requestedUnits = Number(booking.quantity || 0);
+      accumulator[resourceId] = (accumulator[resourceId] || 0) + requestedUnits;
+      return accumulator;
+    }, {});
+  }, [equipmentActiveBookings]);
+
+  const resolvedResources = useMemo(() => {
+    if (selectedType !== 'EQUIPMENT') {
+      return resources;
+    }
+
+    return resources.map((resource) => {
+      const baseAvailableUnits = Number(resource.availableUnits ?? resource.totalUnits ?? 0);
+      const reservedUnits = Number(equipmentReservedUnitsByResourceId[resource.id] || 0);
+      return {
+        ...resource,
+        availableUnits: Math.max(0, baseAvailableUnits - reservedUnits)
+      };
+    });
+  }, [selectedType, resources, equipmentReservedUnitsByResourceId]);
+
   const nextGenericBooking = useMemo(() => {
     if (!genericTypeConfig || selectedGenericBookings.length === 0) {
       return null;
@@ -493,6 +544,44 @@ export function BookingResourcesPage() {
       .filter((entry) => !Number.isNaN(entry.startAt.getTime()) && entry.startAt > now)
       .sort((left, right) => left.startAt - right.startAt)[0]?.booking;
   }, [genericTypeConfig, selectedGenericBookings]);
+
+  const equipmentPickupReturnPlans = useMemo(() => {
+    if (selectedType !== 'EQUIPMENT' || selectedGenericBookings.length === 0) {
+      return [];
+    }
+
+    return selectedGenericBookings
+      .map((booking) => ({
+        ...booking,
+        returnTimeLabel: getReturnSlotLabel(booking.bookingTime, booking.durationHours || 1)
+      }))
+      .sort((left, right) => {
+        const leftKey = `${left.bookingDate || ''}-${String(left.bookingTime || '')}`;
+        const rightKey = `${right.bookingDate || ''}-${String(right.bookingTime || '')}`;
+        return leftKey.localeCompare(rightKey);
+      });
+  }, [selectedType, selectedGenericBookings]);
+
+  const equipmentReturnPreviewLabel = useMemo(() => {
+    if (selectedType !== 'EQUIPMENT' || !genericForm.bookingTime) {
+      return '';
+    }
+    return getReturnSlotLabel(genericForm.bookingTime, genericForm.durationHours || 1);
+  }, [selectedType, genericForm.bookingTime, genericForm.durationHours]);
+
+  const equipmentUsageLogs = useMemo(() => {
+    if (selectedType !== 'EQUIPMENT' || selectedGenericBookings.length === 0) {
+      return [];
+    }
+
+    return [...selectedGenericBookings]
+      .sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')))
+      .map((booking) => ({
+        ...booking,
+        returnTimeLabel: getReturnSlotLabel(booking.bookingTime, booking.durationHours || 1),
+        statusLabel: getBookingApprovalMeta(booking.status).label
+      }));
+  }, [selectedType, selectedGenericBookings]);
 
   const suggestedAvailableSlots = useMemo(() => {
     if (selectedType !== 'FACILITY') {
@@ -552,7 +641,7 @@ export function BookingResourcesPage() {
     setEditingGenericBookingId('');
     setGenericConflictMessage('');
     setGenericForm({
-      resourceId: preselectedResourceId || resources[0]?.id || '',
+      resourceId: preselectedResourceId || resolvedResources[0]?.id || '',
       bookingDate: getTodayIsoDate(),
       bookingTime: '',
       quantity: genericTypeConfig.quantityMin,
@@ -710,6 +799,23 @@ export function BookingResourcesPage() {
       return `${genericTypeConfig.quantityLabel} must be between ${genericTypeConfig.quantityMin} and ${genericTypeConfig.quantityMax}.`;
     }
 
+    if (selectedType === 'EQUIPMENT') {
+      const selectedResource = resources.find((resource) => resource.id === genericForm.resourceId);
+      const baseAvailableUnits = Number(selectedResource?.availableUnits ?? selectedResource?.totalUnits ?? 0);
+      const reservedUnitsByOtherBookings = equipmentActiveBookings
+        .filter(
+          (booking) =>
+            booking.resourceId === genericForm.resourceId &&
+            booking.id !== editingGenericBookingId
+        )
+        .reduce((total, booking) => total + Number(booking.quantity || 0), 0);
+      const currentlyAvailableUnits = Math.max(0, baseAvailableUnits - reservedUnitsByOtherBookings);
+
+      if (quantity > currentlyAvailableUnits) {
+        return `Only ${currentlyAvailableUnits} unit(s) are currently available for this equipment.`;
+      }
+    }
+
     if (genericTypeConfig.supportsDurationHours) {
       const durationHours = Number(genericForm.durationHours);
       if (
@@ -742,36 +848,34 @@ export function BookingResourcesPage() {
     }
 
     const nowIso = new Date().toISOString();
-    const selectedResource = resources.find((resource) => resource.id === genericForm.resourceId);
+    const selectedResource = resolvedResources.find((resource) => resource.id === genericForm.resourceId);
     const requestedStartMinutes = timeToMinutes(genericForm.bookingTime);
     const requestedDurationHours = genericTypeConfig.supportsDurationHours
       ? Number(genericForm.durationHours || 1)
       : 1;
     const requestedEndMinutes = requestedStartMinutes + requestedDurationHours * 60;
-    const matchingBooking = genericBookings.find(
-      (booking) =>
-        booking.type === selectedType &&
-        booking.resourceId === genericForm.resourceId &&
-        booking.bookingDate === genericForm.bookingDate &&
-        (() => {
-          if (!genericTypeConfig.supportsDurationHours) {
-            return booking.bookingTime === genericForm.bookingTime;
-          }
+    const overlappingBookings = selectedType === 'EQUIPMENT'
+      ? []
+      : genericBookings.filter(
+          (booking) =>
+            booking.type === selectedType &&
+            booking.resourceId === genericForm.resourceId &&
+            booking.bookingDate === genericForm.bookingDate &&
+            booking.id !== editingGenericBookingId &&
+            (() => {
+              if (!genericTypeConfig.supportsDurationHours) {
+                return booking.bookingTime === genericForm.bookingTime;
+              }
 
-          const existingStartMinutes = timeToMinutes(booking.bookingTime);
-          const existingDurationHours = Number(booking.durationHours || 1);
-          const existingEndMinutes = existingStartMinutes + existingDurationHours * 60;
-          return requestedStartMinutes < existingEndMinutes && existingStartMinutes < requestedEndMinutes;
-        })() &&
-        booking.id !== editingGenericBookingId
-    );
+              const existingStartMinutes = timeToMinutes(booking.bookingTime);
+              const existingDurationHours = Number(booking.durationHours || 1);
+              const existingEndMinutes = existingStartMinutes + existingDurationHours * 60;
+              return requestedStartMinutes < existingEndMinutes && existingStartMinutes < requestedEndMinutes;
+            })()
+        );
 
-    if (matchingBooking) {
-      setGenericConflictMessage(
-        genericTypeConfig.supportsDurationHours
-          ? 'This equipment is already reserved during the selected time range.'
-          : 'This resource is already reserved for the selected slot.'
-      );
+    if (overlappingBookings.length > 0) {
+      setGenericConflictMessage('This resource is already reserved for the selected slot.');
       closeGenericForm();
       return;
     }
@@ -972,6 +1076,41 @@ export function BookingResourcesPage() {
             }
 
             if (isConflictDetectionFeature) {
+              if (!isFacilityType && selectedType === 'EQUIPMENT') {
+                return (
+                  <div
+                    key={feature}
+                    className="rounded-2xl border border-amber-200/80 bg-amber-50/70 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-900/10"
+                  >
+                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{feature}</p>
+                    {equipmentPickupReturnPlans.length === 0 ? (
+                      <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                        No pickup/return plan yet. Reserve equipment to generate slot planning.
+                      </p>
+                    ) : (
+                      <div className="mt-2 space-y-1.5">
+                        {equipmentPickupReturnPlans.slice(0, 4).map((booking) => (
+                          <div
+                            key={booking.id}
+                            className="rounded-lg border border-amber-200 bg-white/80 px-2.5 py-1.5 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-slate-900/60 dark:text-amber-300"
+                          >
+                            <span className="font-semibold">{booking.resourceName}</span> | {booking.bookingDate} | Pickup{' '}
+                            {String(booking.bookingTime || '').slice(0, 5)} | Return {booking.returnTimeLabel}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {genericConflictMessage && (
+                      <div className="mt-2 flex items-start gap-2 text-xs font-medium text-red-700 dark:text-red-300">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>{genericConflictMessage}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               const conflictMessage = isFacilityType ? facilityConflictMessage : genericConflictMessage;
               return (
                 <div
@@ -1007,6 +1146,50 @@ export function BookingResourcesPage() {
 
             if (isReminderFeature) {
               if (!isFacilityType) {
+                if (selectedType === 'EQUIPMENT') {
+                  const totalUnits = equipmentUsageLogs.reduce(
+                    (total, booking) => total + Number(booking.quantity || 0),
+                    0
+                  );
+                  const totalHours = equipmentUsageLogs.reduce(
+                    (total, booking) => total + Number(booking.durationHours || 0),
+                    0
+                  );
+
+                  return (
+                    <div
+                      key={feature}
+                      className="rounded-2xl border border-indigo-200/80 bg-indigo-50/70 px-4 py-3 dark:border-indigo-900/50 dark:bg-indigo-900/15"
+                    >
+                      <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">{feature}</p>
+                      {equipmentUsageLogs.length === 0 ? (
+                        <p className="mt-2 text-xs text-indigo-700 dark:text-indigo-300">
+                          No usage logs yet. Once equipment is booked, logs will appear here.
+                        </p>
+                      ) : (
+                        <>
+                          <p className="mt-2 text-xs text-indigo-700 dark:text-indigo-300">
+                            {equipmentUsageLogs.length} booking log(s) | {totalUnits} unit(s) reserved | {totalHours}{' '}
+                            hour(s) planned
+                          </p>
+                          <div className="mt-2 space-y-1.5">
+                            {equipmentUsageLogs.slice(0, 4).map((booking) => (
+                              <div
+                                key={booking.id}
+                                className="rounded-lg border border-indigo-200 bg-white/80 px-2.5 py-1.5 text-xs text-indigo-900 dark:border-indigo-900/50 dark:bg-slate-900/60 dark:text-indigo-300"
+                              >
+                                <span className="font-semibold">{booking.resourceName}</span> | {booking.bookingDate} |{' '}
+                                {String(booking.bookingTime || '').slice(0, 5)} - {booking.returnTimeLabel} | Qty{' '}
+                                {Number(booking.quantity || 0)} | {booking.statusLabel}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={feature}
@@ -1069,7 +1252,7 @@ export function BookingResourcesPage() {
 
                   {selectedGenericBookings.length === 0 ? (
                     <p className="mt-2 text-xs text-cyan-700 dark:text-cyan-300">
-                      No active slot yet. {resources.length > 0 ? `${resources.length} resources ready for booking.` : 'Resources will appear here.'}
+                      No active slot yet. {resolvedResources.length > 0 ? `${resolvedResources.length} resources ready for booking.` : 'Resources will appear here.'}
                     </p>
                   ) : (
                     <div className="mt-2 space-y-1.5">
@@ -1091,6 +1274,12 @@ export function BookingResourcesPage() {
                                 {String(booking.bookingTime || '').slice(0, 5)}
                                 {selectedType === 'EQUIPMENT' && booking.durationHours
                                   ? ` | ${booking.durationHours} hour(s)`
+                                  : ''}
+                                {selectedType === 'EQUIPMENT' && booking.durationHours
+                                  ? ` | Return ${getReturnSlotLabel(booking.bookingTime, booking.durationHours)}`
+                                  : ''}
+                                {selectedType === 'EQUIPMENT'
+                                  ? ` | Qty ${Number(booking.quantity || 0)}`
                                   : ''}
                               </p>
                               <div className="flex shrink-0 gap-1">
@@ -1424,9 +1613,11 @@ export function BookingResourcesPage() {
                       className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                       required
                     >
-                      {resources.map((resource) => (
+                      {resolvedResources.map((resource) => (
                         <option key={resource.id} value={resource.id}>
-                          {resource.name}{resource.subtitle ? ` - ${resource.subtitle}` : ''}
+                          {resource.name}
+                          {resource.subtitle ? ` - ${resource.subtitle}` : ''}
+                          {selectedType === 'EQUIPMENT' ? ` (Available: ${resource.availableUnits})` : ''}
                         </option>
                       ))}
                     </select>
@@ -1512,6 +1703,12 @@ export function BookingResourcesPage() {
                     </label>
                   )}
 
+                  {selectedType === 'EQUIPMENT' && equipmentReturnPreviewLabel && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/10 dark:text-amber-300">
+                      Pickup {String(genericForm.bookingTime || '').slice(0, 5)} | Return {equipmentReturnPreviewLabel}
+                    </div>
+                  )}
+
                   <label className="block">
                     <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                       {genericTypeConfig.purposeLabel}
@@ -1529,7 +1726,7 @@ export function BookingResourcesPage() {
                   <Button
                     type="submit"
                     isLoading={submittingGenericBooking}
-                    disabled={!genericForm.resourceId || resources.length === 0}
+                    disabled={!genericForm.resourceId || resolvedResources.length === 0}
                     className="h-10 w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700"
                     leftIcon={<CheckCircle2 className="h-4 w-4" />}
                   >
@@ -1638,7 +1835,7 @@ export function BookingResourcesPage() {
               Loading resources...
             </CardContent>
           </Card>
-        ) : resources.length === 0 ? (
+        ) : resolvedResources.length === 0 ? (
           <Card className="border border-slate-200/70 dark:border-slate-800">
             <CardContent className="py-10 text-center text-sm text-slate-500 dark:text-slate-300">
               No resources available for this category yet.
@@ -1646,7 +1843,7 @@ export function BookingResourcesPage() {
           </Card>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-            {resources.map((resource) => {
+            {resolvedResources.map((resource) => {
               const utilization = resource.totalUnits > 0
                 ? Math.min(100, Math.round((resource.availableUnits / resource.totalUnits) * 100))
                 : 0;
