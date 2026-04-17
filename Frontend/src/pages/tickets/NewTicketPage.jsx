@@ -246,9 +246,26 @@ export function NewTicketPage() {
     requestType &&
     department;
 
+  const missingRequiredFields = [
+    !registrationNumber.trim() ? 'Registration Number' : null,
+    !faculty ? 'Faculty / School' : null,
+    !contactNumber.trim() ? 'Contact Number' : null,
+    !requestType ? 'Request / Inquiry Type' : null,
+    !title.trim() ? 'Subject' : null,
+    !location.trim() ? 'Location' : null,
+    !description.trim() ? 'Ticket Description' : null
+  ].filter(Boolean);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!user?.id || !user?.name || !user?.email) {
+      setErrorMessage('Your student account details are still loading. Refresh the page and try again.');
+      return;
+    }
+
     if (!isValid) {
+      setErrorMessage(`Complete the required fields before submitting: ${missingRequiredFields.join(', ')}.`);
       return;
     }
 
@@ -582,12 +599,17 @@ export function NewTicketPage() {
               </div>
 
               <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-4">
+                {missingRequiredFields.length > 0 && (
+                  <p className="w-full text-sm font-medium text-amber-700">
+                    Submit stays locked until these are filled: {missingRequiredFields.join(', ')}.
+                  </p>
+                )}
                 <Button type="button" variant="outline" onClick={() => navigate(-1)}>
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={!isValid || isSubmitting}
+                  disabled={isSubmitting}
                   isLoading={isSubmitting}
                   className="bg-gradient-to-r from-sky-600 to-cyan-600 text-white hover:from-sky-700 hover:to-cyan-700"
                 >

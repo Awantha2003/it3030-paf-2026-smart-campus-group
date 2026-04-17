@@ -3,9 +3,11 @@ package com.tech.spcours.paf_smart.config;
 import com.tech.spcours.paf_smart.security.JwtAuthenticationFilter;
 import com.tech.spcours.paf_smart.security.oauth2.CustomOAuth2UserService;
 import com.tech.spcours.paf_smart.security.oauth2.OAuth2SuccessHandler;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -48,6 +50,8 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers(
                                 "/api/auth/**",
+                                "/api/resources",
+                                "/api/resources/**",
                                 "/oauth2/**",
                                 "/login/oauth2/**")
                         .permitAll()
@@ -57,6 +61,17 @@ public class SecurityConfig {
                         .requestMatchers("/api/technician/**").hasAnyRole("ADMIN", "TECHNICIAN")
                         // Everything else needs authentication
                         .anyRequest().authenticated())
+                .exceptionHandling(exceptions -> exceptions
+                        .defaultAuthenticationEntryPointFor((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.getWriter().write("{\"error\":\"Unauthorized\"}");
+                        }, request -> request.getRequestURI().startsWith("/api/"))
+                        .defaultAccessDeniedHandlerFor((request, response, accessDeniedException) -> {
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.getWriter().write("{\"error\":\"Forbidden\"}");
+                        }, request -> request.getRequestURI().startsWith("/api/")))
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
                         .successHandler(oAuth2SuccessHandler))
