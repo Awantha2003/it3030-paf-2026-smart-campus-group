@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { getResourceTypes, getResources } from '../../api/resources';
 import {
+  getAvailableFacilitySpaces,
   createFacilityBooking,
   deleteFacilityBooking,
   getFacilityLectureHalls,
@@ -134,6 +135,10 @@ function getTypeAccents(type) {
   return TYPE_ACCENT_MAP[type] || 'from-cyan-500/25 via-blue-500/10 to-transparent ring-cyan-400/40';
 }
 
+function getTodayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function BookingResourcesPage() {
   const { user } = useAuth();
   const [resourceTypes, setResourceTypes] = useState(FALLBACK_TYPES);
@@ -147,10 +152,11 @@ export function BookingResourcesPage() {
   const [editingFacilityBookingId, setEditingFacilityBookingId] = useState('');
   const [deletingFacilityBookingId, setDeletingFacilityBookingId] = useState('');
   const [error, setError] = useState('');
-  const [facilityMessage, setFacilityMessage] = useState('');
   const [facilityConflictMessage, setFacilityConflictMessage] = useState('');
+  const [facilityCatalogDate, setFacilityCatalogDate] = useState(getTodayIsoDate);
   const [lectureHalls, setLectureHalls] = useState([]);
   const [myFacilityBookings, setMyFacilityBookings] = useState([]);
+  const [availableFacilitySpaces, setAvailableFacilitySpaces] = useState([]);
 
   const [facilityForm, setFacilityForm] = useState({
     faculty: FACULTY_OPTIONS[0],
@@ -168,6 +174,10 @@ export function BookingResourcesPage() {
     if (!selectedType) {
       return;
     }
+    if (selectedType === 'FACILITY') {
+      setResources([]);
+      return;
+    }
     loadResourcesByType(selectedType);
   }, [selectedType]);
 
@@ -178,7 +188,7 @@ export function BookingResourcesPage() {
     }
 
     loadFacilityMeta();
-  }, [selectedType]);
+  }, [selectedType, facilityCatalogDate]);
 
   async function loadTypes() {
     setLoadingTypes(true);
@@ -219,15 +229,18 @@ export function BookingResourcesPage() {
   async function loadFacilityMeta() {
     setLoadingFacilityMeta(true);
     try {
-      const [halls, myBookings] = await Promise.all([
+      const [halls, myBookings, availableSpaces] = await Promise.all([
         getFacilityLectureHalls(),
-        getMyFacilityBookings()
+        getMyFacilityBookings(),
+        getAvailableFacilitySpaces(facilityCatalogDate)
       ]);
 
       const hallOptions = Array.isArray(halls) ? halls : [];
       const bookingList = Array.isArray(myBookings) ? myBookings : [];
+      const availableSpacesForDate = Array.isArray(availableSpaces) ? availableSpaces : [];
       setLectureHalls(hallOptions);
       setMyFacilityBookings(bookingList);
+      setAvailableFacilitySpaces(availableSpacesForDate);
       setFacilityForm((current) => ({
         ...current,
         lectureHallCode: current.lectureHallCode || hallOptions[0]?.code || ''
@@ -236,6 +249,7 @@ export function BookingResourcesPage() {
       if (loadError?.message !== 'Failed to fetch') {
         setError(loadError?.message || 'Unable to load facility booking form options.');
       }
+      setAvailableFacilitySpaces([]);
     } finally {
       setLoadingFacilityMeta(false);
     }
@@ -257,10 +271,24 @@ export function BookingResourcesPage() {
     }
 
     const bookedHallCodes = new Set(myFacilityBookings.map((booking) => booking.lectureHallCode));
-    return lectureHalls
-      .filter((hall) => !bookedHallCodes.has(hall.code))
-      .slice(0, 3);
+    return lectureHalls.filter((hall) => !bookedHallCodes.has(hall.code));
   }, [selectedType, lectureHalls, myFacilityBookings]);
+
+  const nextFacilityBooking = useMemo(() => {
+    if (selectedType !== 'FACILITY' || myFacilityBookings.length === 0) {
+      return null;
+    }
+
+    const now = new Date();
+    return myFacilityBookings
+      .map((booking) => {
+        const normalizedTime = String(booking.bookingTime || '').slice(0, 5);
+        const startAt = new Date(`${booking.bookingDate}T${normalizedTime || '00:00'}:00`);
+        return { booking, startAt };
+      })
+      .filter((entry) => !Number.isNaN(entry.startAt.getTime()) && entry.startAt > now)
+      .sort((left, right) => left.startAt - right.startAt)[0]?.booking;
+  }, [selectedType, myFacilityBookings]);
 
   function updateFacilityField(field, value) {
     setFacilityForm((current) => ({
@@ -269,13 +297,14 @@ export function BookingResourcesPage() {
     }));
   }
 
-  function openNewFacilityBookingForm() {
+  function openNewFacilityBookingForm(preselectedSpaceCode = '') {
     setEditingFacilityBookingId('');
     setFacilityForm((current) => ({
       ...current,
-      bookingDate: '',
+      bookingDate: facilityCatalogDate,
       bookingTime: '',
-      studentCount: 1
+      studentCount: 1,
+      lectureHallCode: preselectedSpaceCode || current.lectureHallCode || lectureHalls[0]?.code || ''
     }));
     setShowFacilityForm(true);
   }
@@ -317,7 +346,6 @@ export function BookingResourcesPage() {
 
   async function handleFacilitySubmit(event) {
     event.preventDefault();
-    setFacilityMessage('');
     setFacilityConflictMessage('');
     setError('');
 
@@ -338,10 +366,8 @@ export function BookingResourcesPage() {
 
       if (editingFacilityBookingId) {
         await updateFacilityBooking(editingFacilityBookingId, payload);
-        setFacilityMessage('Slot updated successfully. Live availability checks refreshed.');
       } else {
         await createFacilityBooking(payload);
-        setFacilityMessage('Slot available and confirmed. It now appears in Live availability checks.');
       }
 
       setEditingFacilityBookingId('');
@@ -367,7 +393,6 @@ export function BookingResourcesPage() {
 
   async function handleDeleteFacilityBooking(bookingId) {
     setError('');
-    setFacilityMessage('');
     setFacilityConflictMessage('');
     setDeletingFacilityBookingId(bookingId);
     try {
@@ -376,7 +401,6 @@ export function BookingResourcesPage() {
       if (editingFacilityBookingId === bookingId) {
         setEditingFacilityBookingId('');
       }
-      setFacilityMessage('Booking deleted and availability refreshed.');
       await loadFacilityMeta();
     } catch (deleteError) {
       setError(deleteError?.message || 'Unable to delete booking.');
@@ -504,7 +528,8 @@ export function BookingResourcesPage() {
           {selectedTypeFeatures.map((feature, index) => {
             const isLiveAvailabilityFeature = selectedType === 'FACILITY' && index === 0;
             const isConflictDetectionFeature = selectedType === 'FACILITY' && index === 1;
-            if (!isLiveAvailabilityFeature && !isConflictDetectionFeature) {
+            const isReminderFeature = selectedType === 'FACILITY' && index === 2;
+            if (!isLiveAvailabilityFeature && !isConflictDetectionFeature && !isReminderFeature) {
               return (
                 <div
                   key={feature}
@@ -548,6 +573,27 @@ export function BookingResourcesPage() {
               );
             }
 
+            if (isReminderFeature) {
+              return (
+                <div
+                  key={feature}
+                  className="rounded-2xl border border-indigo-200/80 bg-indigo-50/70 px-4 py-3 dark:border-indigo-900/50 dark:bg-indigo-900/15"
+                >
+                  <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">{feature}</p>
+                  {nextFacilityBooking ? (
+                    <p className="mt-2 text-xs text-indigo-700 dark:text-indigo-300">
+                      Next email reminder for <span className="font-semibold">{nextFacilityBooking.lectureHallCode}</span> will be sent 10
+                      minutes before {nextFacilityBooking.bookingDate} {String(nextFacilityBooking.bookingTime || '').slice(0, 5)}.
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-indigo-700 dark:text-indigo-300">
+                      Book a slot and we will send a reminder email 10 minutes before the start time.
+                    </p>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <div
                 key={feature}
@@ -563,12 +609,6 @@ export function BookingResourcesPage() {
                     Book
                   </button>
                 </div>
-
-                {facilityMessage && (
-                  <p className="mt-2 rounded-lg bg-emerald-100/80 px-2.5 py-1.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                    {facilityMessage}
-                  </p>
-                )}
 
                 {loadingFacilityMeta ? (
                   <p className="mt-2 text-xs text-cyan-700 dark:text-cyan-300">Loading availability...</p>
@@ -589,7 +629,7 @@ export function BookingResourcesPage() {
                   </p>
                 ) : (
                   <div className="mt-2 space-y-1.5">
-                    {myFacilityBookings.slice(0, 3).map((booking) => (
+                    {myFacilityBookings.map((booking) => (
                       <div
                         key={booking.id}
                         className="rounded-xl border border-cyan-200 bg-white/80 px-2.5 py-2 text-xs text-cyan-800 dark:border-cyan-900/50 dark:bg-slate-900/70 dark:text-cyan-300"
@@ -757,7 +797,7 @@ export function BookingResourcesPage() {
 
                   <label className="block">
                     <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                      Lecture Hall
+                      Facility Space (Lecture Hall / Lab)
                     </span>
                     <select
                       value={facilityForm.lectureHallCode}
@@ -791,11 +831,95 @@ export function BookingResourcesPage() {
       )}
 
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-          {activeResourceType?.title || 'Resource'} Catalog
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+            {activeResourceType?.title || 'Resource'} Catalog
+          </h3>
+          {selectedType === 'FACILITY' && (
+            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+              Date
+              <input
+                type="date"
+                value={facilityCatalogDate}
+                onChange={(event) => setFacilityCatalogDate(event.target.value || getTodayIsoDate())}
+                className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              />
+            </label>
+          )}
+        </div>
 
-        {loadingResources ? (
+        {selectedType === 'FACILITY' ? (
+          loadingFacilityMeta ? (
+            <Card className="border border-slate-200/70 dark:border-slate-800">
+              <CardContent className="flex items-center justify-center py-10 text-slate-500 dark:text-slate-300">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading facility catalog...
+              </CardContent>
+            </Card>
+          ) : availableFacilitySpaces.length === 0 ? (
+            <Card className="border border-slate-200/70 dark:border-slate-800">
+              <CardContent className="py-10 text-center text-sm text-slate-500 dark:text-slate-300">
+                All lecture halls and labs are reserved for {facilityCatalogDate}. Try another date.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+              {availableFacilitySpaces.map((space) => {
+                const spaceType = space.spaceType || (space.name?.toLowerCase().includes('lab') ? 'LAB' : 'LECTURE_HALL');
+                const isLab = spaceType === 'LAB';
+                return (
+                  <Card
+                    key={space.code}
+                    className="overflow-hidden border border-slate-200/80 bg-white/90 transition-all hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/80"
+                  >
+                    <CardContent className="space-y-4 p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h4 className="text-lg font-bold text-slate-900 dark:text-white">{space.name}</h4>
+                          <p className="text-sm text-slate-600 dark:text-slate-300">
+                            {space.building} | Block {space.block} | Floor {space.floor}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                            isLab
+                              ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300'
+                              : 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
+                          }`}
+                        >
+                          {isLab ? 'Lab' : 'Lecture Hall'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                        <MapPin className="h-4 w-4" />
+                        {space.displayName}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 py-2 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
+                          Capacity: {space.capacity || 60}
+                        </div>
+                        <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 py-2 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
+                          Status: Available
+                        </div>
+                      </div>
+
+                      <Button
+                        size="sm"
+                        onClick={() => openNewFacilityBookingForm(space.code)}
+                        className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700"
+                        rightIcon={<ArrowUpRight className="h-4 w-4" />}
+                      >
+                        Book This Space
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )
+        ) : loadingResources ? (
           <Card className="border border-slate-200/70 dark:border-slate-800">
             <CardContent className="flex items-center justify-center py-10 text-slate-500 dark:text-slate-300">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

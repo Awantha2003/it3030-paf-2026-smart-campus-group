@@ -34,6 +34,15 @@ export async function getFacilityLectureHalls() {
   return parseResponse(response, 'Failed to load lecture hall options.');
 }
 
+export async function getAvailableFacilitySpaces(date) {
+  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+  const response = await fetchFromApi(`/facility-bookings/availability${query}`, {
+    headers: getAuthHeaders(false)
+  });
+
+  return parseResponse(response, 'Failed to load available facility spaces.');
+}
+
 export async function getMyFacilityBookings() {
   const response = await fetchFromApi('/facility-bookings/me', {
     headers: getAuthHeaders(false)

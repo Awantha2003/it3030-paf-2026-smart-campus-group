@@ -4,9 +4,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
@@ -35,6 +37,18 @@ public class FacilityBookingService {
                 .toList();
     }
 
+    public List<FacilityLectureHallResponse> getAvailableSpaces(LocalDate bookingDate) {
+        LocalDate targetDate = bookingDate == null ? LocalDate.now() : bookingDate;
+        Set<String> bookedSpaceCodes = new HashSet<>(facilityBookingRepository.findByBookingDate(targetDate).stream()
+                .map(FacilityBooking::getLectureHallCode)
+                .toList());
+
+        return LECTURE_HALLS.values().stream()
+                .filter(space -> !bookedSpaceCodes.contains(space.code()))
+                .map(this::toLectureHallResponse)
+                .toList();
+    }
+
     public List<FacilityBookingResponse> getStudentBookings(User user) {
         return facilityBookingRepository.findByStudentIdOrderByBookingDateDescBookingTimeDesc(user.getId())
                 .stream()
@@ -45,7 +59,7 @@ public class FacilityBookingService {
     public FacilityBookingResponse createBooking(CreateFacilityBookingRequest request, User user) {
         LectureHallDefinition hall = LECTURE_HALLS.get(request.lectureHallCode().trim().toUpperCase());
         if (hall == null) {
-            throw new ResourceConflictException("Selected lecture hall is not supported");
+            throw new ResourceConflictException("Selected facility space is not supported");
         }
 
         validateBookingDateTime(request.bookingDate(), request.bookingTime());
@@ -55,7 +69,7 @@ public class FacilityBookingService {
                 request.bookingDate(),
                 request.bookingTime());
         if (hallOccupied) {
-            throw new ResourceConflictException("This lecture hall is already reserved for the selected slot");
+            throw new ResourceConflictException("This facility space is already reserved for the selected slot");
         }
 
         boolean studentHasBookingAtSameSlot = facilityBookingRepository.existsByStudentIdAndBookingDateAndBookingTime(
@@ -81,6 +95,7 @@ public class FacilityBookingService {
                 .floor(hall.floor())
                 .lectureHallName(hall.name())
                 .status("AVAILABLE")
+                .reminderSentAt(null)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -92,7 +107,7 @@ public class FacilityBookingService {
         FacilityBooking existingBooking = findOwnedBooking(bookingId, user);
         LectureHallDefinition hall = LECTURE_HALLS.get(request.lectureHallCode().trim().toUpperCase());
         if (hall == null) {
-            throw new ResourceConflictException("Selected lecture hall is not supported");
+            throw new ResourceConflictException("Selected facility space is not supported");
         }
 
         validateBookingDateTime(request.bookingDate(), request.bookingTime());
@@ -104,7 +119,7 @@ public class FacilityBookingService {
                         request.bookingTime(),
                         existingBooking.getId());
         if (hallOccupiedByAnotherBooking) {
-            throw new ResourceConflictException("This lecture hall is already reserved for the selected slot");
+            throw new ResourceConflictException("This facility space is already reserved for the selected slot");
         }
 
         boolean studentHasAnotherBookingAtSlot =
@@ -126,6 +141,7 @@ public class FacilityBookingService {
         existingBooking.setBlock(hall.block());
         existingBooking.setFloor(hall.floor());
         existingBooking.setLectureHallName(hall.name());
+        existingBooking.setReminderSentAt(null);
         existingBooking.setUpdatedAt(Instant.now());
 
         return toBookingResponse(facilityBookingRepository.save(existingBooking));
@@ -144,6 +160,8 @@ public class FacilityBookingService {
                 .floor(hall.floor())
                 .name(hall.name())
                 .displayName(hall.displayName())
+                .spaceType(hall.spaceType())
+                .capacity(hall.capacity())
                 .build();
     }
 
@@ -186,9 +204,9 @@ public class FacilityBookingService {
     private static Map<String, LectureHallDefinition> buildLectureHallCatalog() {
         List<LectureHallDefinition> halls = new ArrayList<>();
 
-        halls.addAll(generateBuildingHalls("Engineering Building", List.of("A", "B"), List.of(2, 3), "ENG"));
-        halls.addAll(generateBuildingHalls("New Building", List.of("G", "F"), List.of(2, 3, 4), "NEW"));
-        halls.addAll(generateBuildingHalls("Business Building", List.of("C", "D"), List.of(2, 3), "BUS"));
+        halls.addAll(generateBuildingSpaces("Engineering Building", List.of("A", "B"), List.of(2, 3), "ENG"));
+        halls.addAll(generateBuildingSpaces("New Building", List.of("G", "F"), List.of(2, 3, 4), "NEW"));
+        halls.addAll(generateBuildingSpaces("Business Building", List.of("C", "D"), List.of(2, 3), "BUS"));
 
         Map<String, LectureHallDefinition> map = new LinkedHashMap<>();
         for (LectureHallDefinition hall : halls) {
@@ -197,7 +215,7 @@ public class FacilityBookingService {
         return map;
     }
 
-    private static List<LectureHallDefinition> generateBuildingHalls(
+    private static List<LectureHallDefinition> generateBuildingSpaces(
             String building,
             List<String> blocks,
             List<Integer> allowedFloors,
@@ -211,7 +229,31 @@ public class FacilityBookingService {
                 String hallName = "Lecture Hall " + (i + 1);
                 String code = buildingCode + "-" + block + "-F" + floor + "-LH" + (i + 1);
                 String displayName = building + " | Block " + block + " | Floor " + floor + " | " + hallName;
-                result.add(new LectureHallDefinition(code, building, block, floor, hallName, displayName));
+                result.add(new LectureHallDefinition(
+                        code,
+                        building,
+                        block,
+                        floor,
+                        hallName,
+                        displayName,
+                        "LECTURE_HALL",
+                        60));
+            }
+
+            for (int i = 0; i < 2; i++) {
+                int floor = allowedFloors.get(Math.min(i, allowedFloors.size() - 1));
+                String labName = "Lab " + (i + 1);
+                String code = buildingCode + "-" + block + "-F" + floor + "-LAB" + (i + 1);
+                String displayName = building + " | Block " + block + " | Floor " + floor + " | " + labName;
+                result.add(new LectureHallDefinition(
+                        code,
+                        building,
+                        block,
+                        floor,
+                        labName,
+                        displayName,
+                        "LAB",
+                        40));
             }
         }
 
@@ -224,6 +266,8 @@ public class FacilityBookingService {
             String block,
             Integer floor,
             String name,
-            String displayName) {
+            String displayName,
+            String spaceType,
+            Integer capacity) {
     }
 }

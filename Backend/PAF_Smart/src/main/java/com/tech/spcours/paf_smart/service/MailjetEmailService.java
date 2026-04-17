@@ -6,12 +6,15 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 
+import com.tech.spcours.paf_smart.model.FacilityBooking;
 import com.tech.spcours.paf_smart.model.TechnicianMember;
 
 @Service
@@ -37,6 +40,105 @@ public class MailjetEmailService {
     private String fromName;
 
     public EmailDeliveryResult sendTechnicianCredentialsEmail(TechnicianMember technicianMember, String rawPassword) {
+        String subject = "Your Smart Campus Technician Account";
+        String textPart = buildTextPart(technicianMember, rawPassword);
+        String htmlPart = buildHtmlPart(technicianMember, rawPassword);
+        return sendEmail(
+                technicianMember.getEmail(),
+                technicianMember.getFullName(),
+                subject,
+                textPart,
+                htmlPart,
+                "Failed to send credentials email via Mailjet",
+                "Credentials email sent successfully");
+    }
+
+    public EmailDeliveryResult sendFacilityBookingReminderEmail(
+            FacilityBooking booking,
+            ZonedDateTime bookingStartTime,
+            long reminderMinutesBefore) {
+        if (booking == null || isBlank(booking.getStudentEmail())) {
+            return EmailDeliveryResult.failed("Cannot send reminder email without student email");
+        }
+
+        String recipientName = isBlank(booking.getStudentName()) ? "Student" : booking.getStudentName();
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("hh:mm a");
+
+        String formattedDate = bookingStartTime.format(dateFormatter);
+        String formattedTime = bookingStartTime.format(timeFormatter);
+        String subject = "Reminder: Facility booking starts in " + reminderMinutesBefore + " minutes";
+
+        String textPart = """
+                Hello %s,
+
+                This is a reminder for your Smart Campus facility booking.
+
+                Lecture Hall: %s (%s)
+                Date: %s
+                Time: %s
+                Building: %s | Block: %s | Floor: %s
+                Faculty: %s
+
+                Please be on time for your booking.
+                """
+                .formatted(
+                        recipientName,
+                        safe(booking.getLectureHallName()),
+                        safe(booking.getLectureHallCode()),
+                        formattedDate,
+                        formattedTime,
+                        safe(booking.getBuilding()),
+                        safe(booking.getBlock()),
+                        booking.getFloor() == null ? "-" : booking.getFloor(),
+                        safe(booking.getFaculty()));
+
+        String htmlPart = """
+                <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6; max-width: 560px; margin: 0 auto;">
+                  <h2 style="margin-bottom: 8px;">Facility Booking Reminder</h2>
+                  <p>Hello %s,</p>
+                  <p>Your Smart Campus booking starts in <strong>%s minutes</strong>.</p>
+                  <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <p style="margin: 0 0 8px;"><strong>Lecture Hall:</strong> %s (%s)</p>
+                    <p style="margin: 0 0 8px;"><strong>Date:</strong> %s</p>
+                    <p style="margin: 0 0 8px;"><strong>Time:</strong> %s</p>
+                    <p style="margin: 0 0 8px;"><strong>Location:</strong> %s | Block %s | Floor %s</p>
+                    <p style="margin: 0;"><strong>Faculty:</strong> %s</p>
+                  </div>
+                  <p>Please be on time for your booking.</p>
+                  <p style="font-size: 12px; color: #6b7280; margin-top: 24px;">Smart Campus automated notification</p>
+                </div>
+                """
+                .formatted(
+                        recipientName,
+                        reminderMinutesBefore,
+                        safe(booking.getLectureHallName()),
+                        safe(booking.getLectureHallCode()),
+                        formattedDate,
+                        formattedTime,
+                        safe(booking.getBuilding()),
+                        safe(booking.getBlock()),
+                        booking.getFloor() == null ? "-" : booking.getFloor(),
+                        safe(booking.getFaculty()));
+
+        return sendEmail(
+                booking.getStudentEmail(),
+                recipientName,
+                subject,
+                textPart,
+                htmlPart,
+                "Failed to send facility booking reminder email",
+                "Facility booking reminder email sent successfully");
+    }
+
+    private EmailDeliveryResult sendEmail(
+            String recipientEmail,
+            String recipientName,
+            String subject,
+            String textPart,
+            String htmlPart,
+            String failureMessage,
+            String successMessage) {
         if (!mailjetEnabled) {
             return EmailDeliveryResult.failed("Mailjet email sending is disabled");
         }
@@ -50,12 +152,13 @@ public class MailjetEmailService {
                     .uri(URI.create(MAILJET_SEND_URL))
                     .header("Authorization", basicAuthHeader())
                     .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                    .POST(HttpRequest.BodyPublishers.ofString(buildPayload(technicianMember, rawPassword)))
+                    .POST(HttpRequest.BodyPublishers.ofString(
+                            buildPayload(recipientEmail, recipientName, subject, textPart, htmlPart)))
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                return EmailDeliveryResult.success();
+                return EmailDeliveryResult.success(successMessage);
             }
 
             return EmailDeliveryResult.failed("Mailjet rejected the email request");
@@ -63,11 +166,16 @@ public class MailjetEmailService {
             if (exception instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
-            return EmailDeliveryResult.failed("Failed to send credentials email via Mailjet");
+            return EmailDeliveryResult.failed(failureMessage);
         }
     }
 
-    private String buildPayload(TechnicianMember technicianMember, String rawPassword) {
+    private String buildPayload(
+            String recipientEmail,
+            String recipientName,
+            String subject,
+            String textPart,
+            String htmlPart) {
         return """
                 {
                   "Messages": [
@@ -82,7 +190,7 @@ public class MailjetEmailService {
                           "Name": "%s"
                         }
                       ],
-                      "Subject": "Your Smart Campus Technician Account",
+                      "Subject": "%s",
                       "TextPart": "%s",
                       "HTMLPart": "%s"
                     }
@@ -91,10 +199,11 @@ public class MailjetEmailService {
                 """.formatted(
                 escapeJson(fromEmail),
                 escapeJson(fromName),
-                escapeJson(technicianMember.getEmail()),
-                escapeJson(technicianMember.getFullName()),
-                escapeJson(buildTextPart(technicianMember, rawPassword)),
-                escapeJson(buildHtmlPart(technicianMember, rawPassword)));
+                escapeJson(recipientEmail),
+                escapeJson(recipientName),
+                escapeJson(subject),
+                escapeJson(textPart),
+                escapeJson(htmlPart));
     }
 
     private String buildTextPart(TechnicianMember technicianMember, String rawPassword) {
@@ -118,6 +227,10 @@ public class MailjetEmailService {
                         rawPassword,
                         technicianMember.getDepartment(),
                         technicianMember.getSpecialization());
+    }
+
+    private String safe(String value) {
+        return isBlank(value) ? "-" : value;
     }
 
     private String buildHtmlPart(TechnicianMember technicianMember, String rawPassword) {
