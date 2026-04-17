@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiTool, FiAlertCircle, FiChevronRight, FiShield, FiMail, FiCheckCircle } from 'react-icons/fi';
+import { FiTool, FiAlertCircle, FiChevronRight, FiShield, FiMail, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { getStudentIssueReports } from '../../api/issues';
+import { getStudentIssueReports, createIssueReport } from '../../api/issues';
 import { studentRoutes } from '../../utils/routes';
 
 export function UserDashboard() {
@@ -16,6 +16,65 @@ export function UserDashboard() {
     const [isLoadingTickets, setIsLoadingTickets] = useState(true);
     const [ticketError, setTicketError] = useState('');
     
+    // Emergency states
+    const [isEmergencyLoading, setIsEmergencyLoading] = useState(false);
+    const [emergencyStatus, setEmergencyStatus] = useState('');
+
+    const handleEmergency = async () => {
+        setIsEmergencyLoading(true);
+        setEmergencyStatus('Detecting location...');
+        
+        if (!navigator.geolocation) {
+            setEmergencyStatus('Geolocation is not supported by your browser.');
+            setIsEmergencyLoading(false);
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const locationString = `Emergency GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                setEmergencyStatus('Assigning technician...');
+
+                try {
+                    await createIssueReport({
+                        title: "EMERGENCY ASSISTANCE REQUIRED",
+                        description: "Emergency generated from student dashboard. Immediate dispatch required.",
+                        category: "Emergency",
+                        location: locationString,
+                        priority: "CRITICAL",
+                        studentId: user?.id || '',
+                        studentName: user?.name || 'Student',
+                        studentEmail: user?.email || 'unknown@student.com',
+                        registrationNumber: "EMERGENCY",
+                        faculty: "General",
+                        contactNumber: "Emergency",
+                        requestType: "Emergency",
+                        requestSubType: "Immediate Dispatch",
+                        department: "Security"
+                    });
+                    setEmergencyStatus('Technician dispatched successfully!');
+                    
+                    // Refresh tickets list
+                    const response = await getStudentIssueReports(user.id);
+                    setTickets(Array.isArray(response) ? response : []);
+                } catch (error) {
+                    setEmergencyStatus(error.message || 'Failed to dispatch technician.');
+                } finally {
+                    setTimeout(() => { setIsEmergencyLoading(false); setEmergencyStatus(''); }, 3000);
+                }
+            },
+            (error) => {
+                setEmergencyStatus('Failed to get location. Access denied or unavailable.');
+                setIsEmergencyLoading(false);
+                setTimeout(() => { setEmergencyStatus(''); }, 3000);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
+
+
     // Mock 2FA status
     const mfaEnabled = true;
     const userName = user?.name ? user.name.split(' ')[0] : 'Student';
@@ -122,15 +181,39 @@ export function UserDashboard() {
                         Stay on top of your campus activities and security.
                     </p>
                 </div>
-                <div className="z-10 flex gap-4">
-                    <Button 
-                        variant="secondary" 
-                        onClick={() => navigate(studentRoutes.newTicket)}
-                        className="bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white shadow-sm"
-                        leftIcon={<FiAlertCircle className="w-5 h-5" />}
-                    >
-                        Report Issue
-                    </Button>
+                <div className="z-10 flex flex-col gap-2 relative mt-4 md:mt-0">
+                    <div className="flex gap-4">
+                        <Button 
+                            variant="secondary" 
+                            onClick={handleEmergency}
+                            disabled={isEmergencyLoading}
+                            className="bg-red-500 hover:bg-red-600 border-none text-white shadow-lg shadow-red-500/40 relative overflow-hidden group"
+                            leftIcon={
+                                <div className="relative">
+                                    <span className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-75"></span>
+                                    <FiAlertTriangle className="relative w-5 h-5" />
+                                </div>
+                            }
+                        >
+                            <span className="relative z-10 font-bold">
+                                {isEmergencyLoading ? 'Dispatching...' : 'Emergency'}
+                            </span>
+                            <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+                        </Button>
+                        <Button 
+                            variant="secondary" 
+                            onClick={() => navigate(studentRoutes.newTicket)}
+                            className="bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white shadow-sm"
+                            leftIcon={<FiAlertCircle className="w-5 h-5" />}
+                        >
+                            Report Issue
+                        </Button>
+                    </div>
+                    {emergencyStatus && (
+                        <p className="text-white text-sm font-medium absolute -bottom-6 w-full whitespace-nowrap drop-shadow-sm flex items-center justify-center">
+                            {emergencyStatus}
+                        </p>
+                    )}
                 </div>
             </div>
 
