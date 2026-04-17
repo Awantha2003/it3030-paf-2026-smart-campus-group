@@ -51,3 +51,24 @@ export async function createFacilityBooking(bookingData) {
 
   return parseResponse(response, 'Failed to create facility booking.');
 }
+
+export async function updateFacilityBooking(id, bookingData) {
+  const response = await fetchFromApi(`/facility-bookings/${id}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(bookingData)
+  });
+
+  return parseResponse(response, 'Failed to update facility booking.');
+}
+
+export async function deleteFacilityBooking(id) {
+  const response = await fetchFromApi(`/facility-bookings/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(false)
+  });
+
+  if (!response.ok) {
+    await parseResponse(response, 'Failed to delete facility booking.');
+  }
+}

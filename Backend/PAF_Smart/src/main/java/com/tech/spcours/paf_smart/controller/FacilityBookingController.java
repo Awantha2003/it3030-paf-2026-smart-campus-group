@@ -4,8 +4,11 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -48,5 +51,25 @@ public class FacilityBookingController {
             org.springframework.security.core.Authentication auth) {
         User user = (User) auth.getPrincipal();
         return facilityBookingService.createBooking(request, user);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public FacilityBookingResponse updateBooking(
+            @PathVariable String id,
+            @Valid @RequestBody CreateFacilityBookingRequest request,
+            org.springframework.security.core.Authentication auth) {
+        User user = (User) auth.getPrincipal();
+        return facilityBookingService.updateBooking(id, request, user);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public void deleteBooking(
+            @PathVariable String id,
+            org.springframework.security.core.Authentication auth) {
+        User user = (User) auth.getPrincipal();
+        facilityBookingService.deleteBooking(id, user);
     }
 }

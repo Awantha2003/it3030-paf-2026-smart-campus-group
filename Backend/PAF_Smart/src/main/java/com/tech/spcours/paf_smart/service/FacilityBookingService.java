@@ -14,6 +14,7 @@ import com.tech.spcours.paf_smart.dto.CreateFacilityBookingRequest;
 import com.tech.spcours.paf_smart.dto.FacilityBookingResponse;
 import com.tech.spcours.paf_smart.dto.FacilityLectureHallResponse;
 import com.tech.spcours.paf_smart.exception.ResourceConflictException;
+import com.tech.spcours.paf_smart.exception.ResourceNotFoundException;
 import com.tech.spcours.paf_smart.model.FacilityBooking;
 import com.tech.spcours.paf_smart.module.user.model.User;
 import com.tech.spcours.paf_smart.repository.FacilityBookingRepository;
@@ -47,13 +48,7 @@ public class FacilityBookingService {
             throw new ResourceConflictException("Selected lecture hall is not supported");
         }
 
-        if (request.bookingDate().isBefore(LocalDate.now())) {
-            throw new ResourceConflictException("Booking date cannot be in the past");
-        }
-
-        if (request.bookingDate().isEqual(LocalDate.now()) && request.bookingTime().isBefore(LocalTime.now())) {
-            throw new ResourceConflictException("Booking time cannot be in the past");
-        }
+        validateBookingDateTime(request.bookingDate(), request.bookingTime());
 
         boolean hallOccupied = facilityBookingRepository.existsByLectureHallCodeAndBookingDateAndBookingTime(
                 hall.code(),
@@ -93,6 +88,54 @@ public class FacilityBookingService {
         return toBookingResponse(facilityBookingRepository.save(booking));
     }
 
+    public FacilityBookingResponse updateBooking(String bookingId, CreateFacilityBookingRequest request, User user) {
+        FacilityBooking existingBooking = findOwnedBooking(bookingId, user);
+        LectureHallDefinition hall = LECTURE_HALLS.get(request.lectureHallCode().trim().toUpperCase());
+        if (hall == null) {
+            throw new ResourceConflictException("Selected lecture hall is not supported");
+        }
+
+        validateBookingDateTime(request.bookingDate(), request.bookingTime());
+
+        boolean hallOccupiedByAnotherBooking =
+                facilityBookingRepository.existsByLectureHallCodeAndBookingDateAndBookingTimeAndIdNot(
+                        hall.code(),
+                        request.bookingDate(),
+                        request.bookingTime(),
+                        existingBooking.getId());
+        if (hallOccupiedByAnotherBooking) {
+            throw new ResourceConflictException("This lecture hall is already reserved for the selected slot");
+        }
+
+        boolean studentHasAnotherBookingAtSlot =
+                facilityBookingRepository.existsByStudentIdAndBookingDateAndBookingTimeAndIdNot(
+                        user.getId(),
+                        request.bookingDate(),
+                        request.bookingTime(),
+                        existingBooking.getId());
+        if (studentHasAnotherBookingAtSlot) {
+            throw new ResourceConflictException("You already have another facility booking at this time");
+        }
+
+        existingBooking.setFaculty(request.faculty().trim());
+        existingBooking.setBookingDate(request.bookingDate());
+        existingBooking.setBookingTime(request.bookingTime());
+        existingBooking.setStudentCount(request.studentCount());
+        existingBooking.setLectureHallCode(hall.code());
+        existingBooking.setBuilding(hall.building());
+        existingBooking.setBlock(hall.block());
+        existingBooking.setFloor(hall.floor());
+        existingBooking.setLectureHallName(hall.name());
+        existingBooking.setUpdatedAt(Instant.now());
+
+        return toBookingResponse(facilityBookingRepository.save(existingBooking));
+    }
+
+    public void deleteBooking(String bookingId, User user) {
+        FacilityBooking booking = findOwnedBooking(bookingId, user);
+        facilityBookingRepository.delete(booking);
+    }
+
     private FacilityLectureHallResponse toLectureHallResponse(LectureHallDefinition hall) {
         return FacilityLectureHallResponse.builder()
                 .code(hall.code())
@@ -123,6 +166,21 @@ public class FacilityBookingService {
                 .createdAt(booking.getCreatedAt())
                 .updatedAt(booking.getUpdatedAt())
                 .build();
+    }
+
+    private FacilityBooking findOwnedBooking(String bookingId, User user) {
+        return facilityBookingRepository.findByIdAndStudentId(bookingId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Facility booking not found for this student"));
+    }
+
+    private void validateBookingDateTime(LocalDate bookingDate, LocalTime bookingTime) {
+        if (bookingDate.isBefore(LocalDate.now())) {
+            throw new ResourceConflictException("Booking date cannot be in the past");
+        }
+
+        if (bookingDate.isEqual(LocalDate.now()) && bookingTime.isBefore(LocalTime.now())) {
+            throw new ResourceConflictException("Booking time cannot be in the past");
+        }
     }
 
     private static Map<String, LectureHallDefinition> buildLectureHallCatalog() {

@@ -2,15 +2,18 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowUpRight,
+  Pencil,
   Building2,
   CalendarDays,
   CheckCircle2,
   Dumbbell,
   Library,
   Loader2,
+  AlertTriangle,
   MapPin,
   Package,
   Sparkles,
+  Trash2,
   X
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
@@ -18,8 +21,10 @@ import { Button } from '../../components/ui/Button';
 import { getResourceTypes, getResources } from '../../api/resources';
 import {
   createFacilityBooking,
+  deleteFacilityBooking,
   getFacilityLectureHalls,
-  getMyFacilityBookings
+  getMyFacilityBookings,
+  updateFacilityBooking
 } from '../../api/facilityBookings';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -139,8 +144,11 @@ export function BookingResourcesPage() {
   const [loadingFacilityMeta, setLoadingFacilityMeta] = useState(false);
   const [submittingFacilityBooking, setSubmittingFacilityBooking] = useState(false);
   const [showFacilityForm, setShowFacilityForm] = useState(false);
+  const [editingFacilityBookingId, setEditingFacilityBookingId] = useState('');
+  const [deletingFacilityBookingId, setDeletingFacilityBookingId] = useState('');
   const [error, setError] = useState('');
   const [facilityMessage, setFacilityMessage] = useState('');
+  const [facilityConflictMessage, setFacilityConflictMessage] = useState('');
   const [lectureHalls, setLectureHalls] = useState([]);
   const [myFacilityBookings, setMyFacilityBookings] = useState([]);
 
@@ -243,6 +251,17 @@ export function BookingResourcesPage() {
       ? activeResourceType.featurePills
       : ['Live availability checks', 'Smart slot conflict detection', 'Instant confirmation + reminders'];
 
+  const suggestedAvailableSlots = useMemo(() => {
+    if (selectedType !== 'FACILITY') {
+      return [];
+    }
+
+    const bookedHallCodes = new Set(myFacilityBookings.map((booking) => booking.lectureHallCode));
+    return lectureHalls
+      .filter((hall) => !bookedHallCodes.has(hall.code))
+      .slice(0, 3);
+  }, [selectedType, lectureHalls, myFacilityBookings]);
+
   function updateFacilityField(field, value) {
     setFacilityForm((current) => ({
       ...current,
@@ -250,18 +269,56 @@ export function BookingResourcesPage() {
     }));
   }
 
+  function openNewFacilityBookingForm() {
+    setEditingFacilityBookingId('');
+    setFacilityForm((current) => ({
+      ...current,
+      bookingDate: '',
+      bookingTime: '',
+      studentCount: 1
+    }));
+    setShowFacilityForm(true);
+  }
+
+  function closeFacilityForm() {
+    setShowFacilityForm(false);
+    setEditingFacilityBookingId('');
+  }
+
+  function openEditFacilityBookingForm(booking) {
+    const normalizedTime = String(booking.bookingTime || '').slice(0, 5);
+    setEditingFacilityBookingId(booking.id);
+    setFacilityForm({
+      faculty: booking.faculty || FACULTY_OPTIONS[0],
+      bookingDate: booking.bookingDate || '',
+      bookingTime: normalizedTime,
+      studentCount: booking.studentCount || 1,
+      lectureHallCode: booking.lectureHallCode || ''
+    });
+    setShowFacilityForm(true);
+  }
+
   function handleResourceTypeClick(typeValue) {
     setSelectedType(typeValue);
     if (typeValue === 'FACILITY') {
-      setShowFacilityForm(true);
+      openNewFacilityBookingForm();
       return;
     }
     setShowFacilityForm(false);
   }
 
+  function isFacilityConflict(message) {
+    const normalizedMessage = (message || '').toLowerCase();
+    return (
+      normalizedMessage.includes('already reserved for the selected slot') ||
+      normalizedMessage.includes('another facility booking at this time')
+    );
+  }
+
   async function handleFacilitySubmit(event) {
     event.preventDefault();
     setFacilityMessage('');
+    setFacilityConflictMessage('');
     setError('');
 
     if (!facilityForm.bookingDate || !facilityForm.bookingTime || !facilityForm.lectureHallCode) {
@@ -271,15 +328,23 @@ export function BookingResourcesPage() {
 
     setSubmittingFacilityBooking(true);
     try {
-      await createFacilityBooking({
+      const payload = {
         faculty: facilityForm.faculty,
         bookingDate: facilityForm.bookingDate,
         bookingTime: facilityForm.bookingTime,
         studentCount: Number(facilityForm.studentCount),
         lectureHallCode: facilityForm.lectureHallCode
-      });
+      };
 
-      setFacilityMessage('Slot available and confirmed. It now appears in Live availability checks.');
+      if (editingFacilityBookingId) {
+        await updateFacilityBooking(editingFacilityBookingId, payload);
+        setFacilityMessage('Slot updated successfully. Live availability checks refreshed.');
+      } else {
+        await createFacilityBooking(payload);
+        setFacilityMessage('Slot available and confirmed. It now appears in Live availability checks.');
+      }
+
+      setEditingFacilityBookingId('');
       setFacilityForm((current) => ({
         ...current,
         bookingDate: '',
@@ -288,10 +353,35 @@ export function BookingResourcesPage() {
       }));
       await loadFacilityMeta();
     } catch (submitError) {
-      setError(submitError?.message?.trim() || 'Unable to submit facility booking request.');
+      const message = submitError?.message?.trim() || 'Unable to submit facility booking request.';
+      if (isFacilityConflict(message)) {
+        setFacilityConflictMessage(message);
+      } else {
+        setError(message);
+      }
     } finally {
-      setShowFacilityForm(false);
+      closeFacilityForm();
       setSubmittingFacilityBooking(false);
+    }
+  }
+
+  async function handleDeleteFacilityBooking(bookingId) {
+    setError('');
+    setFacilityMessage('');
+    setFacilityConflictMessage('');
+    setDeletingFacilityBookingId(bookingId);
+    try {
+      setMyFacilityBookings((current) => current.filter((booking) => booking.id !== bookingId));
+      await deleteFacilityBooking(bookingId);
+      if (editingFacilityBookingId === bookingId) {
+        setEditingFacilityBookingId('');
+      }
+      setFacilityMessage('Booking deleted and availability refreshed.');
+      await loadFacilityMeta();
+    } catch (deleteError) {
+      setError(deleteError?.message || 'Unable to delete booking.');
+    } finally {
+      setDeletingFacilityBookingId('');
     }
   }
 
@@ -401,7 +491,7 @@ export function BookingResourcesPage() {
             size="sm"
             onClick={() => {
               if (selectedType === 'FACILITY') {
-                setShowFacilityForm(true);
+                openNewFacilityBookingForm();
               }
             }}
             className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700"
@@ -413,13 +503,47 @@ export function BookingResourcesPage() {
         <CardContent className="grid gap-3 md:grid-cols-3">
           {selectedTypeFeatures.map((feature, index) => {
             const isLiveAvailabilityFeature = selectedType === 'FACILITY' && index === 0;
-            if (!isLiveAvailabilityFeature) {
+            const isConflictDetectionFeature = selectedType === 'FACILITY' && index === 1;
+            if (!isLiveAvailabilityFeature && !isConflictDetectionFeature) {
               return (
                 <div
                   key={feature}
                   className="rounded-2xl border border-slate-200/80 bg-slate-50/70 px-4 py-3 text-sm font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200"
                 >
                   {feature}
+                </div>
+              );
+            }
+
+            if (isConflictDetectionFeature) {
+              return (
+                <div
+                  key={feature}
+                  className={`rounded-2xl border px-4 py-3 ${
+                    facilityConflictMessage
+                      ? 'border-red-200 bg-red-50/70 dark:border-red-900/40 dark:bg-red-900/10'
+                      : 'border-slate-200/80 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/70'
+                  }`}
+                >
+                  <p
+                    className={`text-sm font-semibold ${
+                      facilityConflictMessage
+                        ? 'text-red-800 dark:text-red-300'
+                        : 'text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    {feature}
+                  </p>
+                  {facilityConflictMessage ? (
+                    <div className="mt-2 flex items-start gap-2 text-xs font-medium text-red-700 dark:text-red-300">
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span>{facilityConflictMessage}</span>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      No conflicts detected for your latest booking attempt.
+                    </p>
+                  )}
                 </div>
               );
             }
@@ -433,7 +557,7 @@ export function BookingResourcesPage() {
                   <p className="text-sm font-semibold text-cyan-900 dark:text-cyan-200">{feature}</p>
                   <button
                     type="button"
-                    onClick={() => setShowFacilityForm(true)}
+                    onClick={openNewFacilityBookingForm}
                     className="rounded-full border border-cyan-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-800 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-slate-800"
                   >
                     Book
@@ -448,6 +572,17 @@ export function BookingResourcesPage() {
 
                 {loadingFacilityMeta ? (
                   <p className="mt-2 text-xs text-cyan-700 dark:text-cyan-300">Loading availability...</p>
+                ) : myFacilityBookings.length === 0 && suggestedAvailableSlots.length > 0 ? (
+                  <div className="mt-2 space-y-1.5">
+                    {suggestedAvailableSlots.map((hall) => (
+                      <div
+                        key={hall.code}
+                        className="rounded-xl border border-cyan-200 bg-white/80 px-2.5 py-1.5 text-xs text-cyan-800 dark:border-cyan-900/50 dark:bg-slate-900/70 dark:text-cyan-300"
+                      >
+                        <span className="font-semibold">{hall.code}</span> | {hall.displayName}
+                      </div>
+                    ))}
+                  </div>
                 ) : myFacilityBookings.length === 0 ? (
                   <p className="mt-2 text-xs text-cyan-700 dark:text-cyan-300">
                     No active slot yet. Submit the facility form to see availability here.
@@ -457,9 +592,32 @@ export function BookingResourcesPage() {
                     {myFacilityBookings.slice(0, 3).map((booking) => (
                       <div
                         key={booking.id}
-                        className="rounded-xl border border-cyan-200 bg-white/80 px-2.5 py-1.5 text-xs text-cyan-800 dark:border-cyan-900/50 dark:bg-slate-900/70 dark:text-cyan-300"
+                        className="rounded-xl border border-cyan-200 bg-white/80 px-2.5 py-2 text-xs text-cyan-800 dark:border-cyan-900/50 dark:bg-slate-900/70 dark:text-cyan-300"
                       >
-                        <span className="font-semibold">{booking.lectureHallCode}</span> | {booking.bookingDate} {booking.bookingTime}
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="pr-2">
+                            <span className="font-semibold">{booking.lectureHallCode}</span> | {booking.bookingDate} {String(booking.bookingTime || '').slice(0, 5)}
+                          </p>
+                          <div className="flex shrink-0 gap-1">
+                            <button
+                              type="button"
+                              onClick={() => openEditFacilityBookingForm(booking)}
+                              className="rounded-md border border-cyan-300 p-1 text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-800 dark:text-cyan-300 dark:hover:bg-slate-800"
+                              aria-label="Update booking"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteFacilityBooking(booking.id)}
+                              disabled={deletingFacilityBookingId === booking.id}
+                              className="rounded-md border border-red-300 p-1 text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-900/20"
+                              aria-label="Delete booking"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -473,7 +631,7 @@ export function BookingResourcesPage() {
       {showFacilityForm && selectedType === 'FACILITY' && (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
-          onClick={() => setShowFacilityForm(false)}
+          onClick={closeFacilityForm}
         >
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -487,12 +645,12 @@ export function BookingResourcesPage() {
                   Facility
                 </p>
                 <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
-                  Quick Booking Form
+                  {editingFacilityBookingId ? 'Update Booking Slot' : 'Quick Booking Form'}
                 </h3>
               </div>
               <button
                 type="button"
-                onClick={() => setShowFacilityForm(false)}
+                onClick={closeFacilityForm}
                 className="rounded-full border border-slate-300 p-1.5 text-slate-500 transition hover:bg-white hover:text-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
               >
                 <X className="h-4 w-4" />
@@ -623,7 +781,7 @@ export function BookingResourcesPage() {
                     className="h-10 w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700"
                     leftIcon={<CheckCircle2 className="h-4 w-4" />}
                   >
-                    Check & Reserve Slot
+                    {editingFacilityBookingId ? 'Update Slot' : 'Check & Reserve Slot'}
                   </Button>
                 </form>
               )}
