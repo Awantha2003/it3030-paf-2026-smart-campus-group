@@ -117,6 +117,13 @@ export function TicketDetailPage() {
 
       const previews = await Promise.all(
         attachmentUrls.map(async (url) => {
+          if (/^https?:\/\//i.test(url) && !url.includes('/api/uploads/')) {
+            return {
+              sourceUrl: url,
+              previewUrl: url
+            };
+          }
+
           try {
             const response = await fetch(url, {
               headers: token ? { Authorization: `Bearer ${token}` } : {}

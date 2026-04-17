@@ -278,7 +278,9 @@ export function NewTicketPage() {
       if (selectedFile) {
         const uploadRes = await uploadFile(selectedFile);
         if (uploadRes?.url) {
-          attachmentUrls.push(`${SERVER_BASE_URL}${uploadRes.url}`);
+          const normalizedUrl =
+            /^https?:\/\//i.test(uploadRes.url) ? uploadRes.url : `${SERVER_BASE_URL}${uploadRes.url}`;
+          attachmentUrls.push(normalizedUrl);
         }
       }
 
