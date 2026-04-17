@@ -680,7 +680,7 @@ export function NewTicketPage() {
             <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-5">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Quick Landmarks</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                {CAMPUS_LANDMARKS.slice(0, 8).map((landmark) => (
+                {CAMPUS_LANDMARKS.map((landmark) => (
                   <button
                     key={landmark.id}
                     type="button"
