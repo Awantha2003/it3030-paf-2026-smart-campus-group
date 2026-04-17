@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { createIssueReport, uploadFile } from '../../api/issues';
+import { SERVER_BASE_URL } from '../../api/baseUrl';
 import { GoogleMap } from '@react-google-maps/api';
 import { CAMPUS_LANDMARKS, findCampusLandmarkById } from '../../data/campusMapData';
 import { buildRichLocationLabel, findNearestCoordinate, formatCoordinates } from '../../utils/location';
@@ -277,7 +278,7 @@ export function NewTicketPage() {
       if (selectedFile) {
         const uploadRes = await uploadFile(selectedFile);
         if (uploadRes?.url) {
-          attachmentUrls.push(`http://localhost:8080${uploadRes.url}`);
+          attachmentUrls.push(`${SERVER_BASE_URL}${uploadRes.url}`);
         }
       }
 
@@ -568,12 +569,24 @@ export function NewTicketPage() {
                 <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-gradient-to-br from-slate-50 to-sky-50 p-6 text-center transition hover:border-sky-400 hover:bg-sky-50/70">
                   <input
                     type="file"
-                    accept="image/png, image/jpeg, image/gif, image/svg+xml"
+                    accept="image/png"
                     className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
                     onChange={(e) => {
                       const files = e.target.files;
                       if (files?.length) {
                         const file = files[0];
+                        if (file.type !== 'image/png') {
+                          setSelectedFile(null);
+                          if (filePreview) {
+                            URL.revokeObjectURL(filePreview);
+                            setFilePreview('');
+                          }
+                          setErrorMessage('Only PNG attachments are supported.');
+                          e.target.value = '';
+                          return;
+                        }
+
+                        setErrorMessage('');
                         setSelectedFile(file);
                         if (filePreview) {
                           URL.revokeObjectURL(filePreview);
@@ -586,7 +599,7 @@ export function NewTicketPage() {
                     <>
                       <UploadCloudIcon className="mx-auto mb-2 h-10 w-10 text-sky-600" />
                       <p className="text-sm font-semibold text-slate-700">Drop image here or click to upload</p>
-                      <p className="mt-1 text-xs text-slate-500">PNG, JPG, GIF, SVG</p>
+                      <p className="mt-1 text-xs text-slate-500">PNG only</p>
                     </>
                   ) : (
                     <div className="flex flex-col items-center">

@@ -3,6 +3,7 @@ package com.tech.spcours.paf_smart.controller;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -35,9 +36,22 @@ public class FileUploadController {
     @PostMapping
     public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) {
         try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Please choose a PNG image to upload."));
+            }
+
+            String contentType = file.getContentType();
+            if (!MediaType.IMAGE_PNG_VALUE.equalsIgnoreCase(contentType)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Only PNG attachments are supported."));
+            }
+
             String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
-            String fileName = UUID.randomUUID().toString() + "_" + originalFileName;
-            
+            String sanitizedBaseName = originalFileName.replaceFirst("[.][^.]+$", "").replaceAll("[^a-zA-Z0-9-_]", "_");
+            if (sanitizedBaseName.isBlank()) {
+                sanitizedBaseName = "attachment";
+            }
+
+            String fileName = UUID.randomUUID() + "_" + sanitizedBaseName + ".png";
             Path targetLocation = this.fileStorageLocation.resolve(fileName);
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
@@ -56,7 +70,13 @@ public class FileUploadController {
             Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
             Resource resource = new UrlResource(filePath.toUri());
             if (resource.exists()) {
+                String contentType = Files.probeContentType(filePath);
+                MediaType mediaType = contentType != null
+                        ? MediaType.parseMediaType(contentType)
+                        : MediaType.APPLICATION_OCTET_STREAM;
+
                 return ResponseEntity.ok()
+                        .contentType(mediaType)
                         .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
                         .body(resource);
             } else {

@@ -33,6 +33,7 @@ export function TicketDetailPage() {
   const [assignedTechnician, setAssignedTechnician] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [attachmentPreviews, setAttachmentPreviews] = useState([]);
   const { currentCoordinates } = useTechnicianTracking();
 
   useEffect(() => {
@@ -100,6 +101,60 @@ export function TicketDetailPage() {
       ignore = true;
     };
   }, [ticket?.assignedTo, user?.role]);
+
+  useEffect(() => {
+    let ignore = false;
+    const createdUrls = [];
+
+    async function loadAttachmentPreviews() {
+      const attachmentUrls = ticket?.attachmentUrls || [];
+      if (attachmentUrls.length === 0) {
+        setAttachmentPreviews([]);
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+
+      const previews = await Promise.all(
+        attachmentUrls.map(async (url) => {
+          try {
+            const response = await fetch(url, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to load attachment');
+            }
+
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            createdUrls.push(objectUrl);
+
+            return {
+              sourceUrl: url,
+              previewUrl: objectUrl
+            };
+          } catch (error) {
+            return {
+              sourceUrl: url,
+              previewUrl: ''
+            };
+          }
+        })
+      );
+
+      if (!ignore) {
+        setAttachmentPreviews(previews);
+      }
+    }
+
+    loadAttachmentPreviews();
+
+    return () => {
+      ignore = true;
+      createdUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [ticket?.attachmentUrls]);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -257,17 +312,30 @@ export function TicketDetailPage() {
                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">
                   Attached Evidence
                 </p>
-                <div className="flex flex-wrap gap-3">
-                  {ticket.attachmentUrls?.length ? (
-                    ticket.attachmentUrls.map((url) => (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {attachmentPreviews.length > 0 ? (
+                    attachmentPreviews.map((attachment, index) => (
                       <a
-                        key={url}
-                        href={url}
+                        key={attachment.sourceUrl}
+                        href={attachment.previewUrl || attachment.sourceUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300"
+                        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-sky-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900"
                       >
-                        View attachment
+                        {attachment.previewUrl ? (
+                          <img
+                            src={attachment.previewUrl}
+                            alt={`Attachment ${index + 1}`}
+                            className="h-52 w-full bg-slate-100 object-contain dark:bg-slate-800"
+                          />
+                        ) : (
+                          <div className="flex h-52 w-full items-center justify-center bg-slate-100 text-sm font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            Unable to load image preview
+                          </div>
+                        )}
+                        <div className="border-t border-slate-100 px-4 py-3 text-sm font-medium text-sky-700 dark:border-slate-800 dark:text-sky-300">
+                          Open full image
+                        </div>
                       </a>
                     ))
                   ) : (
