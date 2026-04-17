@@ -39,6 +39,20 @@ function buildSelection(kind, payload) {
   return { kind, payload };
 }
 
+function getSelectionPosition(payload) {
+  if (!payload) {
+    return null;
+  }
+
+  return (
+    parseCoordinatesFromLocation(payload.location) ||
+    getTechnicianCoordinates(payload) ||
+    payload.position ||
+    payload.coordinates ||
+    null
+  );
+}
+
 export function CampusOperationsMap({
   tickets = [],
   technicians = [],
@@ -78,6 +92,7 @@ export function CampusOperationsMap({
     : [];
 
   const visibleLandmarks = showLandmarks ? landmarks : [];
+  const activeSelectionPosition = getSelectionPosition(activeSelection?.payload);
 
   const explicitFocus =
     parseCoordinatesFromLocation(selectedTicket?.location) ||
@@ -144,19 +159,22 @@ export function CampusOperationsMap({
   ]);
 
   useEffect(() => {
-    if (selectedTicket) {
+    if (selectedTicket && getSelectionPosition(selectedTicket)) {
       setActiveSelection(buildSelection('ticket', selectedTicket));
       return;
     }
 
-    if (selectedTechnician) {
+    if (selectedTechnician && getSelectionPosition(selectedTechnician)) {
       setActiveSelection(buildSelection('technician', selectedTechnician));
       return;
     }
 
-    if (selectedLandmark) {
+    if (selectedLandmark && getSelectionPosition(selectedLandmark)) {
       setActiveSelection(buildSelection('landmark', selectedLandmark));
+      return;
     }
+
+    setActiveSelection(null);
   }, [selectedLandmark, selectedTechnician, selectedTicket]);
 
   if (loadError) {
@@ -301,14 +319,9 @@ export function CampusOperationsMap({
               />
             ))}
 
-            {activeSelection && (
+            {activeSelection && activeSelectionPosition && (
               <InfoWindow
-                position={
-                  parseCoordinatesFromLocation(activeSelection.payload.location) ||
-                  getTechnicianCoordinates(activeSelection.payload) ||
-                  activeSelection.payload.position ||
-                  activeSelection.payload.coordinates
-                }
+                position={activeSelectionPosition}
                 onCloseClick={() => setActiveSelection(null)}
               >
                 <div className="max-w-[240px] space-y-2 pr-2 text-xs text-slate-700">

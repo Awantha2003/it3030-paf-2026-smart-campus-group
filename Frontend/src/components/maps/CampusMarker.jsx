@@ -16,7 +16,7 @@ export function CampusMarker({
 }) {
   const map = useGoogleMap();
   const markerRef = useRef(null);
-  const listenersRef = useRef([]);
+  const clickHandlerRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,7 +33,7 @@ export function CampusMarker({
       }
 
       const pin = new PinElement({
-        glyph: glyph || undefined,
+        glyphText: glyph || undefined,
         background,
         borderColor,
         glyphColor,
@@ -44,7 +44,7 @@ export function CampusMarker({
         map,
         position,
         title,
-        content: pin.element,
+        content: pin,
         gmpDraggable: draggable,
         zIndex
       });
@@ -52,11 +52,12 @@ export function CampusMarker({
       markerRef.current = marker;
 
       if (onClick) {
-        listenersRef.current.push(marker.addListener('click', onClick));
+        clickHandlerRef.current = () => onClick();
+        marker.addEventListener('gmp-click', clickHandlerRef.current);
       }
 
       if (onDragEnd) {
-        listenersRef.current.push(marker.addListener('dragend', onDragEnd));
+        marker.addListener('dragend', onDragEnd);
       }
     }
 
@@ -64,10 +65,12 @@ export function CampusMarker({
 
     return () => {
       cancelled = true;
-      listenersRef.current.forEach((listener) => listener.remove());
-      listenersRef.current = [];
 
       if (markerRef.current) {
+        if (clickHandlerRef.current) {
+          markerRef.current.removeEventListener('gmp-click', clickHandlerRef.current);
+          clickHandlerRef.current = null;
+        }
         markerRef.current.map = null;
         markerRef.current = null;
       }
