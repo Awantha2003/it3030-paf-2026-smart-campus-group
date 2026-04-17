@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiLayout, FiMap, FiTool, FiChevronLeft, FiSettings, FiShield, FiUsers } from 'react-icons/fi';
+import { FiLayout, FiMap, FiTool, FiChevronLeft, FiSettings, FiShield, FiUsers, FiCalendar } from 'react-icons/fi';
 import { FaGraduationCap, FaTicketAlt } from 'react-icons/fa';
 import { RiAdminFill } from 'react-icons/ri';
 import { MdEngineering } from 'react-icons/md';
 import { PiStudentFill } from 'react-icons/pi';
 
 import { useAuth } from '../../contexts/AuthContext';
+import { studentRoutes } from '../../utils/routes';
 
 export function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
@@ -45,9 +46,10 @@ export function Sidebar() {
     const currentRoleDesign = getRoleDesign(role);
 
     const mainNav = [
-        { name: 'Dashboard', path: '/Student/dashboard', icon: FiLayout },
-        { name: 'Tickets', path: '/Student/tickets/new', icon: FaTicketAlt },
-        { name: 'Campus Map', path: '/Student/campus-map', icon: FiMap }
+        { name: 'Dashboard', path: studentRoutes.dashboard, icon: FiLayout },
+        { name: 'Tickets', path: studentRoutes.newTicket, icon: FaTicketAlt },
+        { name: 'Booking Resources', path: studentRoutes.bookingResources, icon: FiCalendar },
+        { name: 'Campus Map', path: studentRoutes.campusMap, icon: FiMap }
     ];
 
     const adminNav = [

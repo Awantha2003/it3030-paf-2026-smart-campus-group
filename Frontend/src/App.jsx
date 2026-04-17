@@ -17,6 +17,7 @@ import { NewTicketPage } from './pages/tickets/NewTicketPage';
 import { TicketDetailPage } from './pages/tickets/TicketDetailPage';
 import { CampusMapPage } from './pages/maps/CampusMapPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
+import { BookingResourcesPage } from './pages/bookings/BookingResourcesPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 import { AuthProvider } from './contexts/AuthContext';
@@ -62,6 +63,7 @@ export const App = () => {
                 <Route path="tickets" element={<MyTicketsPage />} />
                 <Route path="tickets/new" element={<NewTicketPage />} />
                 <Route path="tickets/:id" element={<TicketDetailPage />} />
+                <Route path="booking-resources" element={<BookingResourcesPage />} />
                 <Route path="campus-map" element={<CampusMapPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>

@@ -13,6 +13,7 @@ export const studentRoutes = {
     tickets: '/Student/tickets',
     newTicket: '/Student/tickets/new',
     ticketDetail: (ticketId) => `/Student/tickets/${ticketId}`,
+    bookingResources: '/Student/booking-resources',
     campusMap: '/Student/campus-map',
     settings: '/Student/settings'
 };
