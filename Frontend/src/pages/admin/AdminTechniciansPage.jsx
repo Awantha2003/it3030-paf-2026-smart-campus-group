@@ -4,9 +4,12 @@ import { Mail, Phone, ShieldPlus, Trash2, UserRoundPlus, Wrench, ShieldAlert, Ch
 import { Button } from '../../components/ui/Button';
 import {
   fetchTechnicians,
+  fetchTechnicianUsers,
   createTechnician,
   updateTechnicianStatus,
-  deleteTechnician
+  updateTechnicianUserStatus,
+  deleteTechnician,
+  deleteTechnicianUser
 } from '../../api/technicians';
 
 const initialForm = {
@@ -32,13 +35,58 @@ export function AdminTechniciansPage() {
     loadTechnicians();
   }, []);
 
+  function normalizeTechnicianRosterEntry(technician, source) {
+    if (source === 'user') {
+      return {
+        id: technician.id,
+        fullName: technician.name || technician.fullName || technician.email,
+        email: technician.email || '',
+        phone: technician.phone || 'Not provided',
+        department: technician.department || 'Registered Technician Account',
+        specialization: technician.specialization || 'General Support',
+        active: Boolean(technician.enabled),
+        currentLatitude: technician.currentLatitude ?? null,
+        currentLongitude: technician.currentLongitude ?? null,
+        currentLocation: technician.currentLocation || '',
+        trackingUpdatedAt: technician.trackingUpdatedAt || null,
+        createdAt: technician.createdAt || technician.updatedAt || null,
+        updatedAt: technician.updatedAt || null,
+        source: 'user'
+      };
+    }
+
+    return {
+      ...technician,
+      phone: technician.phone || 'Not provided',
+      department: technician.department || 'Operations',
+      specialization: technician.specialization || 'General Support',
+      source: 'technician'
+    };
+  }
+
   async function loadTechnicians() {
     setLoading(true);
     setError('');
 
     try {
-      const data = await fetchTechnicians();
-      setTechnicians(data);
+      const [technicianMembers, technicianUsers] = await Promise.all([
+        fetchTechnicians(),
+        fetchTechnicianUsers()
+      ]);
+
+      const roster = [
+        ...technicianMembers.map((technician) => normalizeTechnicianRosterEntry(technician, 'technician')),
+        ...technicianUsers
+          .filter(
+            (user) =>
+              !technicianMembers.some(
+                (technician) => technician.email?.toLowerCase() === user.email?.toLowerCase()
+              )
+          )
+          .map((user) => normalizeTechnicianRosterEntry(user, 'user'))
+      ];
+
+      setTechnicians(roster);
     } catch (loadError) {
       setError(loadError.message);
     } finally {
@@ -62,7 +110,10 @@ export function AdminTechniciansPage() {
 
     try {
       const createdTechnician = await createTechnician(formData);
-      setTechnicians((current) => [createdTechnician, ...current]);
+      setTechnicians((current) => [
+        normalizeTechnicianRosterEntry(createdTechnician, 'technician'),
+        ...current
+      ]);
       setFormData(initialForm);
       setSuccess(
         createdTechnician.credentialsEmailSent
@@ -84,12 +135,31 @@ export function AdminTechniciansPage() {
     setSuccess('');
 
     try {
-      const updatedTechnician = await updateTechnicianStatus(technician.id, !technician.active);
-      setTechnicians((current) =>
-        current.map((item) => (item.id === technician.id ? updatedTechnician : item))
-      );
+      if (technician.source === 'user') {
+        await updateTechnicianUserStatus(technician.id, !technician.active);
+        setTechnicians((current) =>
+          current.map((item) =>
+            item.id === technician.id
+              ? {
+                  ...item,
+                  active: !technician.active
+                }
+              : item
+          )
+        );
+      } else {
+        const updatedTechnician = await updateTechnicianStatus(technician.id, !technician.active);
+        setTechnicians((current) =>
+          current.map((item) =>
+            item.id === technician.id
+              ? normalizeTechnicianRosterEntry(updatedTechnician, 'technician')
+              : item
+          )
+        );
+      }
+
       setSuccess(
-        `${technician.fullName} is now marked ${updatedTechnician.active ? 'ACTIVE' : 'INACTIVE'}.`
+        `${technician.fullName} is now marked ${!technician.active ? 'ACTIVE' : 'INACTIVE'}.`
       );
       setTimeout(() => setSuccess(''), 3000);
     } catch (actionError) {
@@ -111,7 +181,11 @@ export function AdminTechniciansPage() {
     setSuccess('');
 
     try {
-      await deleteTechnician(technician.id);
+      if (technician.source === 'user') {
+        await deleteTechnicianUser(technician.id);
+      } else {
+        await deleteTechnician(technician.id);
+      }
       setTechnicians((current) => current.filter((item) => item.id !== technician.id));
       setSuccess(`Account for ${technician.fullName} securely deleted.`);
       setTimeout(() => setSuccess(''), 3000);
@@ -125,10 +199,10 @@ export function AdminTechniciansPage() {
 
   const activeCount = technicians.filter((technician) => technician.active).length;
   
-  const filteredTechnicians = technicians.filter(tech => 
-    tech.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    tech.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tech.specialization.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTechnicians = technicians.filter((tech) =>
+    [tech.fullName, tech.department, tech.specialization, tech.email]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -335,9 +409,16 @@ export function AdminTechniciansPage() {
                         <p className="font-bold text-slate-900 dark:text-white text-base">
                           {technician.fullName}
                         </p>
-                        <p className="text-xs font-semibold text-blue-500 dark:text-blue-400 mt-0.5 tracking-wide uppercase">
-                          {technician.specialization}
-                        </p>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                          <p className="text-xs font-semibold text-blue-500 dark:text-blue-400 tracking-wide uppercase">
+                            {technician.specialization}
+                          </p>
+                          {technician.source === 'user' && (
+                            <span className="rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+                              Approved User
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -360,7 +441,9 @@ export function AdminTechniciansPage() {
                         {technician.phone}
                       </p>
                       <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
-                        Listed {new Date(technician.createdAt).toLocaleDateString()}
+                        {technician.createdAt
+                          ? `Listed ${new Date(technician.createdAt).toLocaleDateString()}`
+                          : 'Listed date unavailable'}
                       </p>
                     </div>
 

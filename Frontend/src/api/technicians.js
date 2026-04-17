@@ -37,6 +37,17 @@ export async function fetchTechnicians() {
   return parseResponse(response);
 }
 
+export async function fetchTechnicianUsers() {
+  const response = await fetch(`${API_BASE_URL}/admin/users`, {
+    headers: getAuthHeaders(false)
+  });
+
+  const payload = await parseResponse(response);
+  return Array.isArray(payload)
+    ? payload.filter((user) => user?.role === 'TECHNICIAN')
+    : [];
+}
+
 export async function createTechnician(technicianData) {
   const response = await fetch(`${API_BASE_URL}/admin/technicians`, {
     method: 'POST',
@@ -57,6 +68,16 @@ export async function updateTechnicianStatus(id, active) {
   return parseResponse(response);
 }
 
+export async function updateTechnicianUserStatus(id, enabled) {
+  const response = await fetch(`${API_BASE_URL}/admin/users/${id}/status`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ enabled })
+  });
+
+  return parseResponse(response);
+}
+
 export async function updateTechnicianLocation(id, locationData) {
   const response = await fetch(`${API_BASE_URL}/technicians/${id}/location`, {
     method: 'PATCH',
@@ -69,6 +90,17 @@ export async function updateTechnicianLocation(id, locationData) {
 
 export async function deleteTechnician(id) {
   const response = await fetch(`${API_BASE_URL}/admin/technicians/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(false)
+  });
+
+  if (!response.ok) {
+    await parseResponse(response);
+  }
+}
+
+export async function deleteTechnicianUser(id) {
+  const response = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
     method: 'DELETE',
     headers: getAuthHeaders(false)
   });
