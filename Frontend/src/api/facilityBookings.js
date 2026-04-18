@@ -34,8 +34,19 @@ export async function getFacilityLectureHalls() {
   return parseResponse(response, 'Failed to load lecture hall options.');
 }
 
-export async function getAvailableFacilitySpaces(date) {
-  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+export async function getAvailableFacilitySpaces(date, time, durationHours) {
+  const params = new URLSearchParams();
+  if (date) {
+    params.set('date', date);
+  }
+  if (time) {
+    params.set('time', time);
+  }
+  if (durationHours) {
+    params.set('durationHours', String(durationHours));
+  }
+
+  const query = params.toString() ? `?${params.toString()}` : '';
   const response = await fetchFromApi(`/facility-bookings/availability${query}`, {
     headers: getAuthHeaders(false)
   });

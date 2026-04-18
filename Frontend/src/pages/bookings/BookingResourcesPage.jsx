@@ -27,6 +27,13 @@ import {
   getMyFacilityBookings,
   updateFacilityBooking
 } from '../../api/facilityBookings';
+import {
+  createResourceBooking,
+  deleteResourceBooking,
+  getMyResourceBookings,
+  getResourceBookingsByDate,
+  updateResourceBooking
+} from '../../api/resourceBookings';
 import { useAuth } from '../../contexts/AuthContext';
 
 const FALLBACK_TYPES = [
@@ -74,6 +81,8 @@ const FACULTY_OPTIONS = [
   'Faculty of Science',
   'Faculty of Architecture'
 ];
+
+const FACILITY_BUILDING_FILTER_OPTIONS = ['Engineering', 'Computing', 'Business'];
 
 const CURATED_EQUIPMENT_RESOURCES = [
   {
@@ -194,8 +203,6 @@ const TYPE_ACCENT_MAP = {
   EVENT: 'from-rose-500/25 via-fuchsia-500/10 to-transparent ring-rose-400/40'
 };
 
-const GENERIC_BOOKING_STORAGE_KEY = 'smart-campus-generic-bookings-v1';
-
 const GENERIC_BOOKING_CONFIG = {
   EQUIPMENT: {
     bookingLabel: 'Equipment Request Form',
@@ -215,6 +222,10 @@ const GENERIC_BOOKING_CONFIG = {
     quantityLabel: 'Team Members',
     quantityMin: 1,
     quantityMax: 30,
+    supportsDurationHours: true,
+    durationLabel: 'Session Hours',
+    durationMin: 1,
+    durationMax: 6,
     purposeLabel: 'Session Plan',
     purposePlaceholder: 'Example: Inter-faculty basketball practice session.',
     defaultStatus: 'APPROVED'
@@ -224,6 +235,10 @@ const GENERIC_BOOKING_CONFIG = {
     quantityLabel: 'Seat Count',
     quantityMin: 1,
     quantityMax: 12,
+    supportsDurationHours: true,
+    durationLabel: 'Study Hours',
+    durationMin: 1,
+    durationMax: 8,
     purposeLabel: 'Study Purpose',
     purposePlaceholder: 'Example: Group study for end-semester exam revision.',
     defaultStatus: 'APPROVED'
@@ -233,6 +248,10 @@ const GENERIC_BOOKING_CONFIG = {
     quantityLabel: 'Expected Attendees',
     quantityMin: 1,
     quantityMax: 200,
+    supportsDurationHours: true,
+    durationLabel: 'Event Hours',
+    durationMin: 1,
+    durationMax: 12,
     purposeLabel: 'Event Details',
     purposePlaceholder: 'Example: Tech club workshop with guest speaker.',
     defaultStatus: 'PENDING_APPROVAL'
@@ -262,27 +281,6 @@ function getCurrentTimeIso() {
   return `${hours}:${minutes}`;
 }
 
-function loadGenericBookingsFromStorage() {
-  try {
-    const raw = localStorage.getItem(GENERIC_BOOKING_STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveGenericBookingsToStorage(bookings) {
-  try {
-    localStorage.setItem(GENERIC_BOOKING_STORAGE_KEY, JSON.stringify(bookings));
-  } catch {
-    // Ignore storage write issues so booking UI still works in-memory.
-  }
-}
-
 function timeToMinutes(timeValue) {
   const normalized = String(timeValue || '').slice(0, 5);
   const [hoursPart, minutesPart] = normalized.split(':');
@@ -299,6 +297,54 @@ function getReturnSlotLabel(pickupTime, durationHours) {
   const hours = String(Math.floor(normalizedMinutes / 60)).padStart(2, '0');
   const minutes = String(normalizedMinutes % 60).padStart(2, '0');
   return `${hours}:${minutes}${dayOffset > 0 ? ` (+${dayOffset}d)` : ''}`;
+}
+
+function isSlotOverlap(startA, durationA, startB, durationB) {
+  const startAMinutes = timeToMinutes(startA);
+  const endAMinutes = startAMinutes + Number(durationA || 1) * 60;
+  const startBMinutes = timeToMinutes(startB);
+  const endBMinutes = startBMinutes + Number(durationB || 1) * 60;
+  return startAMinutes < endBMinutes && startBMinutes < endAMinutes;
+}
+
+function isBlockingBookingStatus(status) {
+  const normalizedStatus = String(status || '').toUpperCase();
+  return normalizedStatus !== 'REJECTED' && normalizedStatus !== 'CANCELLED';
+}
+
+function getBookingResourceType(booking) {
+  return String(booking?.resourceType || booking?.type || '').toUpperCase();
+}
+
+function normalizeBuildingValue(value = '') {
+  return String(value || '').trim().toUpperCase();
+}
+
+function normalizeResourceKindValue(value = '') {
+  return String(value || '').trim().toUpperCase();
+}
+
+function formatResourceKindLabel(value = '') {
+  const normalized = normalizeResourceKindValue(value);
+  if (!normalized) {
+    return 'Unknown';
+  }
+  return normalized
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function classifyFacilitySpaceType(rawSpaceType = '', rawName = '', rawDisplayName = '') {
+  const normalizedSpaceType = String(rawSpaceType || '').trim().toUpperCase();
+  const normalizedName = String(rawName || '').trim().toUpperCase();
+  const normalizedDisplayName = String(rawDisplayName || '').trim().toUpperCase();
+  const combined = `${normalizedSpaceType} ${normalizedName} ${normalizedDisplayName}`;
+
+  if (combined.includes('LAB')) {
+    return 'LAB';
+  }
+  return 'LECTURE_HALL';
 }
 
 function getBookingApprovalMeta(status) {
@@ -346,15 +392,24 @@ export function BookingResourcesPage() {
   const [facilityConflictMessage, setFacilityConflictMessage] = useState('');
   const [genericConflictMessage, setGenericConflictMessage] = useState('');
   const [facilityCatalogDate, setFacilityCatalogDate] = useState(getTodayIsoDate);
+  const [facilityBuildingFilter, setFacilityBuildingFilter] = useState('ALL');
+  const [facilityTypeFilter, setFacilityTypeFilter] = useState('ALL');
+  const [genericCatalogDate, setGenericCatalogDate] = useState(getTodayIsoDate);
+  const [genericCatalogTime, setGenericCatalogTime] = useState(getCurrentTimeIso);
+  const [genericCatalogDurationHours, setGenericCatalogDurationHours] = useState(1);
+  const [genericBuildingFilter, setGenericBuildingFilter] = useState('ALL');
+  const [genericTypeFilter, setGenericTypeFilter] = useState('ALL');
   const [lectureHalls, setLectureHalls] = useState([]);
   const [myFacilityBookings, setMyFacilityBookings] = useState([]);
   const [availableFacilitySpaces, setAvailableFacilitySpaces] = useState([]);
-  const [genericBookings, setGenericBookings] = useState(loadGenericBookingsFromStorage);
+  const [genericBookings, setGenericBookings] = useState([]);
+  const [genericDayBookings, setGenericDayBookings] = useState([]);
 
   const [facilityForm, setFacilityForm] = useState({
     faculty: FACULTY_OPTIONS[0],
     bookingDate: '',
     bookingTime: '',
+    durationHours: 1,
     studentCount: 1,
     lectureHallCode: ''
   });
@@ -394,8 +449,11 @@ export function BookingResourcesPage() {
   }, [selectedType, facilityCatalogDate]);
 
   useEffect(() => {
-    saveGenericBookingsToStorage(genericBookings);
-  }, [genericBookings]);
+    if (!selectedType || selectedType === 'FACILITY') {
+      return;
+    }
+    loadGenericBookingsMeta(selectedType, genericCatalogDate);
+  }, [selectedType, genericCatalogDate]);
 
   async function loadTypes() {
     setLoadingTypes(true);
@@ -449,21 +507,39 @@ export function BookingResourcesPage() {
     try {
       if (type === 'EQUIPMENT') {
         const { getAllEquipments } = await import('../../api/equipments');
-        const dbEquipments = await getAllEquipments();
+        const { getAllFacilities } = await import('../../api/facilities');
+        const [dbEquipments, allFacilities] = await Promise.all([
+          getAllEquipments(),
+          getAllFacilities()
+        ]);
+        const facilitiesById = new Map((Array.isArray(allFacilities) ? allFacilities : []).map((item) => [item.id, item]));
         
-        const mapped = dbEquipments.map(item => ({
-          id: item.id,
-          name: item.name,
-          subtitle: item.description || 'Campus Resource',
-          location: 'Main Campus',
-          capacity: 1,
-          totalUnits: item.totalQuantity,
-          availableUnits: item.availableQuantity,
-          approvalRequired: item.approvalRequired,
-          bookingWindow: 'Up to 14 days',
-          tags: [item.status],
-          highlights: item.approvalRequired ? ['Approval required'] : ['Instant confirmation']
-        }));
+        const mapped = (Array.isArray(dbEquipments) ? dbEquipments : []).map((item) => {
+          const linkedFacility = facilitiesById.get(item.facilityId);
+          const building = linkedFacility?.building || '';
+          const block = linkedFacility?.block || '';
+          const floor = linkedFacility?.floor;
+          const locationParts = [building, block ? `Block ${block}` : '', Number.isFinite(floor) ? `Floor ${floor}` : '']
+            .filter(Boolean)
+            .join(' | ');
+
+          return {
+            id: item.id,
+            name: item.name,
+            subtitle: item.description || 'Campus Resource',
+            building,
+            spaceType: linkedFacility?.spaceType || 'EQUIPMENT',
+            resourceKind: 'EQUIPMENT',
+            location: locationParts || 'Main Campus',
+            capacity: 1,
+            totalUnits: item.totalQuantity,
+            availableUnits: item.availableQuantity,
+            approvalRequired: item.approvalRequired,
+            bookingWindow: 'Up to 14 days',
+            tags: [item.status],
+            highlights: item.approvalRequired ? ['Approval required'] : ['Instant confirmation']
+          };
+        });
         
         setResources(mapped);
       } else if (['SPORTS', 'LIBRARY', 'EVENT'].includes(type)) {
@@ -471,11 +547,14 @@ export function BookingResourcesPage() {
 
         const dbPlaces = await getFacilitiesByType(type);
         
-        const mapped = dbPlaces.map(item => ({
+        const mapped = (Array.isArray(dbPlaces) ? dbPlaces : []).map(item => ({
           id: item.id,
           name: item.name,
+          building: item.building || '',
+          spaceType: item.spaceType || type,
+          resourceKind: item.spaceType || type,
           subtitle: `${item.building} - Block ${item.block}`,
-          location: `Floor ${item.floor}`,
+          location: `${item.building} | Block ${item.block} | Floor ${item.floor}`,
           capacity: item.capacity,
           totalUnits: 1,
           availableUnits: 1,
@@ -488,7 +567,16 @@ export function BookingResourcesPage() {
         setResources(mapped);
       } else {
         const resourceData = await getResources(type);
-        setResources(Array.isArray(resourceData) ? resourceData : []);
+        setResources(
+          Array.isArray(resourceData)
+            ? resourceData.map((resource) => ({
+                ...resource,
+                building: resource.building || '',
+                spaceType: resource.spaceType || type,
+                resourceKind: resource.resourceKind || resource.spaceType || type
+              }))
+            : []
+        );
       }
     } catch (loadError) {
       if (loadError?.message === 'Failed to fetch') {
@@ -531,6 +619,23 @@ export function BookingResourcesPage() {
     }
   }
 
+  async function loadGenericBookingsMeta(type, date) {
+    try {
+      const [myBookings, dayBookings] = await Promise.all([
+        getMyResourceBookings(type),
+        getResourceBookingsByDate(type, date)
+      ]);
+      setGenericBookings(Array.isArray(myBookings) ? myBookings : []);
+      setGenericDayBookings(Array.isArray(dayBookings) ? dayBookings : []);
+    } catch (loadError) {
+      if (loadError?.message !== 'Failed to fetch') {
+        setError(loadError?.message || 'Unable to load resource booking slots.');
+      }
+      setGenericBookings([]);
+      setGenericDayBookings([]);
+    }
+  }
+
   const activeResourceType = useMemo(
     () => resourceTypes.find((type) => type.type === selectedType) ?? resourceTypes[0],
     [resourceTypes, selectedType]
@@ -543,56 +648,172 @@ export function BookingResourcesPage() {
 
   const isFacilityType = selectedType === 'FACILITY';
   const genericTypeConfig = GENERIC_BOOKING_CONFIG[selectedType];
+  const selectedGenericCatalogDurationHours =
+    genericTypeConfig?.supportsDurationHours
+      ? Number(genericCatalogDurationHours || genericTypeConfig.durationMin || 1)
+      : 1;
   const selectedGenericBookings = useMemo(
     () =>
       genericBookings.filter(
         (booking) =>
-          booking.type === selectedType &&
+          getBookingResourceType(booking) === selectedType &&
           (!user?.id || booking.studentId === user.id || !booking.studentId)
       ),
     [genericBookings, selectedType, user?.id]
   );
 
-  const equipmentActiveBookings = useMemo(() => {
-    const todayIso = getTodayIsoDate();
-    return genericBookings.filter((booking) => {
-      if (booking.type !== 'EQUIPMENT') {
-        return false;
-      }
-      const normalizedStatus = String(booking.status || '').toUpperCase();
-      if (normalizedStatus === 'REJECTED' || normalizedStatus === 'CANCELLED') {
-        return false;
-      }
-      return (booking.bookingDate || '') >= todayIso;
-    });
-  }, [genericBookings]);
+  const slotBlockingGenericBookings = useMemo(
+    () =>
+      genericDayBookings.filter(
+        (booking) =>
+          getBookingResourceType(booking) === selectedType &&
+          isBlockingBookingStatus(booking.status) &&
+          booking.bookingDate === genericCatalogDate
+      ),
+    [genericDayBookings, selectedType, genericCatalogDate]
+  );
 
-  const equipmentReservedUnitsByResourceId = useMemo(() => {
-    return equipmentActiveBookings.reduce((accumulator, booking) => {
-      const resourceId = booking.resourceId;
-      if (!resourceId) {
+  const genericAvailabilityByResourceId = useMemo(() => {
+    return resources.reduce((accumulator, resource) => {
+      const overlappingBookings = slotBlockingGenericBookings.filter(
+        (booking) =>
+          booking.resourceId === resource.id &&
+          isSlotOverlap(
+            booking.bookingTime,
+            Number(booking.durationHours || 1),
+            genericCatalogTime,
+            selectedGenericCatalogDurationHours
+          )
+      );
+
+      if (selectedType === 'EQUIPMENT') {
+        const totalReservedUnits = overlappingBookings.reduce(
+          (total, booking) => total + Number(booking.quantity || 0),
+          0
+        );
+        const baseAvailableUnits = Number(resource.availableUnits ?? resource.totalUnits ?? 0);
+        const remainingUnits = Math.max(0, baseAvailableUnits - totalReservedUnits);
+        accumulator[resource.id] = {
+          isAvailable: remainingUnits > 0,
+          remainingUnits,
+          overlapCount: overlappingBookings.length
+        };
         return accumulator;
       }
-      const requestedUnits = Number(booking.quantity || 0);
-      accumulator[resourceId] = (accumulator[resourceId] || 0) + requestedUnits;
+
+      accumulator[resource.id] = {
+        isAvailable: overlappingBookings.length === 0,
+        remainingUnits: Number(resource.availableUnits ?? resource.totalUnits ?? 1),
+        overlapCount: overlappingBookings.length
+      };
       return accumulator;
     }, {});
-  }, [equipmentActiveBookings]);
+  }, [
+    resources,
+    slotBlockingGenericBookings,
+    selectedType,
+    genericCatalogTime,
+    selectedGenericCatalogDurationHours
+  ]);
 
   const resolvedResources = useMemo(() => {
     if (selectedType !== 'EQUIPMENT') {
       return resources;
     }
 
-    return resources.map((resource) => {
-      const baseAvailableUnits = Number(resource.availableUnits ?? resource.totalUnits ?? 0);
-      const reservedUnits = Number(equipmentReservedUnitsByResourceId[resource.id] || 0);
-      return {
-        ...resource,
-        availableUnits: Math.max(0, baseAvailableUnits - reservedUnits)
-      };
+    return resources.map((resource) => ({
+      ...resource,
+      availableUnits: Number(genericAvailabilityByResourceId[resource.id]?.remainingUnits ?? 0)
+    }));
+  }, [selectedType, resources, genericAvailabilityByResourceId]);
+
+  const genericBuildingOptions = useMemo(() => {
+    if (selectedType === 'FACILITY') {
+      return [];
+    }
+    return FACILITY_BUILDING_FILTER_OPTIONS;
+  }, [selectedType]);
+
+  const genericResourceTypeOptions = useMemo(() => {
+    if (selectedType === 'FACILITY') {
+      return [];
+    }
+
+    const normalizedKinds = new Set(
+      resolvedResources
+        .map((resource) =>
+          normalizeResourceKindValue(resource.resourceKind || resource.spaceType || selectedType)
+        )
+        .filter(Boolean)
+    );
+
+    if (normalizedKinds.size === 0) {
+      normalizedKinds.add(normalizeResourceKindValue(selectedType));
+    }
+
+    return [...normalizedKinds].sort((a, b) => a.localeCompare(b));
+  }, [selectedType, resolvedResources]);
+
+  const filteredResolvedGenericResources = useMemo(() => {
+    if (selectedType === 'FACILITY') {
+      return [];
+    }
+
+    return resolvedResources.filter((resource) => {
+      const buildingMatches =
+        genericBuildingFilter === 'ALL' ||
+        normalizeBuildingValue(resource.building) === normalizeBuildingValue(genericBuildingFilter);
+      const typeMatches =
+        genericTypeFilter === 'ALL' ||
+        normalizeResourceKindValue(resource.resourceKind || resource.spaceType || selectedType) ===
+          normalizeResourceKindValue(genericTypeFilter);
+      return buildingMatches && typeMatches;
     });
-  }, [selectedType, resources, equipmentReservedUnitsByResourceId]);
+  }, [selectedType, resolvedResources, genericBuildingFilter, genericTypeFilter]);
+
+  const filteredAvailableGenericResources = useMemo(
+    () =>
+      filteredResolvedGenericResources.filter(
+        (resource) => genericAvailabilityByResourceId[resource.id]?.isAvailable ?? true
+      ),
+    [filteredResolvedGenericResources, genericAvailabilityByResourceId]
+  );
+
+  const filteredConflictingGenericResources = useMemo(
+    () =>
+      filteredResolvedGenericResources.filter(
+        (resource) => !(genericAvailabilityByResourceId[resource.id]?.isAvailable ?? true)
+      ),
+    [filteredResolvedGenericResources, genericAvailabilityByResourceId]
+  );
+
+  const selectableGenericResources = useMemo(() => {
+    if (editingGenericBookingId) {
+      return resolvedResources;
+    }
+    return filteredAvailableGenericResources;
+  }, [editingGenericBookingId, resolvedResources, filteredAvailableGenericResources]);
+
+  const genericSlotConflictSummary = useMemo(() => {
+    if (isFacilityType) {
+      return '';
+    }
+    if (genericConflictMessage) {
+      return genericConflictMessage;
+    }
+    if (filteredConflictingGenericResources.length === 0) {
+      return '';
+    }
+    return `${filteredConflictingGenericResources.length} resource(s) are already booked for ${genericCatalogDate} at ${String(
+      genericCatalogTime || ''
+    ).slice(0, 5)}.`;
+  }, [
+    isFacilityType,
+    genericConflictMessage,
+    filteredConflictingGenericResources,
+    genericCatalogDate,
+    genericCatalogTime
+  ]);
 
   const nextGenericBooking = useMemo(() => {
     if (!genericTypeConfig || selectedGenericBookings.length === 0) {
@@ -647,14 +868,46 @@ export function BookingResourcesPage() {
       }));
   }, [selectedType, selectedGenericBookings]);
 
-  const suggestedAvailableSlots = useMemo(() => {
+  const facilityBuildingOptions = useMemo(() => {
+    if (selectedType !== 'FACILITY') {
+      return [];
+    }
+    return FACILITY_BUILDING_FILTER_OPTIONS;
+  }, [selectedType]);
+
+  const filteredFacilitySpaces = useMemo(() => {
     if (selectedType !== 'FACILITY') {
       return [];
     }
 
-    const bookedHallCodes = new Set(myFacilityBookings.map((booking) => booking.lectureHallCode));
-    return lectureHalls.filter((hall) => !bookedHallCodes.has(hall.code));
-  }, [selectedType, lectureHalls, myFacilityBookings]);
+    const allowedBuildings = new Set(FACILITY_BUILDING_FILTER_OPTIONS.map(normalizeBuildingValue));
+
+    return availableFacilitySpaces.filter((space) => {
+      const normalizedBuilding = normalizeBuildingValue(space.building);
+      if (!allowedBuildings.has(normalizedBuilding)) {
+        return false;
+      }
+
+      const buildingMatches =
+        facilityBuildingFilter === 'ALL' ||
+        normalizeBuildingValue(space.building) === normalizeBuildingValue(facilityBuildingFilter);
+      const type = classifyFacilitySpaceType(space.spaceType, space.name, space.displayName);
+      const typeMatches = facilityTypeFilter === 'ALL' || type === facilityTypeFilter;
+      return buildingMatches && typeMatches;
+    });
+  }, [
+    selectedType,
+    availableFacilitySpaces,
+    facilityBuildingFilter,
+    facilityTypeFilter
+  ]);
+
+  const suggestedAvailableSlots = useMemo(() => {
+    if (selectedType !== 'FACILITY') {
+      return [];
+    }
+    return filteredFacilitySpaces;
+  }, [selectedType, filteredFacilitySpaces]);
 
   const nextFacilityBooking = useMemo(() => {
     if (selectedType !== 'FACILITY' || myFacilityBookings.length === 0) {
@@ -685,6 +938,7 @@ export function BookingResourcesPage() {
       ...current,
       bookingDate: facilityCatalogDate,
       bookingTime: '',
+      durationHours: 1,
       studentCount: 1,
       lectureHallCode: preselectedSpaceCode || current.lectureHallCode || lectureHalls[0]?.code || ''
     }));
@@ -705,11 +959,11 @@ export function BookingResourcesPage() {
     setEditingGenericBookingId('');
     setGenericConflictMessage('');
     setGenericForm({
-      resourceId: preselectedResourceId || resolvedResources[0]?.id || '',
-      bookingDate: getTodayIsoDate(),
-      bookingTime: '',
+      resourceId: preselectedResourceId || filteredAvailableGenericResources[0]?.id || '',
+      bookingDate: genericCatalogDate,
+      bookingTime: genericCatalogTime,
       quantity: genericTypeConfig.quantityMin,
-      durationHours: genericTypeConfig.durationMin || 1,
+      durationHours: selectedGenericCatalogDurationHours,
       purpose: ''
     });
     setShowGenericForm(true);
@@ -727,6 +981,7 @@ export function BookingResourcesPage() {
       faculty: booking.faculty || FACULTY_OPTIONS[0],
       bookingDate: booking.bookingDate || '',
       bookingTime: normalizedTime,
+      durationHours: Number(booking.durationHours || 1),
       studentCount: booking.studentCount || 1,
       lectureHallCode: booking.lectureHallCode || ''
     });
@@ -755,6 +1010,8 @@ export function BookingResourcesPage() {
     setSelectedType(typeValue);
     setFacilityConflictMessage('');
     setGenericConflictMessage('');
+    setGenericBuildingFilter('ALL');
+    setGenericTypeFilter('ALL');
     if (typeValue === 'FACILITY') {
       closeGenericForm();
       closeFacilityForm();
@@ -769,6 +1026,15 @@ export function BookingResourcesPage() {
     return (
       normalizedMessage.includes('already reserved for the selected slot') ||
       normalizedMessage.includes('another facility booking at this time')
+    );
+  }
+
+  function isGenericConflict(message) {
+    const normalizedMessage = (message || '').toLowerCase();
+    return (
+      normalizedMessage.includes('already reserved for the selected slot') ||
+      normalizedMessage.includes('available for the selected slot') ||
+      normalizedMessage.includes('resource does not belong')
     );
   }
 
@@ -789,6 +1055,11 @@ export function BookingResourcesPage() {
     const studentCount = Number(facilityForm.studentCount);
     if (!Number.isInteger(studentCount) || studentCount < 1 || studentCount > 60) {
       return 'Student count must be between 1 and 60.';
+    }
+
+    const durationHours = Number(facilityForm.durationHours);
+    if (!Number.isInteger(durationHours) || durationHours < 1 || durationHours > 12) {
+      return 'Duration must be between 1 and 12 hours.';
     }
 
     return '';
@@ -812,6 +1083,7 @@ export function BookingResourcesPage() {
         bookingDate: facilityForm.bookingDate,
         bookingTime: facilityForm.bookingTime,
         studentCount: Number(facilityForm.studentCount),
+        durationHours: Number(facilityForm.durationHours),
         lectureHallCode: facilityForm.lectureHallCode
       };
 
@@ -824,8 +1096,9 @@ export function BookingResourcesPage() {
       setEditingFacilityBookingId('');
       setFacilityForm((current) => ({
         ...current,
-        bookingDate: '',
+        bookingDate: facilityCatalogDate,
         bookingTime: '',
+        durationHours: 1,
         studentCount: 1
       }));
       await loadFacilityMeta();
@@ -863,34 +1136,41 @@ export function BookingResourcesPage() {
       return `${genericTypeConfig.quantityLabel} must be between ${genericTypeConfig.quantityMin} and ${genericTypeConfig.quantityMax}.`;
     }
 
+    const durationHours = Number(genericForm.durationHours || 1);
+    if (
+      !Number.isInteger(durationHours) ||
+      durationHours < (genericTypeConfig.durationMin || 1) ||
+      durationHours > (genericTypeConfig.durationMax || 12)
+    ) {
+      return `${genericTypeConfig.durationLabel || 'Required Hours'} must be between ${
+        genericTypeConfig.durationMin || 1
+      } and ${genericTypeConfig.durationMax || 12}.`;
+    }
+
+    const bookingsForValidationDate =
+      genericForm.bookingDate === genericCatalogDate ? slotBlockingGenericBookings : [];
+
+    const resourceDayBookings = bookingsForValidationDate.filter(
+      (booking) =>
+        booking.resourceId === genericForm.resourceId &&
+        booking.id !== editingGenericBookingId &&
+        isSlotOverlap(booking.bookingTime, Number(booking.durationHours || 1), genericForm.bookingTime, durationHours)
+    );
+
     if (selectedType === 'EQUIPMENT') {
       const selectedResource = resources.find((resource) => resource.id === genericForm.resourceId);
       const baseAvailableUnits = Number(selectedResource?.availableUnits ?? selectedResource?.totalUnits ?? 0);
-      const reservedUnitsByOtherBookings = equipmentActiveBookings
-        .filter(
-          (booking) =>
-            booking.resourceId === genericForm.resourceId &&
-            booking.id !== editingGenericBookingId
-        )
-        .reduce((total, booking) => total + Number(booking.quantity || 0), 0);
+      const reservedUnitsByOtherBookings = resourceDayBookings.reduce(
+        (total, booking) => total + Number(booking.quantity || 0),
+        0
+      );
       const currentlyAvailableUnits = Math.max(0, baseAvailableUnits - reservedUnitsByOtherBookings);
 
       if (quantity > currentlyAvailableUnits) {
         return `Only ${currentlyAvailableUnits} unit(s) are currently available for this equipment.`;
       }
-    }
-
-    if (genericTypeConfig.supportsDurationHours) {
-      const durationHours = Number(genericForm.durationHours);
-      if (
-        !Number.isInteger(durationHours) ||
-        durationHours < (genericTypeConfig.durationMin || 1) ||
-        durationHours > (genericTypeConfig.durationMax || 12)
-      ) {
-        return `${genericTypeConfig.durationLabel || 'Required Hours'} must be between ${
-          genericTypeConfig.durationMin || 1
-        } and ${genericTypeConfig.durationMax || 12}.`;
-      }
+    } else if (resourceDayBookings.length > 0) {
+      return 'This resource is already reserved for the selected slot.';
     }
 
     if (!genericForm.purpose || genericForm.purpose.trim().length < 8) {
@@ -911,66 +1191,34 @@ export function BookingResourcesPage() {
       return;
     }
 
-    const nowIso = new Date().toISOString();
-    const selectedResource = resolvedResources.find((resource) => resource.id === genericForm.resourceId);
-    const requestedStartMinutes = timeToMinutes(genericForm.bookingTime);
-    const requestedDurationHours = genericTypeConfig.supportsDurationHours
-      ? Number(genericForm.durationHours || 1)
-      : 1;
-    const requestedEndMinutes = requestedStartMinutes + requestedDurationHours * 60;
-    const overlappingBookings = selectedType === 'EQUIPMENT'
-      ? []
-      : genericBookings.filter(
-          (booking) =>
-            booking.type === selectedType &&
-            booking.resourceId === genericForm.resourceId &&
-            booking.bookingDate === genericForm.bookingDate &&
-            booking.id !== editingGenericBookingId &&
-            (() => {
-              if (!genericTypeConfig.supportsDurationHours) {
-                return booking.bookingTime === genericForm.bookingTime;
-              }
-
-              const existingStartMinutes = timeToMinutes(booking.bookingTime);
-              const existingDurationHours = Number(booking.durationHours || 1);
-              const existingEndMinutes = existingStartMinutes + existingDurationHours * 60;
-              return requestedStartMinutes < existingEndMinutes && existingStartMinutes < requestedEndMinutes;
-            })()
-        );
-
-    if (overlappingBookings.length > 0) {
-      setGenericConflictMessage('This resource is already reserved for the selected slot.');
-      closeGenericForm();
-      return;
-    }
-
     setSubmittingGenericBooking(true);
     try {
-      setGenericBookings((current) => {
-        const nextBookings = current.filter((booking) => booking.id !== editingGenericBookingId);
-        const baseBooking = current.find((booking) => booking.id === editingGenericBookingId);
+      const payload = {
+        resourceType: selectedType,
+        resourceId: genericForm.resourceId,
+        bookingDate: genericForm.bookingDate,
+        bookingTime: genericForm.bookingTime,
+        quantity: Number(genericForm.quantity),
+        durationHours: Number(genericForm.durationHours || 1),
+        purpose: genericForm.purpose.trim()
+      };
 
-        nextBookings.push({
-          id: editingGenericBookingId || `${selectedType}-${Date.now()}`,
-          type: selectedType,
-          studentId: user?.id || 'anonymous',
-          resourceId: genericForm.resourceId,
-          resourceName: selectedResource?.name || 'Resource',
-          bookingDate: genericForm.bookingDate,
-          bookingTime: genericForm.bookingTime,
-          quantity: Number(genericForm.quantity),
-          durationHours: genericTypeConfig.supportsDurationHours
-            ? Number(genericForm.durationHours)
-            : undefined,
-          purpose: genericForm.purpose.trim(),
-          status: baseBooking?.status || genericTypeConfig.defaultStatus,
-          createdAt: baseBooking?.createdAt || nowIso,
-          updatedAt: nowIso
-        });
-        return nextBookings;
-      });
-      closeGenericForm();
+      if (editingGenericBookingId) {
+        await updateResourceBooking(editingGenericBookingId, payload);
+      } else {
+        await createResourceBooking(payload);
+      }
+
       setEditingGenericBookingId('');
+      closeGenericForm();
+      await loadGenericBookingsMeta(selectedType, genericCatalogDate);
+    } catch (submitError) {
+      const message = submitError?.message?.trim() || 'Unable to submit booking request.';
+      if (isGenericConflict(message)) {
+        setGenericConflictMessage(message);
+      } else {
+        setError(message);
+      }
     } finally {
       setSubmittingGenericBooking(false);
     }
@@ -994,13 +1242,20 @@ export function BookingResourcesPage() {
     }
   }
 
-  function handleDeleteGenericBooking(bookingId) {
+  async function handleDeleteGenericBooking(bookingId) {
+    setError('');
     setDeletingGenericBookingId(bookingId);
-    setGenericBookings((current) => current.filter((booking) => booking.id !== bookingId));
-    if (editingGenericBookingId === bookingId) {
-      closeGenericForm();
+    try {
+      await deleteResourceBooking(bookingId);
+      if (editingGenericBookingId === bookingId) {
+        closeGenericForm();
+      }
+      await loadGenericBookingsMeta(selectedType, genericCatalogDate);
+    } catch (deleteError) {
+      setError(deleteError?.message || 'Unable to delete booking.');
+    } finally {
+      setDeletingGenericBookingId('');
     }
-    setTimeout(() => setDeletingGenericBookingId(''), 120);
   }
 
   return (
@@ -1116,6 +1371,7 @@ export function BookingResourcesPage() {
                 openGenericBookingForm();
               }
             }}
+            disabled={!isFacilityType && Boolean(genericTypeConfig) && filteredAvailableGenericResources.length === 0}
             className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700"
             rightIcon={<ArrowUpRight className="h-4 w-4" />}
           >
@@ -1165,17 +1421,17 @@ export function BookingResourcesPage() {
                       </div>
                     )}
 
-                    {genericConflictMessage && (
+                    {genericSlotConflictSummary && (
                       <div className="mt-2 flex items-start gap-2 text-xs font-medium text-red-700 dark:text-red-300">
                         <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                        <span>{genericConflictMessage}</span>
+                        <span>{genericSlotConflictSummary}</span>
                       </div>
                     )}
                   </div>
                 );
               }
 
-              const conflictMessage = isFacilityType ? facilityConflictMessage : genericConflictMessage;
+              const conflictMessage = isFacilityType ? facilityConflictMessage : genericSlotConflictSummary;
               return (
                 <div
                   key={feature}
@@ -1316,7 +1572,7 @@ export function BookingResourcesPage() {
 
                   {selectedGenericBookings.length === 0 ? (
                     <p className="mt-2 text-xs text-cyan-700 dark:text-cyan-300">
-                      No active slot yet. {resolvedResources.length > 0 ? `${resolvedResources.length} resources ready for booking.` : 'Resources will appear here.'}
+                      No active slot yet. {filteredAvailableGenericResources.length > 0 ? `${filteredAvailableGenericResources.length} resources ready for booking.` : 'Resources will appear here.'}
                     </p>
                   ) : (
                     <div className="mt-2 space-y-1.5">
@@ -1427,7 +1683,8 @@ export function BookingResourcesPage() {
                         })()}
                         <div className="flex items-start justify-between gap-2">
                           <p className="pr-2">
-                            <span className="font-semibold">{booking.lectureHallCode}</span> | {booking.bookingDate} {String(booking.bookingTime || '').slice(0, 5)}
+                            <span className="font-semibold">{booking.lectureHallCode}</span> | {booking.bookingDate}{' '}
+                            {String(booking.bookingTime || '').slice(0, 5)} | {Number(booking.durationHours || 1)} hour(s)
                           </p>
                           <div className="flex shrink-0 gap-1">
                             <button
@@ -1520,7 +1777,7 @@ export function BookingResourcesPage() {
                     </label>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-3">
                     <label className="block">
                       <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                         Date
@@ -1552,6 +1809,24 @@ export function BookingResourcesPage() {
                         type="time"
                         value={facilityForm.bookingTime}
                         onChange={(event) => updateFacilityField('bookingTime', event.target.value)}
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                        required
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                        Duration (hours)
+                      </span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={facilityForm.durationHours}
+                        onChange={(event) => {
+                          const parsed = parseInt(event.target.value || '1', 10);
+                          const safeValue = Number.isFinite(parsed) ? parsed : 1;
+                          updateFacilityField('durationHours', Math.max(1, Math.min(12, safeValue)));
+                        }}
                         className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                         required
                       />
@@ -1677,7 +1952,7 @@ export function BookingResourcesPage() {
                       className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                       required
                     >
-                      {resolvedResources.map((resource) => (
+                      {selectableGenericResources.map((resource) => (
                         <option key={resource.id} value={resource.id}>
                           {resource.name}
                           {resource.subtitle ? ` - ${resource.subtitle}` : ''}
@@ -1790,7 +2065,7 @@ export function BookingResourcesPage() {
                   <Button
                     type="submit"
                     isLoading={submittingGenericBooking}
-                    disabled={!genericForm.resourceId || resolvedResources.length === 0}
+                    disabled={!genericForm.resourceId || selectableGenericResources.length === 0}
                     className="h-10 w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700"
                     leftIcon={<CheckCircle2 className="h-4 w-4" />}
                   >
@@ -1808,16 +2083,118 @@ export function BookingResourcesPage() {
           <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
             {activeResourceType?.title || 'Resource'} Catalog
           </h3>
-          {selectedType === 'FACILITY' && (
-            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
-              Date
-              <input
-                type="date"
-                value={facilityCatalogDate}
-                onChange={(event) => setFacilityCatalogDate(event.target.value || getTodayIsoDate())}
-                className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-              />
-            </label>
+          {selectedType === 'FACILITY' ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                Date
+                <input
+                  type="date"
+                  value={facilityCatalogDate}
+                  min={getTodayIsoDate()}
+                  onChange={(event) => setFacilityCatalogDate(event.target.value || getTodayIsoDate())}
+                  className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                Building
+                <select
+                  value={facilityBuildingFilter}
+                  onChange={(event) => setFacilityBuildingFilter(event.target.value)}
+                  className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <option value="ALL">All Buildings</option>
+                  {facilityBuildingOptions.map((building) => (
+                    <option key={building} value={building}>
+                      {building}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                Type
+                <select
+                  value={facilityTypeFilter}
+                  onChange={(event) => setFacilityTypeFilter(event.target.value)}
+                  className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <option value="ALL">All</option>
+                  <option value="LECTURE_HALL">Lecture Hall</option>
+                  <option value="LAB">Lab</option>
+                </select>
+              </label>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                Date
+                <input
+                  type="date"
+                  value={genericCatalogDate}
+                  min={getTodayIsoDate()}
+                  onChange={(event) => setGenericCatalogDate(event.target.value || getTodayIsoDate())}
+                  className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                Time
+                <input
+                  type="time"
+                  value={genericCatalogTime}
+                  onChange={(event) => setGenericCatalogTime(event.target.value || getCurrentTimeIso())}
+                  className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                Duration
+                <input
+                  type="number"
+                  min={genericTypeConfig?.durationMin || 1}
+                  max={genericTypeConfig?.durationMax || 12}
+                  value={genericCatalogDurationHours}
+                  onChange={(event) => {
+                    const parsed = parseInt(event.target.value || '1', 10);
+                    const safeValue = Number.isFinite(parsed) ? parsed : genericTypeConfig?.durationMin || 1;
+                    setGenericCatalogDurationHours(
+                      Math.max(
+                        genericTypeConfig?.durationMin || 1,
+                        Math.min(genericTypeConfig?.durationMax || 12, safeValue)
+                      )
+                    );
+                  }}
+                  className="h-9 w-20 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                Building
+                <select
+                  value={genericBuildingFilter}
+                  onChange={(event) => setGenericBuildingFilter(event.target.value)}
+                  className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <option value="ALL">All Buildings</option>
+                  {genericBuildingOptions.map((building) => (
+                    <option key={building} value={building}>
+                      {building}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                Type
+                <select
+                  value={genericTypeFilter}
+                  onChange={(event) => setGenericTypeFilter(event.target.value)}
+                  className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <option value="ALL">All</option>
+                  {genericResourceTypeOptions.map((resourceTypeValue) => (
+                    <option key={resourceTypeValue} value={resourceTypeValue}>
+                      {formatResourceKindLabel(resourceTypeValue)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           )}
         </div>
 
@@ -1829,22 +2206,19 @@ export function BookingResourcesPage() {
                 Loading facility catalog...
               </CardContent>
             </Card>
-          ) : availableFacilitySpaces.length === 0 ? (
+          ) : filteredFacilitySpaces.length === 0 ? (
             <Card className="border border-slate-200/70 dark:border-slate-800">
               <CardContent className="py-10 text-center text-sm text-slate-500 dark:text-slate-300">
-                All facility spaces are reserved for {facilityCatalogDate}. Try another date.
+                No matching facility spaces for {facilityCatalogDate}. Try another date or filter.
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-              {availableFacilitySpaces.map((space) => {
-                const normalizedSpaceType = String(space.spaceType || 'FACILITY').toUpperCase();
-                const typeLabel = normalizedSpaceType === 'FACILITY'
-                  ? 'Facility'
-                  : normalizedSpaceType
-                      .toLowerCase()
-                      .replace(/_/g, ' ')
-                      .replace(/\b\w/g, (char) => char.toUpperCase());
+              {filteredFacilitySpaces.map((space) => {
+                const typeLabel =
+                  classifyFacilitySpaceType(space.spaceType, space.name, space.displayName) === 'LAB'
+                    ? 'Lab'
+                    : 'Lecture Hall';
                 return (
                   <Card
                     key={space.code}
@@ -1900,15 +2274,19 @@ export function BookingResourcesPage() {
               Loading resources...
             </CardContent>
           </Card>
-        ) : resolvedResources.length === 0 ? (
+        ) : filteredAvailableGenericResources.length === 0 ? (
           <Card className="border border-slate-200/70 dark:border-slate-800">
             <CardContent className="py-10 text-center text-sm text-slate-500 dark:text-slate-300">
-              No resources available for this category yet.
+              {resolvedResources.length === 0
+                ? 'No resources available for this category yet.'
+                : filteredResolvedGenericResources.length === 0
+                  ? 'No resources match the selected building/type filters.'
+                  : `All resources are reserved for ${genericCatalogDate} at ${String(genericCatalogTime || '').slice(0, 5)}. Check another slot.`}
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-            {resolvedResources.map((resource) => {
+            {filteredAvailableGenericResources.map((resource) => {
               const utilization = resource.totalUnits > 0
                 ? Math.min(100, Math.round((resource.availableUnits / resource.totalUnits) * 100))
                 : 0;

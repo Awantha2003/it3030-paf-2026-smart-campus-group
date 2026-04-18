@@ -7,21 +7,19 @@ import java.time.LocalTime;
 import lombok.Builder;
 
 @Builder
-public record FacilityBookingResponse(
+public record ResourceBookingResponse(
         String id,
+        String resourceType,
+        String resourceId,
+        String resourceName,
         String studentId,
         String studentName,
         String studentEmail,
-        String faculty,
         LocalDate bookingDate,
         LocalTime bookingTime,
         Integer durationHours,
-        Integer studentCount,
-        String lectureHallCode,
-        String building,
-        String block,
-        Integer floor,
-        String lectureHallName,
+        Integer quantity,
+        String purpose,
         String status,
         Instant createdAt,
         Instant updatedAt) {

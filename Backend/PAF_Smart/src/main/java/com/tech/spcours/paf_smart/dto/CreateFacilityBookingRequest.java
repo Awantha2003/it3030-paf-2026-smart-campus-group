@@ -24,5 +24,10 @@ public record CreateFacilityBookingRequest(
         @NotNull(message = "Student count is required")
         @Min(value = 1, message = "Student count must be at least 1")
         @Max(value = 60, message = "Student count cannot exceed 60")
-        Integer studentCount) {
+        Integer studentCount,
+
+        @NotNull(message = "Duration is required")
+        @Min(value = 1, message = "Duration must be at least 1 hour")
+        @Max(value = 12, message = "Duration cannot exceed 12 hours")
+        Integer durationHours) {
 }

@@ -53,15 +53,38 @@ public class FacilityBookingService {
                 .toList();
     }
 
-    public List<FacilityLectureHallResponse> getAvailableSpaces(LocalDate bookingDate) {
+    public List<FacilityLectureHallResponse> getAvailableSpaces(
+            LocalDate bookingDate,
+            LocalTime bookingTime,
+            Integer durationHours) {
         LocalDate targetDate = bookingDate == null ? LocalDate.now() : bookingDate;
-        Set<String> bookedSpaceCodes = new HashSet<>(facilityBookingRepository.findByBookingDate(targetDate).stream()
-                .map(com.tech.spcours.paf_smart.model.FacilityBooking::getLectureHallCode)
-                .toList());
+        int requestedDurationHours = sanitizeDuration(durationHours);
+
+        if (bookingTime == null) {
+            Set<String> bookedSpaceCodes = new HashSet<>(facilityBookingRepository.findByBookingDate(targetDate).stream()
+                    .map(com.tech.spcours.paf_smart.model.FacilityBooking::getLectureHallCode)
+                    .toList());
+
+            return facilityRepository.findAll().stream()
+                    .filter(space -> "FACILITY".equals(resolveResourceCategory(space.getSpaceType())))
+                    .filter(space -> !bookedSpaceCodes.contains(space.getCode()))
+                    .map(this::mapToLectureHallResponse)
+                    .toList();
+        }
 
         return facilityRepository.findAll().stream()
                 .filter(space -> "FACILITY".equals(resolveResourceCategory(space.getSpaceType())))
-                .filter(space -> !bookedSpaceCodes.contains(space.getCode()))
+                .filter(space -> {
+                    List<FacilityBooking> sameHallBookings = facilityBookingRepository.findByLectureHallCodeAndBookingDate(
+                            space.getCode(),
+                            targetDate);
+                    return sameHallBookings.stream().noneMatch(existingBooking ->
+                            isOverlappingSlot(
+                                    existingBooking.getBookingTime(),
+                                    sanitizeDuration(existingBooking.getDurationHours()),
+                                    bookingTime,
+                                    requestedDurationHours));
+                })
                 .map(this::mapToLectureHallResponse)
                 .toList();
     }
@@ -80,23 +103,10 @@ public class FacilityBookingService {
             throw new ResourceConflictException("Only facility category spaces can be booked here");
         }
 
-        validateBookingDateTime(request.bookingDate(), request.bookingTime());
-
-        boolean hallOccupied = facilityBookingRepository.existsByLectureHallCodeAndBookingDateAndBookingTime(
-                hall.getCode(),
-                request.bookingDate(),
-                request.bookingTime());
-        if (hallOccupied) {
-            throw new ResourceConflictException("This facility space is already reserved for the selected slot");
-        }
-
-        boolean studentHasBookingAtSameSlot = facilityBookingRepository.existsByStudentIdAndBookingDateAndBookingTime(
-                user.getId(),
-                request.bookingDate(),
-                request.bookingTime());
-        if (studentHasBookingAtSameSlot) {
-            throw new ResourceConflictException("You already have another facility booking at this time");
-        }
+        int requestedDurationHours = sanitizeDuration(request.durationHours());
+        validateBookingDateTime(request.bookingDate(), request.bookingTime(), requestedDurationHours);
+        ensureHallIsAvailableForSlot(hall.getCode(), request.bookingDate(), request.bookingTime(), requestedDurationHours, null);
+        ensureStudentHasNoOverlap(user.getId(), request.bookingDate(), request.bookingTime(), requestedDurationHours, null);
 
         Instant now = Instant.now();
         com.tech.spcours.paf_smart.model.FacilityBooking booking = com.tech.spcours.paf_smart.model.FacilityBooking.builder()
@@ -106,6 +116,7 @@ public class FacilityBookingService {
                 .faculty(request.faculty().trim())
                 .bookingDate(request.bookingDate())
                 .bookingTime(request.bookingTime())
+                .durationHours(requestedDurationHours)
                 .studentCount(request.studentCount())
                 .lectureHallCode(hall.getCode())
                 .building(hall.getBuilding())
@@ -129,31 +140,25 @@ public class FacilityBookingService {
             throw new ResourceConflictException("Only facility category spaces can be booked here");
         }
 
-        validateBookingDateTime(request.bookingDate(), request.bookingTime());
-
-        boolean hallOccupiedByAnotherBooking =
-                facilityBookingRepository.existsByLectureHallCodeAndBookingDateAndBookingTimeAndIdNot(
-                        hall.getCode(),
-                        request.bookingDate(),
-                        request.bookingTime(),
-                        existingBooking.getId());
-        if (hallOccupiedByAnotherBooking) {
-            throw new ResourceConflictException("This facility space is already reserved for the selected slot");
-        }
-
-        boolean studentHasAnotherBookingAtSlot =
-                facilityBookingRepository.existsByStudentIdAndBookingDateAndBookingTimeAndIdNot(
-                        user.getId(),
-                        request.bookingDate(),
-                        request.bookingTime(),
-                        existingBooking.getId());
-        if (studentHasAnotherBookingAtSlot) {
-            throw new ResourceConflictException("You already have another facility booking at this time");
-        }
+        int requestedDurationHours = sanitizeDuration(request.durationHours());
+        validateBookingDateTime(request.bookingDate(), request.bookingTime(), requestedDurationHours);
+        ensureHallIsAvailableForSlot(
+                hall.getCode(),
+                request.bookingDate(),
+                request.bookingTime(),
+                requestedDurationHours,
+                existingBooking.getId());
+        ensureStudentHasNoOverlap(
+                user.getId(),
+                request.bookingDate(),
+                request.bookingTime(),
+                requestedDurationHours,
+                existingBooking.getId());
 
         existingBooking.setFaculty(request.faculty().trim());
         existingBooking.setBookingDate(request.bookingDate());
         existingBooking.setBookingTime(request.bookingTime());
+        existingBooking.setDurationHours(requestedDurationHours);
         existingBooking.setStudentCount(request.studentCount());
         existingBooking.setLectureHallCode(hall.getCode());
         existingBooking.setBuilding(hall.getBuilding());
@@ -193,6 +198,7 @@ public class FacilityBookingService {
                 .faculty(booking.getFaculty())
                 .bookingDate(booking.getBookingDate())
                 .bookingTime(booking.getBookingTime())
+                .durationHours(booking.getDurationHours())
                 .studentCount(booking.getStudentCount())
                 .lectureHallCode(booking.getLectureHallCode())
                 .building(booking.getBuilding())
@@ -210,7 +216,7 @@ public class FacilityBookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Facility booking not found for this student"));
     }
 
-    private void validateBookingDateTime(LocalDate bookingDate, LocalTime bookingTime) {
+    private void validateBookingDateTime(LocalDate bookingDate, LocalTime bookingTime, int durationHours) {
         if (bookingDate.isBefore(LocalDate.now())) {
             throw new ResourceConflictException("Booking date cannot be in the past");
         }
@@ -218,6 +224,82 @@ public class FacilityBookingService {
         if (bookingDate.isEqual(LocalDate.now()) && bookingTime.isBefore(LocalTime.now())) {
             throw new ResourceConflictException("Booking time cannot be in the past");
         }
+
+        if (durationHours < 1 || durationHours > 12) {
+            throw new ResourceConflictException("Booking duration must be between 1 and 12 hours");
+        }
+    }
+
+    private void ensureHallIsAvailableForSlot(
+            String hallCode,
+            LocalDate bookingDate,
+            LocalTime bookingTime,
+            int durationHours,
+            String excludedBookingId) {
+        List<FacilityBooking> sameHallBookings =
+                facilityBookingRepository.findByLectureHallCodeAndBookingDate(hallCode, bookingDate);
+
+        boolean hasOverlap = sameHallBookings.stream()
+                .filter(existing -> excludedBookingId == null || !excludedBookingId.equals(existing.getId()))
+                .anyMatch(existing ->
+                        isOverlappingSlot(
+                                existing.getBookingTime(),
+                                sanitizeDuration(existing.getDurationHours()),
+                                bookingTime,
+                                durationHours));
+
+        if (hasOverlap) {
+            throw new ResourceConflictException("This facility space is already reserved for the selected slot");
+        }
+    }
+
+    private void ensureStudentHasNoOverlap(
+            String studentId,
+            LocalDate bookingDate,
+            LocalTime bookingTime,
+            int durationHours,
+            String excludedBookingId) {
+        List<FacilityBooking> studentDayBookings =
+                facilityBookingRepository.findByStudentIdAndBookingDate(studentId, bookingDate);
+
+        boolean hasOverlap = studentDayBookings.stream()
+                .filter(existing -> excludedBookingId == null || !excludedBookingId.equals(existing.getId()))
+                .anyMatch(existing ->
+                        isOverlappingSlot(
+                                existing.getBookingTime(),
+                                sanitizeDuration(existing.getDurationHours()),
+                                bookingTime,
+                                durationHours));
+
+        if (hasOverlap) {
+            throw new ResourceConflictException("You already have another facility booking at this time");
+        }
+    }
+
+    private boolean isOverlappingSlot(
+            LocalTime existingStart,
+            int existingDurationHours,
+            LocalTime requestedStart,
+            int requestedDurationHours) {
+        int existingStartMinutes = toMinutes(existingStart);
+        int existingEndMinutes = existingStartMinutes + (existingDurationHours * 60);
+        int requestedStartMinutes = toMinutes(requestedStart);
+        int requestedEndMinutes = requestedStartMinutes + (requestedDurationHours * 60);
+        return requestedStartMinutes < existingEndMinutes && existingStartMinutes < requestedEndMinutes;
+    }
+
+    private int toMinutes(LocalTime value) {
+        return (value.getHour() * 60) + value.getMinute();
+    }
+
+    private int sanitizeDuration(Integer durationHours) {
+        if (durationHours == null || durationHours < 1) {
+            return 1;
+        }
+        if (durationHours > 12) {
+            return 12;
+        }
+        return durationHours;
     }
 
     private String resolveResourceCategory(String rawSpaceType) {
