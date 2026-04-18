@@ -9,9 +9,17 @@ import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
+import java.time.LocalTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.springframework.stereotype.Service;
+
 import com.tech.spcours.paf_smart.dto.CreateFacilityBookingRequest;
 import com.tech.spcours.paf_smart.dto.FacilityBookingResponse;
 import com.tech.spcours.paf_smart.dto.FacilityLectureHallResponse;
+import com.tech.spcours.paf_smart.dto.UpdateBookingStatusRequest;
 import com.tech.spcours.paf_smart.exception.ResourceConflictException;
 import com.tech.spcours.paf_smart.exception.ResourceNotFoundException;
 import com.tech.spcours.paf_smart.model.FacilityBooking;
@@ -101,6 +109,13 @@ public class FacilityBookingService {
                 .toList();
     }
 
+    public List<FacilityBookingResponse> getAllBookings() {
+        return facilityBookingRepository.findAllByOrderByBookingDateDescBookingTimeDesc()
+                .stream()
+                .map(this::toBookingResponse)
+                .toList();
+    }
+
     public FacilityBookingResponse createBooking(CreateFacilityBookingRequest request, User user) {
         com.tech.spcours.paf_smart.model.Facility hall = facilityRepository.findByCode(request.lectureHallCode().trim().toUpperCase())
                 .orElseThrow(() -> new ResourceConflictException("Selected facility space not found"));
@@ -128,7 +143,7 @@ public class FacilityBookingService {
                 .block(hall.getBlock())
                 .floor(hall.getFloor())
                 .lectureHallName(hall.getName())
-                .status("AVAILABLE")
+                .status("PENDING_APPROVAL")
                 .reminderSentAt(null)
                 .createdAt(now)
                 .updatedAt(now)
@@ -176,6 +191,21 @@ public class FacilityBookingService {
         return toBookingResponse(facilityBookingRepository.save(existingBooking));
     }
 
+    public FacilityBookingResponse updateBookingStatus(String bookingId, UpdateBookingStatusRequest request) {
+        FacilityBooking booking = facilityBookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Facility booking not found"));
+        
+        booking.setStatus(request.status());
+        if ("REJECTED".equalsIgnoreCase(request.status())) {
+            booking.setRejectionReason(request.rejectionReason());
+        } else {
+            booking.setRejectionReason(null);
+        }
+        booking.setUpdatedAt(Instant.now());
+        
+        return toBookingResponse(facilityBookingRepository.save(booking));
+    }
+
     public void deleteBooking(String bookingId, User user) {
         com.tech.spcours.paf_smart.model.FacilityBooking booking = findOwnedBooking(bookingId, user);
         facilityBookingRepository.delete(booking);
@@ -212,6 +242,7 @@ public class FacilityBookingService {
                 .floor(booking.getFloor())
                 .lectureHallName(booking.getLectureHallName())
                 .status(booking.getStatus())
+                .rejectionReason(booking.getRejectionReason())
                 .createdAt(booking.getCreatedAt())
                 .updatedAt(booking.getUpdatedAt())
                 .build();

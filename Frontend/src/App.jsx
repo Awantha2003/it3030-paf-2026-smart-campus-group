@@ -13,6 +13,7 @@ import { UserManagementPage } from './pages/admin/UserManagementPage';
 import { AdminTicketsPage } from './pages/admin/AdminTicketsPage';
 import { AdminTechniciansPage } from './pages/admin/AdminTechniciansPage';
 import { AdminFacilitiesPage } from './pages/admin/AdminFacilitiesPage';
+import { AdminBookingsPage } from './pages/admin/AdminBookingsPage';
 import { MyTicketsPage } from './pages/tickets/MyTicketsPage';
 import { NewTicketPage } from './pages/tickets/NewTicketPage';
 import { TicketDetailPage } from './pages/tickets/TicketDetailPage';
@@ -41,8 +42,8 @@ export const App = () => {
                 <Route path="dashboard" element={<AdminDashboard />} />
                 <Route path="users" element={<UserManagementPage />} />
                 <Route path="tickets" element={<AdminTicketsPage />} />
-                <Route path="tickets/:id" element={<TicketDetailPage />} />
                 <Route path="facilities" element={<AdminFacilitiesPage />} />
+                <Route path="bookings" element={<AdminBookingsPage />} />
                 <Route path="technicians" element={<AdminTechniciansPage />} />
                 <Route path="campus-map" element={<CampusMapPage />} />
                 <Route path="settings" element={<SettingsPage />} />

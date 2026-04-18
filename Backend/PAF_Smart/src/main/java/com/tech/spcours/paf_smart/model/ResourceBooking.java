@@ -46,6 +46,8 @@ public class ResourceBooking {
 
     private String status;
 
+    private String rejectionReason;
+
     private Instant createdAt;
 
     private Instant updatedAt;

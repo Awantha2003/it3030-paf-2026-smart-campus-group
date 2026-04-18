@@ -1501,6 +1501,11 @@ export function BookingResourcesPage() {
                                 <span className="font-semibold">{booking.resourceName}</span> | {booking.bookingDate} |{' '}
                                 {String(booking.bookingTime || '').slice(0, 5)} - {booking.returnTimeLabel} | Qty{' '}
                                 {Number(booking.quantity || 0)} | {booking.statusLabel}
+                                {booking.status === 'REJECTED' && booking.rejectionReason && (
+                                  <div className="mt-1 text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded border border-red-100 dark:border-red-900/30">
+                                    <span className="font-semibold">Reason:</span> {booking.rejectionReason}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -1706,6 +1711,11 @@ export function BookingResourcesPage() {
                             </button>
                           </div>
                         </div>
+                        {booking.status === 'REJECTED' && booking.rejectionReason && (
+                          <div className="mt-2 text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1.5 rounded border border-red-100 dark:border-red-900/30">
+                            <span className="font-semibold">Reason:</span> {booking.rejectionReason}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

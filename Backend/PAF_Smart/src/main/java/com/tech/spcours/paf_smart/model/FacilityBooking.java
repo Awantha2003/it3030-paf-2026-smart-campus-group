@@ -52,6 +52,8 @@ public class FacilityBooking {
 
     private Instant reminderSentAt;
 
+    private String rejectionReason;
+
     private Instant createdAt;
 
     private Instant updatedAt;
