@@ -12,6 +12,9 @@ import com.tech.spcours.paf_smart.dto.UpdateTechnicianLocationRequest;
 import com.tech.spcours.paf_smart.exception.ResourceConflictException;
 import com.tech.spcours.paf_smart.exception.ResourceNotFoundException;
 import com.tech.spcours.paf_smart.model.TechnicianMember;
+import com.tech.spcours.paf_smart.module.user.model.Role;
+import com.tech.spcours.paf_smart.module.user.model.User;
+import com.tech.spcours.paf_smart.module.user.repository.UserRepository;
 import com.tech.spcours.paf_smart.repository.TechnicianMemberRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -21,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class TechnicianMemberService {
 
     private final TechnicianMemberRepository technicianMemberRepository;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailjetEmailService mailjetEmailService;
 
@@ -42,12 +46,16 @@ public class TechnicianMemberService {
         technicianMemberRepository.findByEmailIgnoreCase(normalizedEmail).ifPresent(existing -> {
             throw new ResourceConflictException("A technician with this email already exists");
         });
+        userRepository.findByEmail(normalizedEmail).ifPresent(existing -> {
+            throw new ResourceConflictException("A user with this email already exists");
+        });
 
         Instant now = Instant.now();
+        String encodedPassword = passwordEncoder.encode(rawPassword);
         TechnicianMember technicianMember = TechnicianMember.builder()
                 .fullName(request.getFullName().trim())
                 .email(normalizedEmail)
-                .passwordHash(passwordEncoder.encode(rawPassword))
+                .passwordHash(encodedPassword)
                 .phone(request.getPhone().trim())
                 .department(request.getDepartment().trim())
                 .specialization(request.getSpecialization().trim())
@@ -57,6 +65,14 @@ public class TechnicianMemberService {
                 .build();
 
         TechnicianMember savedTechnician = technicianMemberRepository.save(technicianMember);
+        userRepository.save(User.builder()
+                .name(savedTechnician.getFullName())
+                .email(savedTechnician.getEmail())
+                .password(encodedPassword)
+                .role(Role.TECHNICIAN)
+                .provider("local")
+                .enabled(savedTechnician.isActive())
+                .build());
         EmailDeliveryResult emailDeliveryResult =
                 mailjetEmailService.sendTechnicianCredentialsEmail(savedTechnician, rawPassword);
         return toResponse(savedTechnician, emailDeliveryResult);
@@ -67,6 +83,10 @@ public class TechnicianMemberService {
         technicianMember.setActive(active);
         technicianMember.setUpdatedAt(Instant.now());
         TechnicianMember updatedTechnician = technicianMemberRepository.save(technicianMember);
+        userRepository.findByEmail(updatedTechnician.getEmail()).ifPresent(user -> {
+            user.setEnabled(active);
+            userRepository.save(user);
+        });
         return toResponse(updatedTechnician);
     }
 
@@ -86,6 +106,7 @@ public class TechnicianMemberService {
 
     public void deleteTechnician(String id) {
         TechnicianMember technicianMember = findTechnicianById(id);
+        userRepository.findByEmail(technicianMember.getEmail()).ifPresent(userRepository::delete);
         technicianMemberRepository.delete(technicianMember);
     }
 
