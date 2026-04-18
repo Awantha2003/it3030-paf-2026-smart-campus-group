@@ -103,7 +103,7 @@ public class FacilityService {
         List<Facility> allFacilities = facilityRepository.findAll();
         
         long facilityCount = allFacilities.stream()
-            .filter(f -> List.of("LECTURE_HALL", "LAB", "MEETING_ROOM", "AUDITORIUM").contains(f.getSpaceType()))
+            .filter(f -> List.of("LECTURE_HALL", "LAB").contains(f.getSpaceType()))
             .count();
             
         long sportsCount = allFacilities.stream()
@@ -115,7 +115,7 @@ public class FacilityService {
             .count();
             
         long eventCount = allFacilities.stream()
-            .filter(f -> "SEMINAR_ROOM".equals(f.getSpaceType()))
+            .filter(f -> List.of("EVENT", "MEETING_ROOM", "AUDITORIUM", "SEMINAR_ROOM").contains(f.getSpaceType()))
             .count();
 
         summary.put("FACILITY", facilityCount);

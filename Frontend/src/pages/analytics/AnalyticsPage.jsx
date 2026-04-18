@@ -32,7 +32,7 @@ const resourceUtilization = [
   fill: '#8b5cf6'
 },
 {
-  name: 'Meeting Rooms',
+  name: 'Events',
   utilization: 92,
   fill: '#10b981'
 },

@@ -202,7 +202,7 @@ export function AdminFacilitiesPage() {
                     { label: 'EQUIPMENT', count: summary.EQUIPMENT, sub: 'Items', icon: <FiBox />, color: 'orange' },
                     { label: 'SPORTS', count: summary.SPORTS, sub: 'Venues', icon: <FiActivity />, color: 'emerald' },
                     { label: 'LIBRARY', count: summary.LIBRARY, sub: 'Zones', icon: <FiBookOpen />, color: 'purple' },
-                    { label: 'EVENT', count: summary.EVENT, sub: 'Seminar', icon: <FiCalendar />, color: 'rose' }
+                    { label: 'EVENT', count: summary.EVENT, sub: 'Venues', icon: <FiCalendar />, color: 'rose' }
                 ].map((item, i) => (
                     <Card key={i} className="p-4 flex flex-col items-center text-center group hover:scale-105 transition-transform border-none shadow-sm dark:bg-slate-900/50">
                         <div className={`w-10 h-10 rounded-2xl mb-3 flex items-center justify-center text-white bg-${item.color}-500 shadow-lg shadow-${item.color}-500/20`}>
@@ -283,7 +283,9 @@ export function AdminFacilitiesPage() {
                                                     <div>
                                                         <p className="text-sm font-bold text-slate-900 dark:text-white uppercase leading-none mb-1">{facility.code}</p>
                                                         <p className="text-xs text-slate-500 dark:text-slate-400">{facility.name}</p>
-                                                        <Badge variant="primary" className="text-[9px] px-1 py-0 mt-1">{facility.spaceType}</Badge>
+                                                        <Badge variant="primary" className="text-[9px] px-1 py-0 mt-1">
+                                                            {['EVENT', 'MEETING_ROOM', 'AUDITORIUM', 'SEMINAR_ROOM'].includes(facility.spaceType) ? 'EVENT' : facility.spaceType}
+                                                        </Badge>
                                                     </div>
                                                 </div>
                                             </td>
@@ -448,11 +450,9 @@ export function AdminFacilitiesPage() {
                                             <select name="spaceType" defaultValue={currentFacility?.spaceType || 'LECTURE_HALL'} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white">
                                                 <option value="LECTURE_HALL">Lecture Hall</option>
                                                 <option value="LAB">Laboratory</option>
-                                                <option value="MEETING_ROOM">Meeting Room</option>
-                                                <option value="AUDITORIUM">Auditorium</option>
+                                                <option value="EVENT">Event</option>
                                                 <option value="SPORTS_VENUE">Sports Venue</option>
                                                 <option value="LIBRARY_ZONE">Library Zone</option>
-                                                <option value="SEMINAR_ROOM">Seminar Room</option>
                                             </select>
                                         </div>
                                         <div className="space-y-2">
