@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import AuthLayout from './AuthLayout';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,10 +7,12 @@ import { SERVER_BASE_URL } from '../../api/baseUrl';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -20,6 +22,7 @@ const LoginPage = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMessage('');
     
     try {
       const result = await login(formData.email, formData.password);
@@ -104,6 +107,7 @@ const LoginPage = () => {
           </div>
         </div>
 
+        {successMessage && <p className="text-[11px] font-semibold text-green-600 ml-1 bg-green-50 py-2 px-3 rounded-lg border border-green-100">{successMessage}</p>}
         {error && <p className="text-[11px] font-semibold text-red-500 ml-1 bg-red-50 py-1.5 px-3 rounded-lg border border-red-100">{error}</p>}
 
         <div className="pt-1">

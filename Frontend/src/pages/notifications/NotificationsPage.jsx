@@ -1,106 +1,97 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Wrench, Check, Trash2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { mockNotifications } from '../../data/mockData';
+import api from '../../api/axiosInstance';
 import { useAuth } from '../../contexts/AuthContext';
 import { resolvePathForRole } from '../../utils/routes';
-
-const extendedNotifications = [
-  ...mockNotifications,
-  {
-    id: 'n4',
-    userId: 'u1',
-    title: 'System Maintenance',
-    message: 'The campus portal will be down for maintenance on Sunday 2 AM - 4 AM.',
-    type: 'WARNING',
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString()
-  },
-  {
-    id: 'n5',
-    userId: 'u1',
-    title: 'Platform Notice',
-    message: 'A new help desk workflow is now available in the technician dashboard.',
-    type: 'INFO',
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    link: '/technician'
-  },
-  {
-    id: 'n6',
-    userId: 'u1',
-    title: 'Ticket Resolved',
-    message: 'Your ticket "Whiteboard markers empty" has been marked as RESOLVED.',
-    type: 'SUCCESS',
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-    link: '/tickets/t3'
-  },
-  {
-    id: 'n7',
-    userId: 'u1',
-    title: 'Ticket Escalated',
-    message: 'A high-priority support ticket was escalated for immediate review.',
-    type: 'INFO',
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    link: '/tickets/t2'
-  },
-  {
-    id: 'n8',
-    userId: 'u1',
-    title: 'Security Alert',
-    message: 'New login detected from an unrecognized device.',
-    type: 'ERROR',
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-    link: '/settings'
-  }
-].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
 const filterTabs = ['ALL', 'UNREAD', 'TICKETS', 'SYSTEM'];
 
 export function NotificationsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState(extendedNotifications);
+  const [notifications, setNotifications] = useState([]);
   const [activeTab, setActiveTab] = useState('ALL');
+  const [loading, setLoading] = useState(true);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
-  const handleMarkAllRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
-  };
-
-  const handleMarkAsRead = (id, e) => {
-    e.stopPropagation();
-    setNotifications(notifications.map((n) => (n.id === id ? { ...n, read: true } : n)));
-  };
-
-  const handleDelete = (id, e) => {
-    e.stopPropagation();
-    setNotifications(notifications.filter((n) => n.id !== id));
-  };
-
-  const handleNotificationClick = (notification) => {
-    if (!notification.read) {
-      setNotifications(
-        notifications.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
-      );
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/api/notifications');
+      setNotifications(res.data);
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    } finally {
+      setLoading(false);
     }
-    if (notification.link) {
-      navigate(resolvePathForRole(notification.link, user?.role));
+  };
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.patch('/api/notifications/read-all');
+      setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
+  };
+
+  const handleMarkAsRead = async (id, e) => {
+    e.stopPropagation();
+    try {
+      await api.patch(`/api/notifications/${id}/read`);
+      setNotifications(notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    } catch (err) {
+      console.error('Failed to mark as read:', err);
+    }
+  };
+
+  const handleDelete = async (id, e) => {
+    e.stopPropagation();
+    try {
+      await api.delete(`/api/notifications/${id}`);
+      setNotifications(notifications.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error('Failed to delete notification:', err);
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.isRead) {
+      try {
+        await api.patch(`/api/notifications/${notification.id}/read`);
+        setNotifications(
+          notifications.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
+        );
+      } catch (err) {
+        console.error('Failed to mark as read:', err);
+      }
+    }
+    if (notification.referenceId) {
+      // Logic to resolve path based on type and id
+      let link = '';
+      if (notification.type === 'TICKET') link = `/tickets/${notification.referenceId}`;
+      else if (notification.type === 'BOOKING') link = `/bookings`;
+      
+      if (link) {
+         navigate(resolvePathForRole(link, user?.role));
+      }
     }
   };
 
   const filteredNotifications = notifications.filter((n) => {
-    if (activeTab === 'UNREAD') return !n.read;
-    if (activeTab === 'TICKETS') return n.title.toLowerCase().includes('ticket');
-    if (activeTab === 'SYSTEM') return !n.title.toLowerCase().includes('ticket');
+    if (activeTab === 'UNREAD') return !n.isRead;
+    if (activeTab === 'TICKETS') return n.type === 'TICKET';
+    if (activeTab === 'SYSTEM') return n.type === 'SYSTEM';
     return true;
   });
 
@@ -181,7 +172,7 @@ export function NotificationsPage() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   onClick={() => handleNotificationClick(notification)}
                   className={`p-4 sm:p-6 flex gap-4 cursor-pointer transition-colors group ${
-                    !notification.read
+                    !notification.isRead
                       ? 'bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-50 dark:hover:bg-slate-800/50'
                       : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                   }`}
@@ -200,7 +191,7 @@ export function NotificationsPage() {
                     <div className="flex items-start justify-between gap-2">
                       <p
                         className={`text-sm font-semibold truncate ${
-                          !notification.read
+                          !notification.isRead
                             ? 'text-slate-900 dark:text-white'
                             : 'text-slate-700 dark:text-slate-300'
                         }`}
@@ -213,7 +204,7 @@ export function NotificationsPage() {
                     </div>
                     <p
                       className={`text-sm mt-1 line-clamp-2 ${
-                        !notification.read
+                        !notification.isRead
                           ? 'text-slate-600 dark:text-slate-300'
                           : 'text-slate-500 dark:text-slate-400'
                       }`}
@@ -223,7 +214,7 @@ export function NotificationsPage() {
                   </div>
 
                   <div className="flex-shrink-0 flex flex-col items-end justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                    {!notification.read ? (
+                    {!notification.isRead ? (
                       <button
                         onClick={(e) => handleMarkAsRead(notification.id, e)}
                         className="p-1.5 text-slate-400 hover:text-brand-purple dark:hover:text-purple-400 rounded-md hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
@@ -243,7 +234,7 @@ export function NotificationsPage() {
                     </button>
                   </div>
 
-                  {!notification.read && (
+                  {!notification.isRead && (
                     <div className="flex-shrink-0 flex items-center justify-center w-4 group-hover:hidden">
                       <div className="w-2.5 h-2.5 bg-brand-blue rounded-full"></div>
                     </div>
