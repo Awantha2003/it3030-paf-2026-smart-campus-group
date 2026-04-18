@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { Drawer } from '../ui/Drawer';
 import { Badge } from '../ui/Badge';
 import api from '../../api/axiosInstance';
+import { resolvePathForRole } from '../../utils/routes';
 
 export function TopNav() {
     const { isDark, toggleTheme } = useTheme();
@@ -182,7 +183,7 @@ export function TopNav() {
                         className="w-full"
                         onClick={() => {
                             setShowNotifications(false);
-                            navigate('/notifications');
+                            navigate(resolvePathForRole('/notifications', user?.role));
                         }}
                     >
                         View All
@@ -219,6 +220,15 @@ export function TopNav() {
                                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
                                         {new Date(notif.createdAt).toLocaleDateString()}
                                     </p>
+                                    <button 
+                                        onClick={() => {
+                                            setShowNotifications(false);
+                                            navigate(resolvePathForRole('/notifications', user?.role));
+                                        }}
+                                        className="mt-2 text-xs font-semibold text-brand-blue hover:text-brand-blue-dark dark:hover:text-blue-400 transition-colors"
+                                    >
+                                        View
+                                    </button>
                                 </div>
                                 {!(notif.read ?? notif.isRead) && (
                                     <div className="w-2.5 h-2.5 bg-brand-blue rounded-full shrink-0 mt-1" />

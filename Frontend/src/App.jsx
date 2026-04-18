@@ -20,7 +20,7 @@ import { CampusMapPage } from './pages/maps/CampusMapPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { BookingResourcesPage } from './pages/bookings/BookingResourcesPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
-
+import { NotificationsPage } from './pages/notifications/NotificationsPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -46,6 +46,7 @@ export const App = () => {
                 <Route path="technicians" element={<AdminTechniciansPage />} />
                 <Route path="campus-map" element={<CampusMapPage />} />
                 <Route path="settings" element={<SettingsPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
               </Route>
             </Route>
 
@@ -56,6 +57,7 @@ export const App = () => {
                 <Route path="tickets/:id" element={<TicketDetailPage />} />
                 <Route path="campus-map" element={<CampusMapPage />} />
                 <Route path="settings" element={<SettingsPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
               </Route>
             </Route>
 
@@ -68,6 +70,7 @@ export const App = () => {
                 <Route path="booking-resources" element={<BookingResourcesPage />} />
                 <Route path="campus-map" element={<CampusMapPage />} />
                 <Route path="settings" element={<SettingsPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
               </Route>
             </Route>
 
