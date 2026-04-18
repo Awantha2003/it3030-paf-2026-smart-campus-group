@@ -110,11 +110,11 @@ export async function assignIssueReport(id, technicianId) {
   return parseResponse(response, 'Failed to assign issue report.');
 }
 
-export async function updateIssueReportStatus(id, status) {
+export async function updateIssueReportStatus(id, status, rejectionReason = '') {
   const response = await fetch(`${API_BASE_URL}/issues/admin/${id}/status`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ status })
+    body: JSON.stringify({ status, rejectionReason })
   });
 
   return parseResponse(response, 'Failed to update issue report status.');

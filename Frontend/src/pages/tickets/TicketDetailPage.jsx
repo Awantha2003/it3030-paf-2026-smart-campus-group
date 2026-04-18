@@ -304,6 +304,17 @@ export function TicketDetailPage() {
                 </p>
               </div>
 
+              {ticket.status === 'REJECTED' && ticket.rejectionReason ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 dark:border-rose-900/40 dark:bg-rose-900/10">
+                  <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">
+                    Rejection Reason
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                    {ticket.rejectionReason}
+                  </p>
+                </div>
+              ) : null}
+
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <div>
                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">

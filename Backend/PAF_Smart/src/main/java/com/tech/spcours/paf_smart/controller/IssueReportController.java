@@ -77,7 +77,7 @@ public class IssueReportController {
     public IssueReportResponse updateIssueReportStatus(
             @PathVariable String id,
             @Valid @RequestBody UpdateIssueReportStatusRequest request) {
-        return issueReportService.updateIssueReportStatus(id, request.status());
+        return issueReportService.updateIssueReportStatus(id, request.status(), request.rejectionReason());
     }
 
     @PatchMapping("/admin/{id}/assign")

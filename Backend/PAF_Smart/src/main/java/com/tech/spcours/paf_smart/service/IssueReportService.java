@@ -56,6 +56,7 @@ public class IssueReportService {
                 .assignedTo(null)
                 .assignedAt(null)
                 .adminNote(null)
+                .rejectionReason(null)
                 .studentFeedbackRating(null)
                 .studentFeedbackComment(null)
                 .studentFeedbackSubmittedAt(null)
@@ -103,15 +104,23 @@ public class IssueReportService {
         return toResponse(findIssueReportById(id));
     }
 
-    public IssueReportResponse updateIssueReportStatus(String id, String status) {
+    public IssueReportResponse updateIssueReportStatus(String id, String status, String rejectionReason) {
         IssueReport issueReport = findIssueReportById(id);
         String normalizedStatus = normalizeStatus(status);
+        String normalizedRejectionReason = normalizeOptionalValue(rejectionReason);
 
-        if (issueReport.getStatus().equals(normalizedStatus)) {
+        if (issueReport.getStatus().equals(normalizedStatus)
+                && (!"REJECTED".equals(normalizedStatus)
+                        || java.util.Objects.equals(issueReport.getRejectionReason(), normalizedRejectionReason))) {
             throw new ResourceConflictException("Issue report already has this status");
         }
 
+        if ("REJECTED".equals(normalizedStatus) && normalizedRejectionReason == null) {
+            throw new ResourceConflictException("Rejection reason is required when rejecting a ticket");
+        }
+
         issueReport.setStatus(normalizedStatus);
+        issueReport.setRejectionReason("REJECTED".equals(normalizedStatus) ? normalizedRejectionReason : null);
         issueReport.setUpdatedAt(Instant.now());
 
         return toResponse(issueReportRepository.save(issueReport));
@@ -222,6 +231,7 @@ public class IssueReportService {
                 .assignedTo(issueReport.getAssignedTo())
                 .assignedAt(issueReport.getAssignedAt())
                 .adminNote(issueReport.getAdminNote())
+                .rejectionReason(issueReport.getRejectionReason())
                 .studentFeedbackRating(issueReport.getStudentFeedbackRating())
                 .studentFeedbackComment(issueReport.getStudentFeedbackComment())
                 .studentFeedbackSubmittedAt(issueReport.getStudentFeedbackSubmittedAt())

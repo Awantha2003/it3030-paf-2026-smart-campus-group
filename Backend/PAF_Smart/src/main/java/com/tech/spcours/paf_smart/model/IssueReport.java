@@ -59,6 +59,8 @@ public class IssueReport {
 
     private String adminNote;
 
+    private String rejectionReason;
+
     private Integer studentFeedbackRating;
 
     private String studentFeedbackComment;

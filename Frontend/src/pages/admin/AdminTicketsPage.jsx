@@ -61,6 +61,8 @@ export function AdminTicketsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTicketId, setSelectedTicketId] = useState('');
   const [adminNote, setAdminNote] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actioning, setActioning] = useState('');
@@ -100,6 +102,14 @@ export function AdminTicketsPage() {
   useEffect(() => {
     setAdminNote(selectedTicket?.adminNote || '');
   }, [selectedTicketId, selectedTicket?.adminNote]);
+
+  useEffect(() => {
+    setRejectionReason(selectedTicket?.rejectionReason || '');
+  }, [selectedTicketId, selectedTicket?.rejectionReason]);
+
+  useEffect(() => {
+    setIsRejectDialogOpen(false);
+  }, [selectedTicketId]);
 
   const filteredTickets = tickets.filter((ticket) => {
     const query = searchTerm.toLowerCase();
@@ -189,14 +199,67 @@ export function AdminTicketsPage() {
   }
 
   async function handleStatusChange(ticketId, status) {
+    if (status === 'REJECTED') {
+      openRejectDialog();
+      return;
+    }
+
+    const nextRejectionReason = status === 'REJECTED' ? rejectionReason.trim() : '';
+
     setActioning(`status-${ticketId}`);
     setError('');
     setSuccess('');
 
     try {
-      const updatedTicket = await updateIssueReportStatus(ticketId, status);
+      const updatedTicket = await updateIssueReportStatus(ticketId, status, nextRejectionReason);
       updateTicketInState(updatedTicket);
+      setRejectionReason(updatedTicket.rejectionReason || '');
       setSuccess(`Ticket status updated to ${status.replace('_', ' ')}.`);
+    } catch (actionError) {
+      setError(actionError.message);
+    } finally {
+      setActioning('');
+    }
+  }
+
+  function openRejectDialog() {
+    setError('');
+    setSuccess('');
+    setRejectionReason(selectedTicket?.rejectionReason || '');
+    setIsRejectDialogOpen(true);
+  }
+
+  function closeRejectDialog() {
+    setIsRejectDialogOpen(false);
+    setRejectionReason(selectedTicket?.rejectionReason || '');
+  }
+
+  async function handleRejectTicket() {
+    if (!selectedTicket) {
+      return;
+    }
+
+    const nextRejectionReason = rejectionReason.trim();
+
+    if (!nextRejectionReason) {
+      setError('Enter a rejection reason before rejecting the ticket.');
+      return;
+    }
+
+    setActioning(`status-${selectedTicket.id}`);
+    setError('');
+    setSuccess('');
+
+    try {
+      const updatedTicket = await updateIssueReportStatus(
+        selectedTicket.id,
+        'REJECTED',
+        nextRejectionReason
+      );
+      updateTicketInState(updatedTicket);
+      setRejectionReason(updatedTicket.rejectionReason || '');
+      setIsRejectDialogOpen(false);
+      setSuccess('Ticket status updated to REJECTED.');
     } catch (actionError) {
       setError(actionError.message);
     } finally {
@@ -447,7 +510,7 @@ export function AdminTicketsPage() {
                     className="shadow-sm hover:shadow transition-all"
                     variant="danger"
                     size="sm"
-                    onClick={() => handleStatusChange(selectedTicket.id, 'REJECTED')}
+                    onClick={openRejectDialog}
                     isLoading={actioning === `status-${selectedTicket.id}`}
                     disabled={selectedTicket.status === 'REJECTED'}
                   >
@@ -582,28 +645,48 @@ export function AdminTicketsPage() {
                     <ShieldAlert className="mr-2 h-4 w-4 text-amber-500" /> Status Flow
                   </h3>
                   <div className="rounded-xl border border-amber-100/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-4 shadow-sm backdrop-blur-md dark:border-amber-900/30 dark:from-amber-900/10 dark:to-orange-900/10">
-                     <div className="flex flex-col md:flex-row md:items-center gap-4">
-                       <div className="flex-1">
-                         <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                           Lifecycle Stage
-                         </label>
-                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                           Update the workflow status.
-                         </p>
-                       </div>
-                       <div className="flex-[2]">
-                        <select
-                          value={selectedTicket.status}
-                          onChange={(event) => handleStatusChange(selectedTicket.id, event.target.value)}
-                          disabled={actioning === `status-${selectedTicket.id}`}
-                          className="w-full rounded-xl border-2 border-white bg-white/80 px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition-all focus:border-amber-400 focus:ring-4 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white"
-                        >
-                          <option value="OPEN">Open</option>
-                          <option value="IN_PROGRESS">In Progress</option>
-                          <option value="RESOLVED">Resolved</option>
-                          <option value="REJECTED">Rejected</option>
-                          <option value="CLOSED">Closed</option>
-                        </select>
+                     <div className="space-y-4">
+                       <div className="flex flex-col md:flex-row md:items-center gap-4">
+                         <div className="flex-1">
+                           <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                             Lifecycle Stage
+                           </label>
+                           <p className="text-xs text-slate-500 dark:text-slate-400">
+                             Update the workflow status.
+                           </p>
+                         </div>
+                         <div className="flex-[2]">
+                          <select
+                            value={selectedTicket.status}
+                            onChange={(event) => handleStatusChange(selectedTicket.id, event.target.value)}
+                            disabled={actioning === `status-${selectedTicket.id}`}
+                            className="w-full rounded-xl border-2 border-white bg-white/80 px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm outline-none transition-all focus:border-amber-400 focus:ring-4 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white"
+                          >
+                            <option value="OPEN">Open</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="RESOLVED">Resolved</option>
+                            <option value="REJECTED">Rejected</option>
+                            <option value="CLOSED">Closed</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                          Rejection Reason
+                        </label>
+                        <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                          Required when rejecting a ticket. Use the Reject button to type and submit it.
+                        </p>
+                        {selectedTicket.rejectionReason && (
+                          <div className="rounded-xl border border-amber-200 bg-white/70 px-3 py-3 text-sm text-slate-700 shadow-sm dark:border-amber-900/40 dark:bg-slate-900/40 dark:text-slate-200">
+                            {selectedTicket.rejectionReason}
+                          </div>
+                        )}
+                        {!selectedTicket.rejectionReason && (
+                          <div className="rounded-xl border border-dashed border-amber-200 bg-white/50 px-3 py-3 text-sm text-slate-500 dark:border-amber-900/40 dark:bg-slate-900/20 dark:text-slate-400">
+                            No rejection reason recorded yet.
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -664,6 +747,71 @@ export function AdminTicketsPage() {
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {selectedTicket && isRejectDialogOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              className="w-full max-w-xl rounded-3xl border border-red-200 bg-white p-6 shadow-2xl dark:border-red-900/40 dark:bg-slate-900"
+            >
+              <div className="flex items-start gap-3">
+                <div className="rounded-2xl bg-red-100 p-3 text-red-600 dark:bg-red-900/30 dark:text-red-300">
+                  <XOctagon className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                    Reject Ticket
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Enter the reason shown to the student before this ticket is rejected.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Rejection Reason
+                </label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(event) => setRejectionReason(event.target.value)}
+                  placeholder="Type the reason for rejecting this ticket..."
+                  rows={5}
+                  autoFocus
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition-all focus:border-red-400 focus:ring-4 focus:ring-red-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+
+              <div className="mt-5 flex justify-end gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={closeRejectDialog}
+                  disabled={actioning === `status-${selectedTicket.id}`}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={handleRejectTicket}
+                  isLoading={actioning === `status-${selectedTicket.id}`}
+                >
+                  Confirm Reject
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

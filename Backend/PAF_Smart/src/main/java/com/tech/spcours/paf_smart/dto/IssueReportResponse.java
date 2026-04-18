@@ -27,6 +27,7 @@ public record IssueReportResponse(
         String assignedTo,
         Instant assignedAt,
         String adminNote,
+        String rejectionReason,
         Integer studentFeedbackRating,
         String studentFeedbackComment,
         Instant studentFeedbackSubmittedAt,
