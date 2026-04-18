@@ -1,12 +1,11 @@
 package com.tech.spcours.paf_smart.controller;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,62 +17,56 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.tech.spcours.paf_smart.dto.CreateFacilityBookingRequest;
-import com.tech.spcours.paf_smart.dto.FacilityBookingResponse;
-import com.tech.spcours.paf_smart.dto.FacilityLectureHallResponse;
+import com.tech.spcours.paf_smart.dto.CreateResourceBookingRequest;
+import com.tech.spcours.paf_smart.dto.ResourceBookingResponse;
 import com.tech.spcours.paf_smart.module.user.model.User;
-import com.tech.spcours.paf_smart.service.FacilityBookingService;
+import com.tech.spcours.paf_smart.service.ResourceBookingService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/facility-bookings")
+@RequestMapping("/api/resource-bookings")
 @RequiredArgsConstructor
-public class FacilityBookingController {
+public class ResourceBookingController {
 
-    private final FacilityBookingService facilityBookingService;
-
-    @GetMapping("/lecture-halls")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-    public List<FacilityLectureHallResponse> getLectureHalls() {
-        return facilityBookingService.getLectureHalls();
-    }
-
-    @GetMapping("/availability")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-    public List<FacilityLectureHallResponse> getAvailableSpaces(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime time,
-            @RequestParam(required = false) Integer durationHours) {
-        return facilityBookingService.getAvailableSpaces(date, time, durationHours);
-    }
+    private final ResourceBookingService resourceBookingService;
 
     @GetMapping("/me")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-    public List<FacilityBookingResponse> getMyBookings(org.springframework.security.core.Authentication auth) {
+    public List<ResourceBookingResponse> getMyBookings(
+            org.springframework.security.core.Authentication auth,
+            @RequestParam String type) {
         User user = (User) auth.getPrincipal();
-        return facilityBookingService.getStudentBookings(user);
+        return resourceBookingService.getMyBookings(user, type);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public List<ResourceBookingResponse> getBookingsByTypeAndDate(
+            @RequestParam String type,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return resourceBookingService.getBookingsByTypeAndDate(type, date);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-    public FacilityBookingResponse createBooking(
-            @Valid @RequestBody CreateFacilityBookingRequest request,
+    public ResourceBookingResponse createBooking(
+            @Valid @RequestBody CreateResourceBookingRequest request,
             org.springframework.security.core.Authentication auth) {
         User user = (User) auth.getPrincipal();
-        return facilityBookingService.createBooking(request, user);
+        return resourceBookingService.createBooking(request, user);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-    public FacilityBookingResponse updateBooking(
+    public ResourceBookingResponse updateBooking(
             @PathVariable String id,
-            @Valid @RequestBody CreateFacilityBookingRequest request,
+            @Valid @RequestBody CreateResourceBookingRequest request,
             org.springframework.security.core.Authentication auth) {
         User user = (User) auth.getPrincipal();
-        return facilityBookingService.updateBooking(id, request, user);
+        return resourceBookingService.updateBooking(id, request, user);
     }
 
     @DeleteMapping("/{id}")
@@ -83,6 +76,6 @@ public class FacilityBookingController {
             @PathVariable String id,
             org.springframework.security.core.Authentication auth) {
         User user = (User) auth.getPrincipal();
-        facilityBookingService.deleteBooking(id, user);
+        resourceBookingService.deleteBooking(id, user);
     }
 }

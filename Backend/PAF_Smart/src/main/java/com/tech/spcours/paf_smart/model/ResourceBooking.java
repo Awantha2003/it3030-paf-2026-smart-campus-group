@@ -16,11 +16,17 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "facility_bookings")
-public class FacilityBooking {
+@Document(collection = "resource_bookings")
+public class ResourceBooking {
 
     @Id
     private String id;
+
+    private String resourceType;
+
+    private String resourceId;
+
+    private String resourceName;
 
     private String studentId;
 
@@ -28,29 +34,17 @@ public class FacilityBooking {
 
     private String studentEmail;
 
-    private String faculty;
-
     private LocalDate bookingDate;
 
     private LocalTime bookingTime;
 
     private Integer durationHours;
 
-    private Integer studentCount;
+    private Integer quantity;
 
-    private String lectureHallCode;
-
-    private String building;
-
-    private String block;
-
-    private Integer floor;
-
-    private String lectureHallName;
+    private String purpose;
 
     private String status;
-
-    private Instant reminderSentAt;
 
     private Instant createdAt;
 
