@@ -399,40 +399,44 @@ export function BookingResourcesPage() {
 
   async function loadTypes() {
     setLoadingTypes(true);
+    setError('');
+    
     try {
       const { getResourceSummary } = await import('../../api/facilities');
-      const [typeData, summaryData] = await Promise.all([
+      
+      // Try fetching both, but don't let types failure stop the summary
+      const responses = await Promise.allSettled([
         getResourceTypes(),
         getResourceSummary()
       ]);
+      
+      const typeData = responses[0].status === 'fulfilled' ? responses[0].value : FALLBACK_TYPES;
+      const summaryData = responses[1].status === 'fulfilled' ? responses[1].value : {};
 
       if (Array.isArray(typeData) && typeData.length > 0) {
-        // Merge real-time counts into the types list
         const updatedTypes = typeData.map(type => {
-          const count = summaryData[type.type] || 0;
-          let label = `${count} available`;
-          
-          if (type.type === 'FACILITY') label = `${count} spaces`;
-          else if (type.type === 'EQUIPMENT') label = `${count} items`;
-          else if (type.type === 'SPORTS') label = `${count} venues`;
-          else if (type.type === 'LIBRARY') label = `${count} zones`;
-          else if (type.type === 'EVENT') label = `${count} upcoming`;
-          
-          return {
-            ...type,
-            availabilityLabel: label
-          };
+          // If counts are in summaryData, use them. Otherwise keep existing label.
+          if (summaryData[type.type] !== undefined) {
+            const count = summaryData[type.type];
+            let label = `${count} available`;
+            
+            if (type.type === 'FACILITY') label = `${count} spaces`;
+            else if (type.type === 'EQUIPMENT') label = `${count} items`;
+            else if (type.type === 'SPORTS') label = `${count} venues`;
+            else if (type.type === 'LIBRARY') label = `${count} zones`;
+            else if (type.type === 'EVENT') label = `${count} upcoming`;
+            
+            return { ...type, availabilityLabel: label };
+          }
+          return type;
         });
+        
         setResourceTypes(updatedTypes);
         setSelectedType(updatedTypes[0].type);
       }
     } catch (loadError) {
-      if (loadError?.message === 'Failed to fetch') {
-        setResourceTypes(FALLBACK_TYPES);
-      } else {
-        console.error('Failed to load summary counts:', loadError);
-        setError(loadError?.message || 'Unable to load resource categories.');
-      }
+      console.error('Type loading system error:', loadError);
+      setResourceTypes(FALLBACK_TYPES);
     } finally {
       setLoadingTypes(false);
     }
