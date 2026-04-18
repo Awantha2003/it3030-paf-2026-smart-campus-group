@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiLayers, FiSearch, FiPlus, FiEdit2, FiTrash2, FiMapPin, FiUsers, FiChevronDown, FiChevronUp, FiBox } from 'react-icons/fi';
+import { FiLayers, FiSearch, FiPlus, FiEdit2, FiTrash2, FiMapPin, FiUsers, FiChevronDown, FiChevronUp, FiBox, FiBookOpen, FiActivity, FiCalendar } from 'react-icons/fi';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { getAllFacilities, deleteFacility, createFacility, updateFacility } from '../../api/facilities';
+import { getAllFacilities, deleteFacility, createFacility, updateFacility, getResourceSummary } from '../../api/facilities';
 import { getEquipmentsByFacility, createEquipment, updateEquipment, deleteEquipment } from '../../api/equipments';
 
 export function AdminFacilitiesPage() {
     const [facilities, setFacilities] = useState([]);
+    const [summary, setSummary] = useState({ FACILITY: 0, EQUIPMENT: 0, SPORTS: 0, LIBRARY: 0, EVENT: 0 });
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [error, setError] = useState(null);
@@ -24,18 +25,22 @@ export function AdminFacilitiesPage() {
     const [targetFacilityId, setTargetFacilityId] = useState(null);
 
     useEffect(() => {
-        fetchFacilities();
+        fetchData();
     }, []);
 
-    const fetchFacilities = async () => {
+    const fetchData = async () => {
         setLoading(true);
         try {
-            const data = await getAllFacilities();
-            setFacilities(data);
+            const [facilitiesData, summaryData] = await Promise.all([
+                getAllFacilities(),
+                getResourceSummary()
+            ]);
+            setFacilities(facilitiesData);
+            setSummary(summaryData);
             setError(null);
         } catch (err) {
-            console.error('Failed to fetch facilities:', err);
-            setError(`Failed to load facilities. ${err.message}`);
+            console.error('Failed to fetch data:', err);
+            setError(`Failed to load dashboard data. ${err.message}`);
         } finally {
             setLoading(false);
         }
@@ -85,6 +90,7 @@ export function AdminFacilitiesPage() {
             }
             const updatedEqs = await getEquipmentsByFacility(targetFacilityId);
             setEquipments(prev => ({ ...prev, [targetFacilityId]: updatedEqs }));
+            await fetchData();
             setIsEqModalOpen(false);
         } catch (err) {
             alert('Failed: ' + err.message);
@@ -97,10 +103,9 @@ export function AdminFacilitiesPage() {
         if (!window.confirm('Delete this equipment?')) return;
         try {
             await deleteEquipment(eqId);
-            setEquipments(prev => ({
-                ...prev,
-                [facilityId]: prev[facilityId].filter(e => e.id !== eqId)
-            }));
+            const updatedEqs = await getEquipmentsByFacility(facilityId);
+            setEquipments(prev => ({ ...prev, [facilityId]: updatedEqs }));
+            await fetchData();
         } catch (err) {
             alert('Failed: ' + err.message);
         }
@@ -111,7 +116,7 @@ export function AdminFacilitiesPage() {
 
         try {
             await deleteFacility(id);
-            setFacilities(facilities.filter(f => f.id !== id));
+            await fetchData();
         } catch (err) {
             alert('Failed to delete facility: ' + err.message);
         }
@@ -150,7 +155,7 @@ export function AdminFacilitiesPage() {
             } else {
                 await createFacility(data);
             }
-            await fetchFacilities();
+            await fetchData();
             handleCloseModal();
         } catch (err) {
             alert('Operation failed: ' + err.message);
@@ -186,6 +191,30 @@ export function AdminFacilitiesPage() {
                     </Button>
                 </div>
             </div>
+
+            <div className="pt-4">
+                <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
+                    <span className="w-1 h-4 bg-orange-500 rounded-full"></span> Resource Types
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {[
+                    { label: 'FACILITY', count: summary.FACILITY, sub: 'Spaces', icon: <FiLayers />, color: 'blue' },
+                    { label: 'EQUIPMENT', count: summary.EQUIPMENT, sub: 'Items', icon: <FiBox />, color: 'orange' },
+                    { label: 'SPORTS', count: summary.SPORTS, sub: 'Venues', icon: <FiActivity />, color: 'emerald' },
+                    { label: 'LIBRARY', count: summary.LIBRARY, sub: 'Zones', icon: <FiBookOpen />, color: 'purple' },
+                    { label: 'EVENT', count: summary.EVENT, sub: 'Seminar', icon: <FiCalendar />, color: 'rose' }
+                ].map((item, i) => (
+                    <Card key={i} className="p-4 flex flex-col items-center text-center group hover:scale-105 transition-transform border-none shadow-sm dark:bg-slate-900/50">
+                        <div className={`w-10 h-10 rounded-2xl mb-3 flex items-center justify-center text-white bg-${item.color}-500 shadow-lg shadow-${item.color}-500/20`}>
+                            {item.icon}
+                        </div>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{item.label}</h4>
+                        <p className="text-xl font-black text-slate-900 dark:text-white leading-none">{item.count}</p>
+                        <p className="text-[9px] text-slate-500 dark:text-slate-500 font-bold uppercase mt-1 tracking-tighter">{item.sub}</p>
+                    </Card>
+                ))}
+            </div>
+        </div>
 
             {error && (
                 <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm font-medium">
@@ -421,6 +450,9 @@ export function AdminFacilitiesPage() {
                                                 <option value="LAB">Laboratory</option>
                                                 <option value="MEETING_ROOM">Meeting Room</option>
                                                 <option value="AUDITORIUM">Auditorium</option>
+                                                <option value="SPORTS_VENUE">Sports Venue</option>
+                                                <option value="LIBRARY_ZONE">Library Zone</option>
+                                                <option value="SEMINAR_ROOM">Seminar Room</option>
                                             </select>
                                         </div>
                                         <div className="space-y-2">

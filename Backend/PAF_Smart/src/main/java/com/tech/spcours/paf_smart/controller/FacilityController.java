@@ -34,6 +34,12 @@ public class FacilityController {
         return facilityService.getAllFacilities();
     }
 
+    @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public java.util.Map<String, Long> getResourceSummary() {
+        return facilityService.getResourceSummary();
+    }
+
     @GetMapping("/{code}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public FacilityResponse getFacilityByCode(@PathVariable String code) {

@@ -72,3 +72,11 @@ export async function deleteFacility(id) {
     return parseResponse(response, 'Failed to delete facility.');
   }
 }
+
+export async function getResourceSummary() {
+  const response = await fetchFromApi('/facilities/summary', {
+    headers: getAuthHeaders(false)
+  });
+
+  return parseResponse(response, 'Failed to load resource summary.');
+}

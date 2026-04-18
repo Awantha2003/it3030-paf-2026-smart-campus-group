@@ -11,6 +11,7 @@ import com.tech.spcours.paf_smart.exception.ResourceConflictException;
 import com.tech.spcours.paf_smart.exception.ResourceNotFoundException;
 import com.tech.spcours.paf_smart.model.Facility;
 import com.tech.spcours.paf_smart.repository.FacilityRepository;
+import com.tech.spcours.paf_smart.repository.EquipmentRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class FacilityService {
 
     private final FacilityRepository facilityRepository;
+    private final EquipmentRepository equipmentRepository;
 
     public List<FacilityResponse> getAllFacilities() {
         return facilityRepository.findAll().stream()
@@ -86,6 +88,39 @@ public class FacilityService {
             throw new ResourceNotFoundException("Facility not found with id: " + id);
         }
         facilityRepository.deleteById(id);
+    }
+
+    public java.util.Map<String, Long> getResourceSummary() {
+        java.util.Map<String, Long> summary = new java.util.HashMap<>();
+        
+        // Count facilities by their type grouping
+        List<Facility> allFacilities = facilityRepository.findAll();
+        
+        long facilityCount = allFacilities.stream()
+            .filter(f -> List.of("LECTURE_HALL", "LAB", "MEETING_ROOM", "AUDITORIUM").contains(f.getSpaceType()))
+            .count();
+            
+        long sportsCount = allFacilities.stream()
+            .filter(f -> "SPORTS_VENUE".equals(f.getSpaceType()))
+            .count();
+            
+        long libraryCount = allFacilities.stream()
+            .filter(f -> "LIBRARY_ZONE".equals(f.getSpaceType()))
+            .count();
+            
+        long eventCount = allFacilities.stream()
+            .filter(f -> "SEMINAR_ROOM".equals(f.getSpaceType()))
+            .count();
+
+        summary.put("FACILITY", facilityCount);
+        summary.put("SPORTS", sportsCount);
+        summary.put("LIBRARY", libraryCount);
+        summary.put("EVENT", eventCount);
+        
+        // Total count of unique equipment types
+        summary.put("EQUIPMENT", equipmentRepository.count());
+        
+        return summary;
     }
 
     private FacilityResponse mapToResponse(Facility facility) {
