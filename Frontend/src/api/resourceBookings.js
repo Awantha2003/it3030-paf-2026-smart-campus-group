@@ -66,6 +66,24 @@ export async function updateResourceBooking(id, bookingData) {
   return parseResponse(response, 'Failed to update booking.');
 }
 
+export async function getAllResourceBookings() {
+  const response = await fetchFromApi('/resource-bookings/all', {
+    headers: getAuthHeaders(false)
+  });
+
+  return parseResponse(response, 'Failed to load all bookings.');
+}
+
+export async function updateResourceBookingStatus(id, statusData) {
+  const response = await fetchFromApi(`/resource-bookings/${id}/status`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(statusData)
+  });
+
+  return parseResponse(response, 'Failed to update booking status.');
+}
+
 export async function deleteResourceBooking(id) {
   const response = await fetchFromApi(`/resource-bookings/${id}`, {
     method: 'DELETE',

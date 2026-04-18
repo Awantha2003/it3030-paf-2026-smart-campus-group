@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.tech.spcours.paf_smart.dto.CreateResourceBookingRequest;
 import com.tech.spcours.paf_smart.dto.ResourceBookingResponse;
+import com.tech.spcours.paf_smart.dto.UpdateBookingStatusRequest;
 import com.tech.spcours.paf_smart.exception.ResourceConflictException;
 import com.tech.spcours.paf_smart.exception.ResourceNotFoundException;
 import com.tech.spcours.paf_smart.model.ResourceBooking;
@@ -38,6 +39,13 @@ public class ResourceBookingService {
         return resourceBookingRepository.findByStudentIdAndResourceTypeOrderByBookingDateDescBookingTimeDesc(
                         user.getId(),
                         normalizedType)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    public List<ResourceBookingResponse> getAllBookings() {
+        return resourceBookingRepository.findAllByOrderByBookingDateDescBookingTimeDesc()
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -127,6 +135,21 @@ public class ResourceBookingService {
         return toResponse(resourceBookingRepository.save(existingBooking));
     }
 
+    public ResourceBookingResponse updateBookingStatus(String bookingId, UpdateBookingStatusRequest request) {
+        ResourceBooking booking = resourceBookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Resource booking not found"));
+        
+        booking.setStatus(request.status());
+        if ("REJECTED".equalsIgnoreCase(request.status())) {
+            booking.setRejectionReason(request.rejectionReason());
+        } else {
+            booking.setRejectionReason(null);
+        }
+        booking.setUpdatedAt(Instant.now());
+        
+        return toResponse(resourceBookingRepository.save(booking));
+    }
+
     public void deleteBooking(String bookingId, User user) {
         ResourceBooking booking = findOwnedBooking(bookingId, user);
         resourceBookingRepository.delete(booking);
@@ -194,10 +217,7 @@ public class ResourceBookingService {
     }
 
     private String defaultStatusForType(String resourceType) {
-        if ("EQUIPMENT".equals(resourceType) || "EVENT".equals(resourceType)) {
-            return "PENDING_APPROVAL";
-        }
-        return "APPROVED";
+        return "PENDING_APPROVAL";
     }
 
     private String normalizeResourceType(String rawType) {
@@ -295,6 +315,7 @@ public class ResourceBookingService {
                 .quantity(booking.getQuantity())
                 .purpose(booking.getPurpose())
                 .status(booking.getStatus())
+                .rejectionReason(booking.getRejectionReason())
                 .createdAt(booking.getCreatedAt())
                 .updatedAt(booking.getUpdatedAt())
                 .build();

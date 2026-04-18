@@ -1501,6 +1501,11 @@ export function BookingResourcesPage() {
                                 <span className="font-semibold">{booking.resourceName}</span> | {booking.bookingDate} |{' '}
                                 {String(booking.bookingTime || '').slice(0, 5)} - {booking.returnTimeLabel} | Qty{' '}
                                 {Number(booking.quantity || 0)} | {booking.statusLabel}
+                                {booking.status === 'REJECTED' && booking.rejectionReason && (
+                                  <div className="mt-1 text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded border border-red-100 dark:border-red-900/30">
+                                    <span className="font-semibold">Reason:</span> {booking.rejectionReason}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -1640,7 +1645,7 @@ export function BookingResourcesPage() {
                   <p className="text-sm font-semibold text-cyan-900 dark:text-cyan-200">{feature}</p>
                   <button
                     type="button"
-                    onClick={openNewFacilityBookingForm}
+                    onClick={() => openNewFacilityBookingForm()}
                     className="rounded-full border border-cyan-300 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-800 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-slate-800"
                   >
                     Book
@@ -1706,6 +1711,11 @@ export function BookingResourcesPage() {
                             </button>
                           </div>
                         </div>
+                        {booking.status === 'REJECTED' && booking.rejectionReason && (
+                          <div className="mt-2 text-[10px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1.5 rounded border border-red-100 dark:border-red-900/30">
+                            <span className="font-semibold">Reason:</span> {booking.rejectionReason}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -2252,6 +2262,26 @@ export function BookingResourcesPage() {
                           Status: Available
                         </div>
                       </div>
+
+                      {space.bookedSlots && space.bookedSlots.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Booked Slots</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {space.bookedSlots.map((slot, idx) => {
+                              const formatTime = (t) => t ? String(t).slice(0, 5) : '';
+                              return (
+                                <span key={idx} className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-medium text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300">
+                                  {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-300">
+                          All slots available
+                        </div>
+                      )}
 
                       <Button
                         size="sm"

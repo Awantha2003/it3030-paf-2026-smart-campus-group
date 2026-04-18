@@ -82,6 +82,25 @@ export async function updateFacilityBooking(id, bookingData) {
   return parseResponse(response, 'Failed to update facility booking.');
 }
 
+// Admin Endpoints
+export async function getAllFacilityBookings() {
+  const response = await fetchFromApi('/facility-bookings/all', {
+    headers: getAuthHeaders(false)
+  });
+
+  return parseResponse(response, 'Failed to load all facility bookings.');
+}
+
+export async function updateFacilityBookingStatus(id, statusData) {
+  const response = await fetchFromApi(`/facility-bookings/${id}/status`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(statusData)
+  });
+
+  return parseResponse(response, 'Failed to update facility booking status.');
+}
+
 export async function deleteFacilityBooking(id) {
   const response = await fetchFromApi(`/facility-bookings/${id}`, {
     method: 'DELETE',

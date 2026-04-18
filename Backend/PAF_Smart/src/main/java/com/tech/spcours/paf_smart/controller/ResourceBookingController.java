@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tech.spcours.paf_smart.dto.CreateResourceBookingRequest;
 import com.tech.spcours.paf_smart.dto.ResourceBookingResponse;
+import com.tech.spcours.paf_smart.dto.UpdateBookingStatusRequest;
 import com.tech.spcours.paf_smart.module.user.model.User;
 import com.tech.spcours.paf_smart.service.ResourceBookingService;
 
@@ -49,6 +50,12 @@ public class ResourceBookingController {
         return resourceBookingService.getBookingsByTypeAndDate(type, date);
     }
 
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<ResourceBookingResponse> getAllBookings() {
+        return resourceBookingService.getAllBookings();
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
@@ -67,6 +74,14 @@ public class ResourceBookingController {
             org.springframework.security.core.Authentication auth) {
         User user = (User) auth.getPrincipal();
         return resourceBookingService.updateBooking(id, request, user);
+    }
+
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResourceBookingResponse updateBookingStatus(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateBookingStatusRequest request) {
+        return resourceBookingService.updateBookingStatus(id, request);
     }
 
     @DeleteMapping("/{id}")

@@ -19,4 +19,6 @@ public interface ResourceBookingRepository extends MongoRepository<ResourceBooki
             LocalDate bookingDate);
 
     Optional<ResourceBooking> findByIdAndStudentId(String id, String studentId);
+
+    List<ResourceBooking> findAllByOrderByBookingDateDescBookingTimeDesc();
 }

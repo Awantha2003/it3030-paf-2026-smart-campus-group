@@ -56,8 +56,8 @@ export function Sidebar() {
         { name: 'Admin Dashboard', path: '/Admin/dashboard', icon: FiShield },
         { name: 'User Management', path: '/Admin/users', icon: FiUsers },
         { name: 'Facilities', path: '/Admin/facilities', icon: FiLayers },
-        { name: 'Technicians', path: '/Admin/technicians', icon: FiTool },
-        { name: 'Notifications', path: '/Admin/notifications', icon: FiBell }
+        { name: 'Bookings', path: '/Admin/bookings', icon: FiCalendar },
+        { name: 'Technicians', path: '/Admin/technicians', icon: FiTool }
     ];
 
     const techNav = [

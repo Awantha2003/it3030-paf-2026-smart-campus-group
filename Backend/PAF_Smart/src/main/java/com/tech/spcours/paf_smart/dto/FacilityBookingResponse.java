@@ -23,6 +23,7 @@ public record FacilityBookingResponse(
         Integer floor,
         String lectureHallName,
         String status,
+        String rejectionReason,
         Instant createdAt,
         Instant updatedAt) {
 }
