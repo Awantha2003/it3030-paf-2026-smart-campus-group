@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -12,6 +12,7 @@ import { TechnicianDashboard } from './pages/technician/TechnicianDashboard';
 import { UserManagementPage } from './pages/admin/UserManagementPage';
 import { AdminTicketsPage } from './pages/admin/AdminTicketsPage';
 import { AdminTechniciansPage } from './pages/admin/AdminTechniciansPage';
+import { AdminFacilitiesPage } from './pages/admin/AdminFacilitiesPage';
 import { MyTicketsPage } from './pages/tickets/MyTicketsPage';
 import { NewTicketPage } from './pages/tickets/NewTicketPage';
 import { TicketDetailPage } from './pages/tickets/TicketDetailPage';
@@ -41,6 +42,7 @@ export const App = () => {
                 <Route path="users" element={<UserManagementPage />} />
                 <Route path="tickets" element={<AdminTicketsPage />} />
                 <Route path="tickets/:id" element={<TicketDetailPage />} />
+                <Route path="facilities" element={<AdminFacilitiesPage />} />
                 <Route path="technicians" element={<AdminTechniciansPage />} />
                 <Route path="campus-map" element={<CampusMapPage />} />
                 <Route path="settings" element={<SettingsPage />} />

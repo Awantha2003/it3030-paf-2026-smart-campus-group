@@ -57,6 +57,13 @@ app:
     api-secret: ${CLOUDINARY_API_SECRET:t7tMm0_KRERFz6bFtzMCZNJSINM}
     folder: ${CLOUDINARY_FOLDER:unistudyhub/profile-images}
 
+  facility-booking:
+    reminders:
+      enabled: ${FACILITY_BOOKING_REMINDERS_ENABLED:true}
+      before-minutes: ${FACILITY_BOOKING_REMINDERS_BEFORE_MINUTES:10}
+      scan-interval-ms: ${FACILITY_BOOKING_REMINDERS_SCAN_INTERVAL_MS:60000}
+      timezone: ${FACILITY_BOOKING_REMINDERS_TIMEZONE:Asia/Colombo}
+
   # ── ADDED: frontend URL for OAuth2 redirect after Google login ────────
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
   # ─────────────────────────────────────────────────────────────────────

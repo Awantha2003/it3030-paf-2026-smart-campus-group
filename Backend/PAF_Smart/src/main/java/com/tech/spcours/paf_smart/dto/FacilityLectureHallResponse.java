@@ -9,5 +9,7 @@ public record FacilityLectureHallResponse(
         String block,
         Integer floor,
         String name,
-        String displayName) {
+        String displayName,
+        String spaceType,
+        Integer capacity) {
 }

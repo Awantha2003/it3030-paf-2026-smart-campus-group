@@ -36,4 +36,11 @@ public interface FacilityBookingRepository extends MongoRepository<FacilityBooki
     Optional<FacilityBooking> findByIdAndStudentId(String id, String studentId);
 
     List<FacilityBooking> findByStudentIdOrderByBookingDateDescBookingTimeDesc(String studentId);
+
+    List<FacilityBooking> findByBookingDate(LocalDate bookingDate);
+
+    List<FacilityBooking> findByStatusAndReminderSentAtIsNullAndBookingDateBetween(
+            String status,
+            LocalDate startDate,
+            LocalDate endDate);
 }

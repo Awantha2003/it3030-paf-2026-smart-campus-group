@@ -48,6 +48,8 @@ public class FacilityBooking {
 
     private String status;
 
+    private Instant reminderSentAt;
+
     private Instant createdAt;
 
     private Instant updatedAt;
