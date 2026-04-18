@@ -37,6 +37,13 @@ export async function fetchTechnicians() {
   return parseResponse(response);
 }
 
+export async function fetchTechnicianById(id) {
+  const response = await fetch(`${API_BASE_URL}/technicians/${id}`, {
+    headers: getAuthHeaders(false)
+  });
+  return parseResponse(response);
+}
+
 export async function fetchTechnicianUsers() {
   const response = await fetch(`${API_BASE_URL}/admin/users`, {
     headers: getAuthHeaders(false)

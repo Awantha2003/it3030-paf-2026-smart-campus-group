@@ -31,6 +31,15 @@ import {
 } from '../../utils/location';
 import { rankTicketsForTechnician } from '../../utils/campusMap';
 import { getTicketDetailPathForRole } from '../../utils/routes';
+
+function renderStars(rating) {
+  if (!rating) {
+    return 'No rating yet';
+  }
+
+  return `${rating}/5 stars`;
+}
+
 export function TechnicianDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -69,6 +78,9 @@ export function TechnicianDashboard() {
   ).length;
   const pendingFollowUps = assignedTickets.filter(
     (t) => t.status === 'OPEN'
+  ).length;
+  const feedbackReceivedCount = assignedTickets.filter(
+    (t) => typeof t.studentFeedbackRating === 'number'
   ).length;
   const handleUpdateClick = (ticket) => {
     setSelectedTicket(ticket);
@@ -210,6 +222,20 @@ export function TechnicianDashboard() {
           </div>
         </Card>
 
+        <Card className="p-4 flex items-center space-x-4 border-l-4 border-rose-500">
+          <div className="p-3 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg">
+            <MessageSquare className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              Feedback Received
+            </p>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+              {feedbackReceivedCount}
+            </h3>
+          </div>
+        </Card>
+
         <Card className="p-4 flex items-center space-x-4 border-l-4 border-emerald-500 sm:col-span-2 lg:col-span-1">
           <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
             <Navigation className="w-6 h-6" />
@@ -281,6 +307,16 @@ export function TechnicianDashboard() {
                       <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
                         {ticket.title}
                       </h3>
+                      {ticket.studentFeedbackRating && (
+                        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900/40 dark:bg-amber-900/10">
+                          <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                            Student Feedback: {renderStars(ticket.studentFeedbackRating)} ({ticket.studentFeedbackRating}/5)
+                          </p>
+                          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                            {ticket.studentFeedbackComment || 'No written feedback provided.'}
+                          </p>
+                        </div>
+                      )}
                       <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-400 mb-4">
                         <span className="flex items-center">
                           <MapPin className="w-4 h-4 mr-1" /> {ticket.location}
@@ -435,6 +471,31 @@ export function TechnicianDashboard() {
             ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 No assigned ticket is available for route tracking.
+              </p>
+            )}
+          </Card>
+
+          <Card className="p-5">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+              Student Feedback
+            </h3>
+            {activeRouteTicket?.studentFeedbackRating ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 dark:border-amber-900/40 dark:bg-amber-900/10">
+                <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                  {renderStars(activeRouteTicket.studentFeedbackRating)} ({activeRouteTicket.studentFeedbackRating}/5)
+                </p>
+                <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+                  {activeRouteTicket.studentFeedbackComment || 'No written feedback provided by the student.'}
+                </p>
+                {activeRouteTicket.studentFeedbackSubmittedAt && (
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    Submitted {new Date(activeRouteTicket.studentFeedbackSubmittedAt).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                No student feedback is available for the currently focused ticket.
               </p>
             )}
           </Card>

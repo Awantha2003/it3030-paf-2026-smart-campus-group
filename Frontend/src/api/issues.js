@@ -129,3 +129,13 @@ export async function updateIssueReportAdminNote(id, adminNote) {
 
   return parseResponse(response, 'Failed to save admin note.');
 }
+
+export async function updateIssueReportFeedback(id, feedbackData) {
+  const response = await fetch(`${API_BASE_URL}/issues/${id}/feedback`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(feedbackData)
+  });
+
+  return parseResponse(response, 'Failed to submit feedback.');
+}

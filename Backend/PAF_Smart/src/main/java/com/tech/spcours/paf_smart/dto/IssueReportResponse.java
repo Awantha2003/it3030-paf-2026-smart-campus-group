@@ -25,7 +25,11 @@ public record IssueReportResponse(
         String department,
         List<String> attachmentUrls,
         String assignedTo,
+        Instant assignedAt,
         String adminNote,
+        Integer studentFeedbackRating,
+        String studentFeedbackComment,
+        Instant studentFeedbackSubmittedAt,
         Instant createdAt,
         Instant updatedAt) {
 }

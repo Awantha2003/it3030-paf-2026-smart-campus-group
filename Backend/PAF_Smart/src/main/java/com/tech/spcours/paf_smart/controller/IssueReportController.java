@@ -3,6 +3,7 @@ package com.tech.spcours.paf_smart.controller;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,8 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.tech.spcours.paf_smart.dto.AssignIssueReportRequest;
 import com.tech.spcours.paf_smart.dto.CreateIssueReportRequest;
 import com.tech.spcours.paf_smart.dto.IssueReportResponse;
+import com.tech.spcours.paf_smart.dto.UpdateIssueReportFeedbackRequest;
 import com.tech.spcours.paf_smart.dto.UpdateIssueReportNoteRequest;
 import com.tech.spcours.paf_smart.dto.UpdateIssueReportStatusRequest;
+import com.tech.spcours.paf_smart.module.user.model.User;
 import com.tech.spcours.paf_smart.service.IssueReportService;
 
 import jakarta.validation.Valid;
@@ -49,6 +52,20 @@ public class IssueReportController {
     @GetMapping("/{id}")
     public IssueReportResponse getIssueReportById(@PathVariable String id) {
         return issueReportService.getIssueReportById(id);
+    }
+
+    @PatchMapping("/{id}/feedback")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public IssueReportResponse updateIssueReportFeedback(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateIssueReportFeedbackRequest request,
+            org.springframework.security.core.Authentication auth) {
+        User user = (User) auth.getPrincipal();
+        return issueReportService.updateIssueReportStudentFeedback(
+                id,
+                request.feedbackRating(),
+                request.feedbackComment(),
+                user);
     }
 
     @GetMapping("/admin/all")

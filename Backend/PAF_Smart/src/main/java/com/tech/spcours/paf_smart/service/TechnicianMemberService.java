@@ -31,6 +31,10 @@ public class TechnicianMemberService {
                 .toList();
     }
 
+    public TechnicianResponse getTechnicianById(String id) {
+        return toResponse(findTechnicianById(id));
+    }
+
     public TechnicianResponse createTechnician(CreateTechnicianRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         String rawPassword = request.getPassword().trim();

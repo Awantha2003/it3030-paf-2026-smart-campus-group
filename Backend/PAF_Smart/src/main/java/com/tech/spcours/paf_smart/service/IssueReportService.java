@@ -10,6 +10,8 @@ import com.tech.spcours.paf_smart.dto.CreateIssueReportRequest;
 import com.tech.spcours.paf_smart.dto.IssueReportResponse;
 import com.tech.spcours.paf_smart.exception.ResourceConflictException;
 import com.tech.spcours.paf_smart.exception.ResourceNotFoundException;
+import com.tech.spcours.paf_smart.module.user.model.Role;
+import com.tech.spcours.paf_smart.module.user.model.User;
 import com.tech.spcours.paf_smart.model.IssueReport;
 import com.tech.spcours.paf_smart.model.TechnicianMember;
 import com.tech.spcours.paf_smart.repository.IssueReportRepository;
@@ -52,7 +54,11 @@ public class IssueReportService {
                 .department(request.department().trim())
                 .attachmentUrls(request.attachmentUrls() == null ? List.of() : request.attachmentUrls())
                 .assignedTo(null)
+                .assignedAt(null)
                 .adminNote(null)
+                .studentFeedbackRating(null)
+                .studentFeedbackComment(null)
+                .studentFeedbackSubmittedAt(null)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -63,6 +69,7 @@ public class IssueReportService {
                     .findFirst()
                     .ifPresent(technician -> {
                         issueReport.setAssignedTo(technician.getId());
+                        issueReport.setAssignedAt(now);
                         issueReport.setStatus("IN_PROGRESS");
                     });
         }
@@ -114,12 +121,21 @@ public class IssueReportService {
         IssueReport issueReport = findIssueReportById(id);
         TechnicianMember technicianMember = technicianMemberRepository.findById(technicianId.trim())
                 .orElseThrow(() -> new ResourceNotFoundException("Technician account not found"));
+        String normalizedTechnicianId = technicianMember.getId();
 
         if (!technicianMember.isActive()) {
             throw new ResourceConflictException("Cannot assign an inactive technician");
         }
 
-        issueReport.setAssignedTo(technicianMember.getId());
+        boolean reassigned = issueReport.getAssignedTo() == null || !issueReport.getAssignedTo().equals(normalizedTechnicianId);
+
+        issueReport.setAssignedTo(normalizedTechnicianId);
+        if (reassigned) {
+            issueReport.setAssignedAt(Instant.now());
+            issueReport.setStudentFeedbackRating(null);
+            issueReport.setStudentFeedbackComment(null);
+            issueReport.setStudentFeedbackSubmittedAt(null);
+        }
         if ("OPEN".equals(issueReport.getStatus())) {
             issueReport.setStatus("IN_PROGRESS");
         }
@@ -131,6 +147,35 @@ public class IssueReportService {
     public IssueReportResponse updateIssueReportAdminNote(String id, String adminNote) {
         IssueReport issueReport = findIssueReportById(id);
         issueReport.setAdminNote(adminNote.trim());
+        issueReport.setUpdatedAt(Instant.now());
+
+        return toResponse(issueReportRepository.save(issueReport));
+    }
+
+    public IssueReportResponse updateIssueReportStudentFeedback(
+            String id,
+            Integer feedbackRating,
+            String feedbackComment,
+            User user) {
+        IssueReport issueReport = findIssueReportById(id);
+
+        if (user.getRole() != Role.ADMIN
+                && !issueReport.getStudentId().equals(user.getId())
+                && !issueReport.getStudentEmail().equalsIgnoreCase(user.getEmail())) {
+            throw new ResourceConflictException("You can only submit feedback for your own tickets");
+        }
+
+        if (issueReport.getAssignedTo() == null || issueReport.getAssignedTo().isBlank()) {
+            throw new ResourceConflictException("Feedback can only be submitted after a technician is assigned");
+        }
+
+        if (!Set.of("RESOLVED", "CLOSED").contains(issueReport.getStatus())) {
+            throw new ResourceConflictException("Feedback can only be submitted after the ticket is resolved");
+        }
+
+        issueReport.setStudentFeedbackRating(feedbackRating);
+        issueReport.setStudentFeedbackComment(normalizeOptionalValue(feedbackComment));
+        issueReport.setStudentFeedbackSubmittedAt(Instant.now());
         issueReport.setUpdatedAt(Instant.now());
 
         return toResponse(issueReportRepository.save(issueReport));
@@ -175,7 +220,11 @@ public class IssueReportService {
                 .department(issueReport.getDepartment())
                 .attachmentUrls(issueReport.getAttachmentUrls())
                 .assignedTo(issueReport.getAssignedTo())
+                .assignedAt(issueReport.getAssignedAt())
                 .adminNote(issueReport.getAdminNote())
+                .studentFeedbackRating(issueReport.getStudentFeedbackRating())
+                .studentFeedbackComment(issueReport.getStudentFeedbackComment())
+                .studentFeedbackSubmittedAt(issueReport.getStudentFeedbackSubmittedAt())
                 .createdAt(issueReport.getCreatedAt())
                 .updatedAt(issueReport.getUpdatedAt())
                 .build();
