@@ -17,6 +17,7 @@ import com.tech.spcours.paf_smart.exception.ResourceNotFoundException;
 import com.tech.spcours.paf_smart.model.FacilityBooking;
 import com.tech.spcours.paf_smart.module.user.model.User;
 import com.tech.spcours.paf_smart.repository.FacilityBookingRepository;
+import com.tech.spcours.paf_smart.module.notification.service.NotificationService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -45,6 +46,7 @@ public class FacilityBookingService {
 
     private final FacilityBookingRepository facilityBookingRepository;
     private final com.tech.spcours.paf_smart.repository.FacilityRepository facilityRepository;
+    private final NotificationService notificationService;
 
     public List<FacilityLectureHallResponse> getLectureHalls() {
         return facilityRepository.findAll().stream()
@@ -129,7 +131,11 @@ public class FacilityBookingService {
                 .updatedAt(now)
                 .build();
 
-        return toBookingResponse(facilityBookingRepository.save(booking));
+        com.tech.spcours.paf_smart.model.FacilityBooking saved = facilityBookingRepository.save(booking);
+
+        notificationService.send(user.getId(), "Booking Confirmed", "Your booking for " + hall.getName() + " on " + request.bookingDate().toString() + " at " + request.bookingTime().toString() + " is confirmed.", "BOOKINGS", saved.getId());
+
+        return toBookingResponse(saved);
     }
 
     public FacilityBookingResponse updateBooking(String bookingId, CreateFacilityBookingRequest request, User user) {
@@ -168,7 +174,11 @@ public class FacilityBookingService {
         existingBooking.setReminderSentAt(null);
         existingBooking.setUpdatedAt(Instant.now());
 
-        return toBookingResponse(facilityBookingRepository.save(existingBooking));
+        com.tech.spcours.paf_smart.model.FacilityBooking saved = facilityBookingRepository.save(existingBooking);
+
+        notificationService.send(user.getId(), "Booking Updated", "Your booking for " + hall.getName() + " on " + request.bookingDate().toString() + " at " + request.bookingTime().toString() + " has been successfully updated.", "BOOKINGS", saved.getId());
+
+        return toBookingResponse(saved);
     }
 
     public void deleteBooking(String bookingId, User user) {

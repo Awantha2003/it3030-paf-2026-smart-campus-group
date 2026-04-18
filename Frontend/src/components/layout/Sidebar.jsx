@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiLayout, FiMap, FiTool, FiChevronLeft, FiSettings, FiShield, FiUsers, FiCalendar, FiLayers } from 'react-icons/fi';
+import { FiLayout, FiMap, FiTool, FiChevronLeft, FiSettings, FiShield, FiUsers, FiCalendar, FiLayers, FiBell } from 'react-icons/fi';
 import { FaGraduationCap, FaTicketAlt } from 'react-icons/fa';
 import { RiAdminFill } from 'react-icons/ri';
 import { MdEngineering } from 'react-icons/md';
@@ -56,7 +56,8 @@ export function Sidebar() {
         { name: 'Admin Dashboard', path: '/Admin/dashboard', icon: FiShield },
         { name: 'User Management', path: '/Admin/users', icon: FiUsers },
         { name: 'Facilities', path: '/Admin/facilities', icon: FiLayers },
-        { name: 'Technicians', path: '/Admin/technicians', icon: FiTool }
+        { name: 'Technicians', path: '/Admin/technicians', icon: FiTool },
+        { name: 'Notifications', path: '/Admin/notifications', icon: FiBell }
     ];
 
     const techNav = [

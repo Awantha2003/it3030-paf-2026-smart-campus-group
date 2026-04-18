@@ -5,7 +5,8 @@ export const adminRoutes = {
     campusMap: '/Admin/campus-map',
     technicians: '/Admin/technicians',
     users: '/Admin/users',
-    settings: '/Admin/settings'
+    settings: '/Admin/settings',
+    notifications: '/Admin/notifications'
 };
 
 export const studentRoutes = {
@@ -15,7 +16,8 @@ export const studentRoutes = {
     ticketDetail: (ticketId) => `/Student/tickets/${ticketId}`,
     bookingResources: '/Student/booking-resources',
     campusMap: '/Student/campus-map',
-    settings: '/Student/settings'
+    settings: '/Student/settings',
+    notifications: '/Student/notifications'
 };
 
 export const techRoutes = {
@@ -23,7 +25,8 @@ export const techRoutes = {
     tickets: '/Technician/tickets',
     ticketDetail: (ticketId) => `/Technician/tickets/${ticketId}`,
     campusMap: '/Technician/campus-map',
-    settings: '/Technician/settings'
+    settings: '/Technician/settings',
+    notifications: '/Technician/notifications'
 };
 
 export const getTicketDetailPathForRole = (role, ticketId) => {
@@ -40,4 +43,26 @@ export const getTicketListPathForRole = (role) => {
         case 'TECHNICIAN': return techRoutes.tickets;
         default: return studentRoutes.tickets;
     }
+};
+
+export const getNotificationsPathForRole = (role) => {
+    switch (role) {
+        case 'ADMIN': return adminRoutes.notifications;
+        case 'TECHNICIAN': return techRoutes.notifications;
+        default: return studentRoutes.notifications;
+    }
+};
+
+export const resolvePathForRole = (path, role) => {
+    // If the path is simple like '/notifications', map it. Provide a robust resolver if needed,
+    // otherwise fallback to string manipulation
+    if (path.startsWith('/tickets/')) {
+        const id = path.split('/')[2];
+        return getTicketDetailPathForRole(role, id);
+    }
+    if (path === '/notifications') return getNotificationsPathForRole(role);
+    
+    // Add prefix
+    const rolePrefix = role === 'ADMIN' ? '/Admin' : role === 'TECHNICIAN' ? '/Technician' : '/Student';
+    return `${rolePrefix}${path.startsWith('/') ? path : '/' + path}`;
 };

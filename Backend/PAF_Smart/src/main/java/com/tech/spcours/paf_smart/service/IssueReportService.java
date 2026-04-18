@@ -16,6 +16,10 @@ import com.tech.spcours.paf_smart.model.IssueReport;
 import com.tech.spcours.paf_smart.model.TechnicianMember;
 import com.tech.spcours.paf_smart.repository.IssueReportRepository;
 import com.tech.spcours.paf_smart.repository.TechnicianMemberRepository;
+import com.tech.spcours.paf_smart.module.notification.service.NotificationService;
+import com.tech.spcours.paf_smart.module.user.model.User;
+import com.tech.spcours.paf_smart.module.user.model.Role;
+import com.tech.spcours.paf_smart.module.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -32,6 +36,8 @@ public class IssueReportService {
 
     private final IssueReportRepository issueReportRepository;
     private final TechnicianMemberRepository technicianMemberRepository;
+    private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
     public IssueReportResponse createIssueReport(CreateIssueReportRequest request) {
         Instant now = Instant.now();
@@ -72,10 +78,22 @@ public class IssueReportService {
                         issueReport.setAssignedTo(technician.getId());
                         issueReport.setAssignedAt(now);
                         issueReport.setStatus("IN_PROGRESS");
+                        notificationService.send(technician.getId(), "New Ticket Assigned", "You have been assigned a critical ticket: " + issueReport.getTitle(), "TICKET", issueReport.getId());
                     });
         }
 
-        return toResponse(issueReportRepository.save(issueReport));
+        IssueReport saved = issueReportRepository.save(issueReport);
+        
+        userRepository.findByRole(Role.ADMIN).forEach(admin -> {
+            notificationService.send(admin.getId(), "New Ticket Raised", "A new ticket has been raised by " + issueReport.getStudentName() + ": " + issueReport.getTitle(), "TICKET", saved.getId());
+        });
+        
+        // Notify the user who created the ticket
+        if (issueReport.getStudentId() != null && !issueReport.getStudentId().isEmpty()) {
+            notificationService.send(issueReport.getStudentId(), "Ticket Created", "Your ticket '" + issueReport.getTitle() + "' has been successfully created. We will review it shortly.", "TICKET", saved.getId());
+        }
+
+        return toResponse(saved);
     }
 
     public List<IssueReportResponse> getStudentIssueReports(String studentId) {
@@ -122,8 +140,12 @@ public class IssueReportService {
         issueReport.setStatus(normalizedStatus);
         issueReport.setRejectionReason("REJECTED".equals(normalizedStatus) ? normalizedRejectionReason : null);
         issueReport.setUpdatedAt(Instant.now());
+        
+        IssueReport saved = issueReportRepository.save(issueReport);
+        
+        notificationService.send(saved.getStudentId(), "Ticket Status Updated", "Your ticket '" + saved.getTitle() + "' status has been changed to " + normalizedStatus, "TICKETS", saved.getId());
 
-        return toResponse(issueReportRepository.save(issueReport));
+        return toResponse(saved);
     }
 
     public IssueReportResponse assignIssueReport(String id, String technicianId) {
@@ -150,7 +172,11 @@ public class IssueReportService {
         }
         issueReport.setUpdatedAt(Instant.now());
 
-        return toResponse(issueReportRepository.save(issueReport));
+        IssueReport saved = issueReportRepository.save(issueReport);
+        
+        notificationService.send(technicianMember.getId(), "Ticket Assigned", "You have been assigned a new ticket: " + saved.getTitle(), "TICKETS", saved.getId());
+
+        return toResponse(saved);
     }
 
     public IssueReportResponse updateIssueReportAdminNote(String id, String adminNote) {
