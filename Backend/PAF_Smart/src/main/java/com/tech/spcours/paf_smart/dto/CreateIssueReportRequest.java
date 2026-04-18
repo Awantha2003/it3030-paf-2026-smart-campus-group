@@ -57,5 +57,6 @@ public record CreateIssueReportRequest(
         @Size(max = 100, message = "Department must not exceed 100 characters")
         String department,
 
+        @Size(max = 3, message = "Up to 3 attachments are allowed")
         List<String> attachmentUrls) {
 }

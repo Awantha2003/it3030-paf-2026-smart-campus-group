@@ -20,7 +20,12 @@ async function parseResponse(response, fallbackMessage) {
   const payload = contentType.includes('application/json') ? await response.json() : null;
 
   if (!response.ok) {
-    throw new Error(payload?.message || fallbackMessage);
+    const firstValidationError =
+      payload && typeof payload === 'object'
+        ? Object.values(payload).find((value) => typeof value === 'string' && value.trim())
+        : '';
+
+    throw new Error(payload?.message || payload?.error || firstValidationError || fallbackMessage);
   }
 
   return payload;
