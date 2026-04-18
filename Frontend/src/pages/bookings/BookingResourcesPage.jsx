@@ -472,7 +472,7 @@ export function BookingResourcesPage() {
         const typeMapping = {
           SPORTS: 'SPORTS_VENUE',
           LIBRARY: 'LIBRARY_ZONE',
-          EVENT: 'SEMINAR_ROOM'
+          EVENT: 'EVENT'
         };
         
         const dbPlaces = await getFacilitiesByType(typeMapping[type] || type);

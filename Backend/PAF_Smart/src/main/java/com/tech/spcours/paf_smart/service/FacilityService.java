@@ -115,7 +115,7 @@ public class FacilityService {
             .count();
             
         long eventCount = allFacilities.stream()
-            .filter(f -> List.of("EVENT", "MEETING_ROOM", "AUDITORIUM", "SEMINAR_ROOM").contains(f.getSpaceType()))
+            .filter(f -> "EVENT".equals(f.getSpaceType()))
             .count();
 
         summary.put("FACILITY", facilityCount);

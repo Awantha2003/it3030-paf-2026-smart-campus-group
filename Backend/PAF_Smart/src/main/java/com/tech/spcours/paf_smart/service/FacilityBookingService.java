@@ -31,7 +31,7 @@ public class FacilityBookingService {
     private final com.tech.spcours.paf_smart.repository.FacilityRepository facilityRepository;
 
     public List<FacilityLectureHallResponse> getLectureHalls() {
-        return facilityRepository.findAll().stream()
+        return facilityRepository.findBySpaceTypeIn(List.of("LECTURE_HALL", "LAB")).stream()
                 .map(this::mapToLectureHallResponse)
                 .toList();
     }
@@ -42,7 +42,7 @@ public class FacilityBookingService {
                 .map(com.tech.spcours.paf_smart.model.FacilityBooking::getLectureHallCode)
                 .toList());
 
-        return facilityRepository.findAll().stream()
+        return facilityRepository.findBySpaceTypeIn(List.of("LECTURE_HALL", "LAB")).stream()
                 .filter(space -> !bookedSpaceCodes.contains(space.getCode()))
                 .map(this::mapToLectureHallResponse)
                 .toList();

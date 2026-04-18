@@ -16,7 +16,7 @@ export function AdminFacilitiesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentFacility, setCurrentFacility] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
     // Equipment specific state
     const [expandedFacilityId, setExpandedFacilityId] = useState(null);
     const [equipments, setEquipments] = useState({}); // { facilityId: [equipments] }
@@ -164,8 +164,8 @@ export function AdminFacilitiesPage() {
         }
     };
 
-    const filteredFacilities = facilities.filter(f => 
-        f.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const filteredFacilities = facilities.filter(f =>
+        f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         f.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
         f.building.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -197,24 +197,24 @@ export function AdminFacilitiesPage() {
                     <span className="w-1 h-4 bg-orange-500 rounded-full"></span> Resource Types
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {[
-                    { label: 'FACILITY', count: summary.FACILITY, sub: 'Spaces', icon: <FiLayers />, color: 'blue' },
-                    { label: 'EQUIPMENT', count: summary.EQUIPMENT, sub: 'Items', icon: <FiBox />, color: 'orange' },
-                    { label: 'SPORTS', count: summary.SPORTS, sub: 'Venues', icon: <FiActivity />, color: 'emerald' },
-                    { label: 'LIBRARY', count: summary.LIBRARY, sub: 'Zones', icon: <FiBookOpen />, color: 'purple' },
-                    { label: 'EVENT', count: summary.EVENT, sub: 'Venues', icon: <FiCalendar />, color: 'rose' }
-                ].map((item, i) => (
-                    <Card key={i} className="p-4 flex flex-col items-center text-center group hover:scale-105 transition-transform border-none shadow-sm dark:bg-slate-900/50">
-                        <div className={`w-10 h-10 rounded-2xl mb-3 flex items-center justify-center text-white bg-${item.color}-500 shadow-lg shadow-${item.color}-500/20`}>
-                            {item.icon}
-                        </div>
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{item.label}</h4>
-                        <p className="text-xl font-black text-slate-900 dark:text-white leading-none">{item.count}</p>
-                        <p className="text-[9px] text-slate-500 dark:text-slate-500 font-bold uppercase mt-1 tracking-tighter">{item.sub}</p>
-                    </Card>
-                ))}
+                    {[
+                        { label: 'FACILITY', count: summary.FACILITY, sub: 'Labs & Halls', icon: <FiLayers />, color: 'blue' },
+                        { label: 'EQUIPMENT', count: summary.EQUIPMENT, sub: 'Projectors,Cameras,Kits and Multimedia gear', icon: <FiBox />, color: 'orange' },
+                        { label: 'SPORTS', count: summary.SPORTS, sub: 'Courts,Fields , Gym slots and Training zones', icon: <FiActivity />, color: 'emerald' },
+                        { label: 'LIBRARY', count: summary.LIBRARY, sub: 'Reading rooms, Research pods and Media booths', icon: <FiBookOpen />, color: 'purple' },
+                        { label: 'EVENT', count: summary.EVENT, sub: 'Auditoriums, Halls and Outdoor venues', icon: <FiCalendar />, color: 'rose' }
+                    ].map((item, i) => (
+                        <Card key={i} className="p-4 flex flex-col items-center text-center group hover:scale-105 transition-transform border-none shadow-sm dark:bg-slate-900/50">
+                            <div className={`w-10 h-10 rounded-2xl mb-3 flex items-center justify-center text-white bg-${item.color}-500 shadow-lg shadow-${item.color}-500/20`}>
+                                {item.icon}
+                            </div>
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{item.label}</h4>
+                            <p className="text-xl font-black text-slate-900 dark:text-white leading-none">{item.count}</p>
+                            <p className="text-[9px] text-slate-500 dark:text-slate-500 font-bold uppercase mt-1 tracking-tighter">{item.sub}</p>
+                        </Card>
+                    ))}
+                </div>
             </div>
-        </div>
 
             {error && (
                 <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm font-medium">
@@ -226,8 +226,8 @@ export function AdminFacilitiesPage() {
                 <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row gap-4 justify-between items-center">
                     <div className="relative w-full sm:w-72">
                         <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             placeholder="Search code, name, building..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -283,9 +283,7 @@ export function AdminFacilitiesPage() {
                                                     <div>
                                                         <p className="text-sm font-bold text-slate-900 dark:text-white uppercase leading-none mb-1">{facility.code}</p>
                                                         <p className="text-xs text-slate-500 dark:text-slate-400">{facility.name}</p>
-                                                        <Badge variant="primary" className="text-[9px] px-1 py-0 mt-1">
-                                                            {['EVENT', 'MEETING_ROOM', 'AUDITORIUM', 'SEMINAR_ROOM'].includes(facility.spaceType) ? 'EVENT' : facility.spaceType}
-                                                        </Badge>
+                                                        <Badge variant="primary" className="text-[9px] px-1 py-0 mt-1">{facility.spaceType}</Badge>
                                                     </div>
                                                 </div>
                                             </td>
@@ -304,14 +302,14 @@ export function AdminFacilitiesPage() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleOpenModal(facility)}
                                                         className="p-2 text-slate-400 hover:text-orange-500 transition-colors"
                                                         title="Edit Facility"
                                                     >
                                                         <FiEdit2 className="w-4 h-4" />
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleDelete(facility.id)}
                                                         className="p-2 text-slate-400 hover:text-red-500 transition-colors"
                                                         title="Delete Facility"
@@ -336,9 +334,9 @@ export function AdminFacilitiesPage() {
                                                                 <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                                                                     <FiBox className="text-orange-500" /> Assigned Equipment
                                                                 </h3>
-                                                                <Button 
-                                                                    size="sm" 
-                                                                    variant="outline" 
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
                                                                     className="text-[10px] h-7 px-3"
                                                                     onClick={() => handleOpenEqModal(facility.id)}
                                                                     leftIcon={<FiPlus className="w-3 h-3" />}

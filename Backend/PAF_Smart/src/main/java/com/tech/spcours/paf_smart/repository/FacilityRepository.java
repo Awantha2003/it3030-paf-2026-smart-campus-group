@@ -17,6 +17,8 @@ public interface FacilityRepository extends MongoRepository<Facility, String> {
     
     List<Facility> findBySpaceType(String spaceType);
     
+    List<Facility> findBySpaceTypeIn(List<String> spaceTypes);
+    
     List<Facility> findByStatus(String status);
     
     boolean existsByCode(String code);
