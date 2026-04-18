@@ -71,7 +71,7 @@ public class IssueReportService {
                 .build();
 
         if ("CRITICAL".equals(issueReport.getPriority())) {
-            userRepository.findByRole(Role.TECHNICIAN)
+            userRepository.findAll().stream().filter(u -> u.getRole() == Role.TECHNICIAN)
                     .forEach(technicianMemberService::syncTechnicianAccount);
 
             technicianMemberRepository.findAll().stream()
@@ -81,7 +81,12 @@ public class IssueReportService {
                         issueReport.setAssignedTo(technician.getId());
                         issueReport.setAssignedAt(now);
                         issueReport.setStatus("IN_PROGRESS");
-                        notificationService.send(technician.getId(), "New Ticket Assigned", "You have been assigned a critical ticket: " + issueReport.getTitle(), "TICKET", issueReport.getId());
+                        userRepository.findAll().stream()
+                            .filter(u -> u.getEmail().equalsIgnoreCase(technician.getEmail()) && u.getRole() == Role.TECHNICIAN)
+                            .findFirst()
+                            .ifPresent(user -> {
+                                notificationService.send(user.getId(), "New Ticket Assigned", "You have been assigned a critical ticket: " + issueReport.getTitle(), "TICKETS", issueReport.getId());
+                            });
                     });
         }
 
@@ -192,7 +197,12 @@ public class IssueReportService {
 
         IssueReport saved = issueReportRepository.save(issueReport);
         
-        notificationService.send(technicianMember.getId(), "Ticket Assigned", "You have been assigned a new ticket: " + saved.getTitle(), "TICKETS", saved.getId());
+        userRepository.findAll().stream()
+            .filter(u -> u.getEmail().equalsIgnoreCase(technicianMember.getEmail()) && u.getRole() == Role.TECHNICIAN)
+            .findFirst()
+            .ifPresent(user -> {
+                notificationService.send(user.getId(), "Ticket Assigned", "You have been assigned a new ticket: " + saved.getTitle(), "TICKETS", saved.getId());
+            });
 
         return toResponse(saved);
     }

@@ -62,7 +62,8 @@ export function Sidebar() {
 
     const techNav = [
         { name: 'My Assignments', path: '/Technician/dashboard', icon: FiTool },
-        { name: 'Campus Map', path: '/Technician/campus-map', icon: FiMap }
+        { name: 'Campus Map', path: '/Technician/campus-map', icon: FiMap },
+        { name: 'Notifications', path: '/Technician/notifications', icon: FiBell }
     ];
 
     const NavItem = ({ item }) => {
