@@ -11,7 +11,7 @@ import {
   updateIssueReportAdminNote,
   updateIssueReportStatus
 } from '../../api/issues';
-import { fetchTechnicians } from '../../api/technicians';
+import { fetchTechnicians, fetchTechnicianUsers } from '../../api/technicians';
 import {
   calculateDistanceKm,
   estimateTravelMinutes,
@@ -24,6 +24,35 @@ import {
 import { rankTechniciansForTicket } from '../../utils/campusMap';
 
 const ticketTabs = ['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'CLOSED'];
+
+function normalizeTechnicianRosterEntry(technician, source) {
+  if (source === 'user') {
+    return {
+      id: technician.id,
+      fullName: technician.name || technician.fullName || technician.email,
+      email: technician.email || '',
+      phone: technician.phone || 'Not provided',
+      department: technician.department || 'Registered Technician Account',
+      specialization: technician.specialization || 'General Support',
+      active: Boolean(technician.enabled),
+      currentLatitude: technician.currentLatitude ?? null,
+      currentLongitude: technician.currentLongitude ?? null,
+      currentLocation: technician.currentLocation || '',
+      trackingUpdatedAt: technician.trackingUpdatedAt || null,
+      createdAt: technician.createdAt || technician.updatedAt || null,
+      updatedAt: technician.updatedAt || null,
+      source: 'user'
+    };
+  }
+
+  return {
+    ...technician,
+    phone: technician.phone || 'Not provided',
+    department: technician.department || 'Operations',
+    specialization: technician.specialization || 'General Support',
+    source: 'technician'
+  };
+}
 
 export function AdminTicketsPage() {
   const [tickets, setTickets] = useState([]);
@@ -96,13 +125,26 @@ export function AdminTicketsPage() {
     }
 
     try {
-      const [ticketData, technicianData] = await Promise.all([
+      const [ticketData, technicianMembers, technicianUsers] = await Promise.all([
         getAllIssueReports(),
-        fetchTechnicians()
+        fetchTechnicians(),
+        fetchTechnicianUsers()
       ]);
 
+      const technicianRoster = [
+        ...technicianMembers.map((technician) => normalizeTechnicianRosterEntry(technician, 'technician')),
+        ...technicianUsers
+          .filter(
+            (user) =>
+              !technicianMembers.some(
+                (technician) => technician.email?.toLowerCase() === user.email?.toLowerCase()
+              )
+          )
+          .map((user) => normalizeTechnicianRosterEntry(user, 'user'))
+      ];
+
       setTickets(ticketData);
-      setTechnicians(technicianData);
+      setTechnicians(technicianRoster);
       setSelectedTicketId((current) => {
         if (current && ticketData.some((ticket) => ticket.id === current)) {
           return current;
@@ -431,38 +473,6 @@ export function AdminTicketsPage() {
                   </h3>
                   <div className="rounded-xl border border-blue-100/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 p-4 shadow-sm backdrop-blur-md dark:border-blue-900/30 dark:from-blue-900/10 dark:to-indigo-900/10">
                     <div className="space-y-4">
-                      {selectedTicket && technicianRecommendations.length > 0 && (
-                        <div className="grid gap-3 xl:grid-cols-3">
-                          {technicianRecommendations.slice(0, 3).map((entry, index) => (
-                            <button
-                              key={entry.technician.id}
-                              type="button"
-                              onClick={() => handleAssign(selectedTicket.id, entry.technician.id)}
-                              disabled={actioning === `assign-${selectedTicket.id}`}
-                              className={`rounded-xl border p-3 text-left transition ${
-                                index === 0
-                                  ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/10'
-                                  : 'border-slate-200 bg-white/70 dark:border-slate-700 dark:bg-slate-900/30'
-                              }`}
-                            >
-                              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                {index === 0 ? 'Best Fit' : `Option ${index + 1}`}
-                              </p>
-                              <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
-                                {entry.technician.fullName}
-                              </p>
-                              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                {entry.technician.specialization || 'General support'}
-                              </p>
-                              <p className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                                {entry.distanceKm !== null
-                                  ? `${formatDistanceKm(entry.distanceKm)} away | ${entry.travelMinutes} min | ${entry.activeLoad} active jobs`
-                                  : `${entry.activeLoad} active jobs | GPS unavailable`}
-                              </p>
-                            </button>
-                          ))}
-                        </div>
-                      )}
                       <div className="flex flex-col md:flex-row md:items-center gap-4">
                         <div className="flex-1">
                           <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
