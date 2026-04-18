@@ -9,14 +9,14 @@ import {
   CheckCircle2Icon,
   NavigationIcon
 } from 'lucide-react';
-import { fetchTechnicians } from '../../api/technicians';
+import { fetchTechnicianById } from '../../api/technicians';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTechnicianTracking } from '../../contexts/TechnicianTrackingContext';
 import { Card, CardContent, CardHeader } from '../../components/ui/Card';
 import { RouteMap } from '../../components/maps/RouteMap';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
-import { getIssueReportById } from '../../api/issues';
+import { getIssueReportById, updateIssueReportFeedback } from '../../api/issues';
 import {
   formatCoordinates,
   getTechnicianCoordinates,
@@ -34,6 +34,10 @@ export function TicketDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [attachmentPreviews, setAttachmentPreviews] = useState([]);
+  const [feedbackRating, setFeedbackRating] = useState('5');
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const { currentCoordinates } = useTechnicianTracking();
 
   useEffect(() => {
@@ -76,17 +80,15 @@ export function TicketDetailPage() {
     let ignore = false;
 
     async function loadAssignedTechnician() {
-      if (!ticket?.assignedTo || user?.role === 'USER') {
+      if (!ticket?.assignedTo) {
         setAssignedTechnician(null);
         return;
       }
 
       try {
-        const technicians = await fetchTechnicians();
+        const technician = await fetchTechnicianById(ticket.assignedTo);
         if (!ignore) {
-          setAssignedTechnician(
-            technicians.find((technician) => technician.id === ticket.assignedTo) || null
-          );
+          setAssignedTechnician(technician || null);
         }
       } catch (error) {
         if (!ignore) {
@@ -100,7 +102,13 @@ export function TicketDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [ticket?.assignedTo, user?.role]);
+  }, [ticket?.assignedTo]);
+
+  useEffect(() => {
+    setFeedbackRating(String(ticket?.studentFeedbackRating || 5));
+    setFeedbackComment(ticket?.studentFeedbackComment || '');
+    setFeedbackMessage('');
+  }, [ticket?.id, ticket?.studentFeedbackRating, ticket?.studentFeedbackComment]);
 
   useEffect(() => {
     let ignore = false;
@@ -175,6 +183,43 @@ export function TicketDetailPage() {
         return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30';
       default:
         return 'text-slate-600 bg-slate-100';
+    }
+  };
+
+  const renderStars = (rating) => {
+    if (!rating) {
+      return 'No rating yet';
+    }
+
+    return `${rating}/5 stars`;
+  };
+
+  const canSubmitFeedback =
+    user?.role === 'USER' &&
+    Boolean(ticket?.assignedTo) &&
+    (ticket?.status === 'RESOLVED' || ticket?.status === 'CLOSED');
+
+  const handleFeedbackSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!ticket?.id) {
+      return;
+    }
+
+    setFeedbackMessage('');
+    setIsSubmittingFeedback(true);
+
+    try {
+      const updatedTicket = await updateIssueReportFeedback(ticket.id, {
+        feedbackRating: Number(feedbackRating),
+        feedbackComment
+      });
+      setTicket(updatedTicket);
+      setFeedbackMessage('Feedback submitted successfully.');
+    } catch (error) {
+      setFeedbackMessage(error.message || 'Failed to submit feedback.');
+    } finally {
+      setIsSubmittingFeedback(false);
     }
   };
 
@@ -258,6 +303,17 @@ export function TicketDetailPage() {
                   {ticket.description}
                 </p>
               </div>
+
+              {ticket.status === 'REJECTED' && ticket.rejectionReason ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 dark:border-rose-900/40 dark:bg-rose-900/10">
+                  <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">
+                    Rejection Reason
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                    {ticket.rejectionReason}
+                  </p>
+                </div>
+              ) : null}
 
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <div>
@@ -360,6 +416,127 @@ export function TicketDetailPage() {
           <Card>
             <CardHeader>
               <h3 className="font-semibold text-slate-900 dark:text-white">
+                Assigned Technician
+              </h3>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {assignedTechnician ? (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 flex items-center justify-center">
+                      <UserIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        {assignedTechnician.fullName}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {assignedTechnician.specialization || assignedTechnician.department || 'Campus technician'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <p className="text-slate-700 dark:text-slate-300">
+                      <span className="font-medium">Email:</span> {assignedTechnician.email || 'Not available'}
+                    </p>
+                    <p className="text-slate-700 dark:text-slate-300">
+                      <span className="font-medium">Phone:</span> {assignedTechnician.phone || 'Not available'}
+                    </p>
+                    <p className="text-slate-700 dark:text-slate-300">
+                      <span className="font-medium">Live location:</span>{' '}
+                      {assignedTechnician.currentLocation || 'Waiting for technician location update'}
+                    </p>
+                    {ticket.assignedAt && (
+                      <p className="text-slate-700 dark:text-slate-300">
+                        <span className="font-medium">Assigned on:</span>{' '}
+                        {new Date(ticket.assignedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  This ticket has not been assigned to a technician yet.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <h3 className="font-semibold text-slate-900 dark:text-white">
+                Student Feedback
+              </h3>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {ticket.studentFeedbackRating ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-900/10">
+                  <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                    {renderStars(ticket.studentFeedbackRating)} ({ticket.studentFeedbackRating}/5)
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+                    {ticket.studentFeedbackComment || 'No written feedback provided.'}
+                  </p>
+                  {ticket.studentFeedbackSubmittedAt && (
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      Submitted {new Date(ticket.studentFeedbackSubmittedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {canSubmitFeedback
+                    ? 'Rate the technician support once the issue has been completed.'
+                    : 'Feedback becomes available after the assigned technician resolves this ticket.'}
+                </p>
+              )}
+
+              {canSubmitFeedback && (
+                <form onSubmit={handleFeedbackSubmit} className="space-y-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Rating
+                    </label>
+                    <select
+                      value={feedbackRating}
+                      onChange={(e) => setFeedbackRating(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    >
+                      <option value="5">5 - Excellent</option>
+                      <option value="4">4 - Good</option>
+                      <option value="3">3 - Average</option>
+                      <option value="2">2 - Poor</option>
+                      <option value="1">1 - Very Poor</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Comment
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={feedbackComment}
+                      onChange={(e) => setFeedbackComment(e.target.value)}
+                      placeholder="Share how the technician handled your issue."
+                      className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    />
+                  </div>
+                  {feedbackMessage && (
+                    <p className={`text-sm ${feedbackMessage.includes('successfully') ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {feedbackMessage}
+                    </p>
+                  )}
+                  <Button type="submit" size="sm" isLoading={isSubmittingFeedback}>
+                    {ticket.studentFeedbackRating ? 'Update Feedback' : 'Submit Feedback'}
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <h3 className="font-semibold text-slate-900 dark:text-white">
                 Reporter
               </h3>
             </CardHeader>
@@ -417,6 +594,22 @@ export function TicketDetailPage() {
                       </p>
                       <p className="text-xs text-slate-500">
                         {new Date(ticket.updatedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {ticket.assignedAt ? (
+                  <div className="relative flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0 z-10 ring-4 ring-white dark:ring-brand-surface">
+                      <UserIcon className="w-3 h-3" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        Technician Assigned
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {new Date(ticket.assignedAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>

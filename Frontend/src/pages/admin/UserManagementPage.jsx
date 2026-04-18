@@ -10,6 +10,8 @@ export function UserManagementPage() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [roleFilter, setRoleFilter] = useState('ALL');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [error, setError] = useState(null);
 
     useEffect(() => {
@@ -69,10 +71,13 @@ export function UserManagementPage() {
         }
     };
 
-    const filteredUsers = users.filter(user => 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredUsers = users.filter(user => {
+        const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                              user.email.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
+        const matchesStatus = statusFilter === 'ALL' || user.status === statusFilter;
+        return matchesSearch && matchesRole && matchesStatus;
+    });
 
     const getRoleBadgeVariant = (role) => {
         switch (role) {
@@ -124,11 +129,26 @@ export function UserManagementPage() {
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Filter by role:</span>
-                        <select className="bg-white dark:bg-brand-surface border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 py-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer">
+                        <select 
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                            className="bg-white dark:bg-brand-surface border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 py-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
+                        >
                             <option value="ALL">All Roles</option>
                             <option value="ADMIN">Admin</option>
                             <option value="TECHNICIAN">Technician</option>
                             <option value="USER">Student/User</option>
+                        </select>
+
+                        <span className="text-sm font-medium text-slate-500 dark:text-slate-400 ml-2">Status:</span>
+                        <select 
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="bg-white dark:bg-brand-surface border border-slate-200 dark:border-slate-700 rounded-lg text-sm px-3 py-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
+                        >
+                            <option value="ALL">All Statuses</option>
+                            <option value="ACTIVE">Approved / Active</option>
+                            <option value="PENDING">Pending</option>
                         </select>
                     </div>
                 </div>

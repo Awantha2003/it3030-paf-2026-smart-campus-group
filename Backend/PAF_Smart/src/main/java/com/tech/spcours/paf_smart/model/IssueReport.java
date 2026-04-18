@@ -55,7 +55,17 @@ public class IssueReport {
 
     private String assignedTo;
 
+    private Instant assignedAt;
+
     private String adminNote;
+
+    private String rejectionReason;
+
+    private Integer studentFeedbackRating;
+
+    private String studentFeedbackComment;
+
+    private Instant studentFeedbackSubmittedAt;
 
     private Instant createdAt;
 

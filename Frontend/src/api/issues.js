@@ -20,7 +20,12 @@ async function parseResponse(response, fallbackMessage) {
   const payload = contentType.includes('application/json') ? await response.json() : null;
 
   if (!response.ok) {
-    throw new Error(payload?.message || fallbackMessage);
+    const firstValidationError =
+      payload && typeof payload === 'object'
+        ? Object.values(payload).find((value) => typeof value === 'string' && value.trim())
+        : '';
+
+    throw new Error(payload?.message || payload?.error || firstValidationError || fallbackMessage);
   }
 
   return payload;
@@ -105,11 +110,11 @@ export async function assignIssueReport(id, technicianId) {
   return parseResponse(response, 'Failed to assign issue report.');
 }
 
-export async function updateIssueReportStatus(id, status) {
+export async function updateIssueReportStatus(id, status, rejectionReason = '') {
   const response = await fetch(`${API_BASE_URL}/issues/admin/${id}/status`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ status })
+    body: JSON.stringify({ status, rejectionReason })
   });
 
   return parseResponse(response, 'Failed to update issue report status.');
@@ -123,4 +128,14 @@ export async function updateIssueReportAdminNote(id, adminNote) {
   });
 
   return parseResponse(response, 'Failed to save admin note.');
+}
+
+export async function updateIssueReportFeedback(id, feedbackData) {
+  const response = await fetch(`${API_BASE_URL}/issues/${id}/feedback`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(feedbackData)
+  });
+
+  return parseResponse(response, 'Failed to submit feedback.');
 }

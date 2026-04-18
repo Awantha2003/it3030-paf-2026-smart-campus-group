@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiUsers, FiArrowRight, FiCheckCircle, FiClock, FiAlertTriangle, FiShield, FiLock, FiSmartphone } from 'react-icons/fi';
 import { FaUserShield, FaTools, FaBuilding, FaTicketAlt } from 'react-icons/fa';
@@ -6,19 +6,54 @@ import { PiBuildingOfficeBold } from 'react-icons/pi';
 import { Link } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
 import { Badge, StatusBadge } from '../../components/ui/Badge';
-import { mockTickets } from '../../data/mockData';
+import { getAllIssueReports } from '../../api/issues';
 import { adminRoutes } from '../../utils/routes';
 import { useAuth } from '../../contexts/AuthContext';
 
 export function AdminDashboard() {
     const { user } = useAuth();
-    
-    const openTickets = mockTickets.filter((ticket) => ticket.status === 'OPEN');
-    const inProgressTickets = mockTickets.filter((ticket) => ticket.status === 'IN_PROGRESS');
-    const resolvedTickets = mockTickets.filter((ticket) => ticket.status === 'RESOLVED');
-    const criticalTickets = mockTickets.filter(
+    const [tickets, setTickets] = useState([]);
+    const [isLoadingTickets, setIsLoadingTickets] = useState(true);
+    const [ticketError, setTicketError] = useState('');
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadTickets() {
+            setIsLoadingTickets(true);
+            setTicketError('');
+
+            try {
+                const ticketData = await getAllIssueReports();
+                if (!ignore) {
+                    setTickets(Array.isArray(ticketData) ? ticketData : []);
+                }
+            } catch (error) {
+                if (!ignore) {
+                    setTicketError(error.message || 'Failed to load ticket overview.');
+                }
+            } finally {
+                if (!ignore) {
+                    setIsLoadingTickets(false);
+                }
+            }
+        }
+
+        loadTickets();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    const openTickets = tickets.filter((ticket) => ticket.status === 'OPEN');
+    const inProgressTickets = tickets.filter((ticket) => ticket.status === 'IN_PROGRESS');
+    const resolvedTickets = tickets.filter((ticket) => ticket.status === 'RESOLVED');
+    const criticalTickets = tickets
+        .filter(
         (ticket) => ticket.priority === 'CRITICAL' || ticket.priority === 'HIGH'
-    );
+        )
+        .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
 
     // Mock data for user accounts
     const activeUsers = 124;
@@ -152,7 +187,9 @@ export function AdminDashboard() {
                         </div>
                         <div>
                             <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Critical</p>
-                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">{criticalTickets.length}</h3>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">
+                                {isLoadingTickets ? '...' : criticalTickets.length}
+                            </h3>
                         </div>
                     </Card>
 
@@ -162,7 +199,9 @@ export function AdminDashboard() {
                         </div>
                         <div>
                             <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Open Queue</p>
-                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">{openTickets.length}</h3>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">
+                                {isLoadingTickets ? '...' : openTickets.length}
+                            </h3>
                         </div>
                     </Card>
 
@@ -172,7 +211,9 @@ export function AdminDashboard() {
                         </div>
                         <div>
                             <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">In Progress</p>
-                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">{inProgressTickets.length}</h3>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">
+                                {isLoadingTickets ? '...' : inProgressTickets.length}
+                            </h3>
                         </div>
                     </Card>
 
@@ -182,7 +223,9 @@ export function AdminDashboard() {
                         </div>
                         <div>
                             <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Resolved</p>
-                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">{resolvedTickets.length}</h3>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">
+                                {isLoadingTickets ? '...' : resolvedTickets.length}
+                            </h3>
                         </div>
                     </Card>
                 </div>
@@ -205,7 +248,20 @@ export function AdminDashboard() {
                         </Link>
                     </div>
                     <div className="p-0 flex-1">
-                        {criticalTickets.length > 0 ? (
+                        {isLoadingTickets ? (
+                            <div className="p-10 flex flex-col items-center justify-center text-slate-500">
+                                <div className="w-10 h-10 border-4 border-slate-200 border-t-red-500 rounded-full animate-spin mb-3"></div>
+                                <p className="font-semibold text-slate-600 dark:text-slate-400">Loading live issue queue...</p>
+                            </div>
+                        ) : ticketError ? (
+                            <div className="p-10 flex flex-col items-center justify-center text-center text-slate-500">
+                                <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-3">
+                                    <FiAlertTriangle className="w-8 h-8 text-red-500" />
+                                </div>
+                                <p className="font-semibold text-slate-700 dark:text-slate-300">Live queue unavailable</p>
+                                <p className="text-sm text-slate-400 mt-1">{ticketError}</p>
+                            </div>
+                        ) : criticalTickets.length > 0 ? (
                             <ul className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                 {criticalTickets.map((ticket) => (
                                     <li

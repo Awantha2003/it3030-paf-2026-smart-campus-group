@@ -5,6 +5,7 @@ import com.tech.spcours.paf_smart.security.JwtTokenProvider;
 import com.tech.spcours.paf_smart.module.user.model.Role;
 import com.tech.spcours.paf_smart.module.user.model.User;
 import com.tech.spcours.paf_smart.module.user.repository.UserRepository;
+import com.tech.spcours.paf_smart.module.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.DisabledException;
@@ -20,6 +21,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final NotificationService notificationService;
 
     @org.springframework.beans.factory.annotation.Value("${app.auth.admin-registration-code}")
     private String adminCode;
@@ -57,6 +59,27 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
+
+        // REQUIREMENT: when new user registered into system, Admin should get a notification
+        java.util.List<User> admins = userRepository.findByRole(Role.ADMIN);
+        for (User admin : admins) {
+            notificationService.send(
+                    admin.getId(),
+                    "New User Registration",
+                    user.getName() + " (" + user.getEmail() + ") has registered with role: " + assignedRole,
+                    "SYSTEM",
+                    user.getId()
+            );
+        }
+
+        // REQUIREMENT: user should get a pop up message (handled on frontend), and login notification
+        notificationService.send(
+            user.getId(),
+            "Welcome to Smart Campus",
+            "Your account registration was successful. Welcome aboard!",
+            "SYSTEM",
+            user.getId()
+        );
 
         if (!user.isEnabled()) {
             return AuthResponse.builder()
@@ -106,6 +129,15 @@ public class AuthService {
         }
 
         String token = jwtTokenProvider.generateToken(user);
+        
+        notificationService.send(
+            user.getId(),
+            "Login Success",
+            "A successful login was recorded for your account via Password.",
+            "SYSTEM",
+            user.getId()
+        );
+
         return AuthResponse.builder()
                 .token(token)
                 .userId(user.getId())

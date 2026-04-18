@@ -20,9 +20,16 @@ async function parseResponse(response) {
   const payload = contentType.includes('application/json') ? await response.json() : null;
 
   if (!response.ok) {
+    const firstValidationError =
+      payload && typeof payload === 'object'
+        ? Object.values(payload).find((value) => typeof value === 'string' && value.trim())
+        : '';
+
     const message =
       payload?.message ||
+      payload?.error ||
       payload?.errors?.email ||
+      firstValidationError ||
       'Request failed while communicating with the technician service.';
     throw new Error(message);
   }
@@ -32,6 +39,13 @@ async function parseResponse(response) {
 
 export async function fetchTechnicians() {
   const response = await fetch(`${API_BASE_URL}/admin/technicians`, {
+    headers: getAuthHeaders(false)
+  });
+  return parseResponse(response);
+}
+
+export async function fetchTechnicianById(id) {
+  const response = await fetch(`${API_BASE_URL}/technicians/${id}`, {
     headers: getAuthHeaders(false)
   });
   return parseResponse(response);

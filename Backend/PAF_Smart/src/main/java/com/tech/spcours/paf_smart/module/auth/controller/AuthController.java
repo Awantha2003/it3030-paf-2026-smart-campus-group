@@ -21,6 +21,7 @@ public class AuthController {
     private final com.tech.spcours.paf_smart.module.auth.service.MfaService mfaService;
     private final com.tech.spcours.paf_smart.module.user.repository.UserRepository userRepository;
     private final com.tech.spcours.paf_smart.security.JwtTokenProvider jwtTokenProvider;
+    private final com.tech.spcours.paf_smart.module.notification.service.NotificationService notificationService;
 
     // POST /api/auth/register
     @PostMapping("/register")
@@ -175,6 +176,15 @@ public class AuthController {
         }
 
         String token = jwtTokenProvider.generateToken(user);
+        
+        notificationService.send(
+            user.getId(),
+            "Login Success",
+            "A successful login was recorded for your account via MFA.",
+            "SECURITY",
+            user.getId()
+        );
+
         return ResponseEntity.ok(AuthResponse.builder()
                 .token(token)
                 .userId(user.getId())

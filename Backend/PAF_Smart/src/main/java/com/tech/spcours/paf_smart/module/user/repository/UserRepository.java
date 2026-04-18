@@ -9,4 +9,5 @@ public interface UserRepository extends MongoRepository<User, String> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
     Optional<User> findByQrToken(String qrToken);
+    java.util.List<User> findByRole(com.tech.spcours.paf_smart.module.user.model.Role role);
 }

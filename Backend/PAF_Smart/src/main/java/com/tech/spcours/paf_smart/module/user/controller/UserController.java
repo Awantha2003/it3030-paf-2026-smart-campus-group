@@ -3,6 +3,8 @@ package com.tech.spcours.paf_smart.module.user.controller;
 import com.tech.spcours.paf_smart.module.user.model.Role;
 import com.tech.spcours.paf_smart.module.user.model.User;
 import com.tech.spcours.paf_smart.module.user.repository.UserRepository;
+import com.tech.spcours.paf_smart.repository.TechnicianMemberRepository;
+import com.tech.spcours.paf_smart.service.TechnicianMemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,6 +20,8 @@ import java.util.Map;
 public class UserController {
 
     private final UserRepository userRepository;
+    private final TechnicianMemberRepository technicianMemberRepository;
+    private final TechnicianMemberService technicianMemberService;
 
     // GET /api/admin/users
     @GetMapping
@@ -47,9 +51,16 @@ public class UserController {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        Role previousRole = user.getRole();
         Role newRole = Role.valueOf(body.get("role").toUpperCase());
         user.setRole(newRole);
         userRepository.save(user);
+
+        if (newRole == Role.TECHNICIAN) {
+            technicianMemberService.syncTechnicianAccount(user);
+        } else if (previousRole == Role.TECHNICIAN) {
+            technicianMemberService.deactivateLinkedTechnicianAccount(user);
+        }
 
         return ResponseEntity.ok(Map.of(
                 "message", "Role updated to " + newRole,
@@ -60,6 +71,10 @@ public class UserController {
     // DELETE /api/admin/users/{id}
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteUser(@PathVariable String id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        technicianMemberRepository.findByEmailIgnoreCase(user.getEmail())
+                .ifPresent(technicianMemberRepository::delete);
         userRepository.deleteById(id);
         return ResponseEntity.ok(Map.of("message", "User deleted"));
     }
@@ -77,6 +92,10 @@ public class UserController {
         if (isEnabled != null) {
             user.setEnabled(isEnabled);
             userRepository.save(user);
+            technicianMemberRepository.findByEmailIgnoreCase(user.getEmail()).ifPresent(technician -> {
+                technician.setActive(isEnabled);
+                technicianMemberRepository.save(technician);
+            });
         }
 
         return ResponseEntity.ok(Map.of(

@@ -31,6 +31,7 @@ const GEOLOCATION_OPTIONS = {
 const FACULTIES = ['Computing', 'Engineering', 'Business', 'Architecture', 'Humanities', 'Other'];
 const REQUEST_TYPES = ['Technical Support', 'Facilities Issue', 'Network Problem', 'Account Help', 'Other'];
 const DEPARTMENTS = ['Student Services', 'IT Helpdesk', 'Maintenance', 'Academic Affairs', 'Security'];
+const MAX_ATTACHMENTS = 3;
 
 function formatGpsLocation(lat, lng) {
   return `Current GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -92,8 +93,8 @@ export function NewTicketPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [filePreview, setFilePreview] = useState('');
+  const [attachments, setAttachments] = useState([]);
+  const attachmentPreviewUrlsRef = useRef([]);
 
   const [isAutoTracking, setIsAutoTracking] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
@@ -153,12 +154,16 @@ export function NewTicketPage() {
   }, [isAutoTracking]);
 
   useEffect(() => {
+    attachmentPreviewUrlsRef.current = attachments.map((attachment) => attachment.previewUrl);
+  }, [attachments]);
+
+  useEffect(() => {
     return () => {
-      if (filePreview) {
-        URL.revokeObjectURL(filePreview);
-      }
+      attachmentPreviewUrlsRef.current.forEach((previewUrl) => {
+        URL.revokeObjectURL(previewUrl);
+      });
     };
-  }, [filePreview]);
+  }, []);
 
   const handleMapClick = (e) => {
     const lat = e.latLng.lat();
@@ -237,6 +242,52 @@ export function NewTicketPage() {
     setLocationStatus('Campus landmark selected. Technicians can use this as a reliable dispatch point.');
   };
 
+  const handleAttachmentSelection = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) {
+      return;
+    }
+
+    const invalidFile = files.find((file) => file.type !== 'image/png');
+    if (invalidFile) {
+      setErrorMessage('Only PNG attachments are supported.');
+      e.target.value = '';
+      return;
+    }
+
+    const remainingSlots = MAX_ATTACHMENTS - attachments.length;
+    if (remainingSlots <= 0) {
+      setErrorMessage(`You can attach up to ${MAX_ATTACHMENTS} PNG images.`);
+      e.target.value = '';
+      return;
+    }
+
+    const acceptedFiles = files.slice(0, remainingSlots);
+    const nextAttachments = acceptedFiles.map((file, index) => ({
+      id: `${file.name}-${file.size}-${file.lastModified}-${Date.now()}-${index}`,
+      file,
+      previewUrl: URL.createObjectURL(file)
+    }));
+
+    setAttachments((current) => [...current, ...nextAttachments]);
+    setErrorMessage(
+      acceptedFiles.length < files.length ? `You can attach up to ${MAX_ATTACHMENTS} PNG images.` : ''
+    );
+    e.target.value = '';
+  };
+
+  const handleRemoveAttachment = (attachmentId) => {
+    setAttachments((current) => {
+      const attachmentToRemove = current.find((attachment) => attachment.id === attachmentId);
+      if (attachmentToRemove) {
+        URL.revokeObjectURL(attachmentToRemove.previewUrl);
+      }
+
+      return current.filter((attachment) => attachment.id !== attachmentId);
+    });
+    setErrorMessage('');
+  };
+
   const isValid =
     title.trim() &&
     location.trim() &&
@@ -274,15 +325,18 @@ export function NewTicketPage() {
     setIsSubmitting(true);
 
     try {
-      const attachmentUrls = [];
-      if (selectedFile) {
-        const uploadRes = await uploadFile(selectedFile);
-        if (uploadRes?.url) {
-          const normalizedUrl =
-            /^https?:\/\//i.test(uploadRes.url) ? uploadRes.url : `${SERVER_BASE_URL}${uploadRes.url}`;
-          attachmentUrls.push(normalizedUrl);
-        }
-      }
+      const uploadResponses = await Promise.all(
+        attachments.map((attachment) => uploadFile(attachment.file))
+      );
+      const attachmentUrls = uploadResponses
+        .map((uploadRes) => {
+          if (!uploadRes?.url) {
+            return '';
+          }
+
+          return /^https?:\/\//i.test(uploadRes.url) ? uploadRes.url : `${SERVER_BASE_URL}${uploadRes.url}`;
+        })
+        .filter(Boolean);
 
       await createIssueReport({
         title,
@@ -567,50 +621,69 @@ export function NewTicketPage() {
               </div>
 
               <div>
-                <FieldLabel>Attachment (Optional)</FieldLabel>
+                <FieldLabel>Attachments (Optional)</FieldLabel>
                 <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-gradient-to-br from-slate-50 to-sky-50 p-6 text-center transition hover:border-sky-400 hover:bg-sky-50/70">
                   <input
                     type="file"
                     accept="image/png"
+                    multiple
+                    disabled={attachments.length >= MAX_ATTACHMENTS}
                     className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files?.length) {
-                        const file = files[0];
-                        if (file.type !== 'image/png') {
-                          setSelectedFile(null);
-                          if (filePreview) {
-                            URL.revokeObjectURL(filePreview);
-                            setFilePreview('');
-                          }
-                          setErrorMessage('Only PNG attachments are supported.');
-                          e.target.value = '';
-                          return;
-                        }
-
-                        setErrorMessage('');
-                        setSelectedFile(file);
-                        if (filePreview) {
-                          URL.revokeObjectURL(filePreview);
-                        }
-                        setFilePreview(URL.createObjectURL(file));
-                      }
-                    }}
+                    onChange={handleAttachmentSelection}
                   />
-                  {!filePreview ? (
+                  {attachments.length === 0 ? (
                     <>
                       <UploadCloudIcon className="mx-auto mb-2 h-10 w-10 text-sky-600" />
-                      <p className="text-sm font-semibold text-slate-700">Drop image here or click to upload</p>
-                      <p className="mt-1 text-xs text-slate-500">PNG only</p>
+                      <p className="text-sm font-semibold text-slate-700">Drop images here or click to upload</p>
+                      <p className="mt-1 text-xs text-slate-500">PNG only, up to 3 attachments</p>
                     </>
                   ) : (
-                    <div className="flex flex-col items-center">
-                      <img src={filePreview} alt="Preview" className="mb-2 max-h-32 rounded-xl object-contain" />
-                      <p className="max-w-[220px] truncate text-sm font-semibold text-sky-700">{selectedFile?.name}</p>
-                      <p className="mt-1 text-xs text-slate-500">Click to replace attachment</p>
+                    <div className="space-y-4 text-left">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-slate-700">
+                          {attachments.length} / {MAX_ATTACHMENTS} attachments selected
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {attachments.length < MAX_ATTACHMENTS ? 'Add more PNG images' : 'Attachment limit reached'}
+                        </p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {attachments.map((attachment, index) => (
+                          <div
+                            key={attachment.id}
+                            className="rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm"
+                          >
+                            <img
+                              src={attachment.previewUrl}
+                              alt={`Attachment preview ${index + 1}`}
+                              className="h-28 w-full rounded-xl bg-slate-100 object-contain"
+                            />
+                            <div className="mt-3 flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-sky-700">
+                                  {attachment.file.name}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {(attachment.file.size / 1024).toFixed(0)} KB
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAttachment(attachment.id)}
+                                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  Attach screenshots or photos that help explain the issue. Maximum {MAX_ATTACHMENTS} PNG images.
+                </p>
               </div>
 
               <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-4">
