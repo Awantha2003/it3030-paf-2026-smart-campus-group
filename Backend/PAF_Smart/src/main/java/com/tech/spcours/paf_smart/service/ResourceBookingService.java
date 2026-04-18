@@ -15,9 +15,11 @@ import com.tech.spcours.paf_smart.exception.ResourceConflictException;
 import com.tech.spcours.paf_smart.exception.ResourceNotFoundException;
 import com.tech.spcours.paf_smart.model.ResourceBooking;
 import com.tech.spcours.paf_smart.module.user.model.User;
+import com.tech.spcours.paf_smart.module.user.repository.UserRepository;
 import com.tech.spcours.paf_smart.repository.EquipmentRepository;
 import com.tech.spcours.paf_smart.repository.FacilityRepository;
 import com.tech.spcours.paf_smart.repository.ResourceBookingRepository;
+import com.tech.spcours.paf_smart.module.notification.service.NotificationService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,12 +35,14 @@ public class ResourceBookingService {
     private final ResourceBookingRepository resourceBookingRepository;
     private final EquipmentRepository equipmentRepository;
     private final FacilityRepository facilityRepository;
+    private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
     public List<ResourceBookingResponse> getMyBookings(User user, String resourceType) {
         String normalizedType = normalizeResourceType(resourceType);
         return resourceBookingRepository.findByStudentIdAndResourceTypeOrderByBookingDateDescBookingTimeDesc(
-                        user.getId(),
-                        normalizedType)
+                user.getId(),
+                normalizedType)
                 .stream()
                 .filter(this::isBlockingStatus)
                 .map(this::toResponse)
@@ -55,7 +59,8 @@ public class ResourceBookingService {
     public List<ResourceBookingResponse> getBookingsByTypeAndDate(String resourceType, LocalDate bookingDate) {
         String normalizedType = normalizeResourceType(resourceType);
         LocalDate targetDate = bookingDate == null ? LocalDate.now() : bookingDate;
-        return resourceBookingRepository.findByResourceTypeAndBookingDateOrderByBookingTimeAsc(normalizedType, targetDate)
+        return resourceBookingRepository
+                .findByResourceTypeAndBookingDateOrderByBookingTimeAsc(normalizedType, targetDate)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -97,7 +102,21 @@ public class ResourceBookingService {
                 .updatedAt(now)
                 .build();
 
-        return toResponse(resourceBookingRepository.save(booking));
+        ResourceBooking saved = resourceBookingRepository.save(booking);
+
+        notificationService.send(user.getId(), "Booking Created",
+                "Your request for " + request.quantity() + "x " + resourceDefinition.name() + " on "
+                        + request.bookingDate().toString() + " has been created and is pending approval.",
+                "BOOKINGS", saved.getId());
+
+        userRepository.findByRole(com.tech.spcours.paf_smart.module.user.model.Role.ADMIN).forEach(admin -> {
+            notificationService.send(admin.getId(), "New Resource Booking",
+                    user.getName() + " requested " + request.quantity() + "x " + resourceDefinition.name() + " on "
+                            + request.bookingDate().toString() + ".",
+                    "BOOKINGS", saved.getId());
+        });
+
+        return toResponse(saved);
     }
 
     public ResourceBookingResponse updateBooking(String bookingId, CreateResourceBookingRequest request, User user) {
@@ -136,19 +155,22 @@ public class ResourceBookingService {
         return toResponse(resourceBookingRepository.save(existingBooking));
     }
 
-    public ResourceBookingResponse updateBookingStatus(String bookingId, UpdateBookingStatusRequest request, User user) {
+    public ResourceBookingResponse updateBookingStatus(String bookingId, UpdateBookingStatusRequest request,
+            User user) {
         ResourceBooking booking = resourceBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Resource booking not found"));
-        
+
         boolean isAdmin = user.getRole() == com.tech.spcours.paf_smart.module.user.model.Role.ADMIN;
-        
+
         if (!isAdmin) {
             // If not admin, must be the owner and can only set status to CANCELLED
             if (!booking.getStudentId().equals(user.getId())) {
-                throw new com.tech.spcours.paf_smart.exception.ResourceConflictException("You can only update your own bookings");
+                throw new com.tech.spcours.paf_smart.exception.ResourceConflictException(
+                        "You can only update your own bookings");
             }
             if (!"CANCELLED".equalsIgnoreCase(request.status())) {
-                throw new com.tech.spcours.paf_smart.exception.ResourceConflictException("Students can only cancel their bookings");
+                throw new com.tech.spcours.paf_smart.exception.ResourceConflictException(
+                        "Students can only cancel their bookings");
             }
         }
 
@@ -156,15 +178,30 @@ public class ResourceBookingService {
         if ("REJECTED".equalsIgnoreCase(request.status())) {
             booking.setRejectionReason(request.rejectionReason());
             booking.setCancellationReason(null);
+            notificationService.send(booking.getStudentId(), "Booking Rejected",
+                    "Your resource booking for " + booking.getResourceName() + " on " + booking.getBookingDate()
+                            + " has been rejected. Reason: " + request.rejectionReason(),
+                    "BOOKINGS", booking.getId());
         } else if ("CANCELLED".equalsIgnoreCase(request.status())) {
             booking.setCancellationReason(request.cancellationReason());
             booking.setRejectionReason(null);
+            notificationService.send(booking.getStudentId(), "Booking Cancelled",
+                    "Your resource booking for " + booking.getResourceName() + " on " + booking.getBookingDate()
+                            + " has been successfully cancelled.",
+                    "BOOKINGS", booking.getId());
+        } else if ("APPROVED".equalsIgnoreCase(request.status())) {
+            booking.setRejectionReason(null);
+            booking.setCancellationReason(null);
+            notificationService.send(booking.getStudentId(), "Booking Approved",
+                    "Your resource booking for " + booking.getResourceName() + " on " + booking.getBookingDate()
+                            + " has been approved.",
+                    "BOOKINGS", booking.getId());
         } else {
             booking.setRejectionReason(null);
             booking.setCancellationReason(null);
         }
         booking.setUpdatedAt(Instant.now());
-        
+
         return toResponse(resourceBookingRepository.save(booking));
     }
 
@@ -187,8 +224,8 @@ public class ResourceBookingService {
             int requestedQuantity,
             String excludedBookingId,
             int availableUnits) {
-        List<ResourceBooking> dayBookings =
-                resourceBookingRepository.findByResourceTypeAndBookingDateOrderByBookingTimeAsc(resourceType, bookingDate);
+        List<ResourceBooking> dayBookings = resourceBookingRepository
+                .findByResourceTypeAndBookingDateOrderByBookingTimeAsc(resourceType, bookingDate);
 
         int overlappingEquipmentUnits = dayBookings.stream()
                 .filter(existing -> excludedBookingId == null || !excludedBookingId.equals(existing.getId()))
