@@ -49,7 +49,7 @@ public class FacilityBookingService {
     public List<FacilityLectureHallResponse> getLectureHalls() {
         return facilityRepository.findAll().stream()
                 .filter(space -> "FACILITY".equals(resolveResourceCategory(space.getSpaceType())))
-                .map(this::mapToLectureHallResponse)
+                .map(space -> mapToLectureHallResponse(space, java.util.Collections.emptyList()))
                 .toList();
     }
 
@@ -60,24 +60,29 @@ public class FacilityBookingService {
         LocalDate targetDate = bookingDate == null ? LocalDate.now() : bookingDate;
         int requestedDurationHours = sanitizeDuration(durationHours);
 
-        if (bookingTime == null) {
-            Set<String> bookedSpaceCodes = new HashSet<>(facilityBookingRepository.findByBookingDate(targetDate).stream()
-                    .map(com.tech.spcours.paf_smart.model.FacilityBooking::getLectureHallCode)
-                    .toList());
+        List<FacilityBooking> dayBookings = facilityBookingRepository.findByBookingDate(targetDate);
 
+        if (bookingTime == null) {
             return facilityRepository.findAll().stream()
                     .filter(space -> "FACILITY".equals(resolveResourceCategory(space.getSpaceType())))
-                    .filter(space -> !bookedSpaceCodes.contains(space.getCode()))
-                    .map(this::mapToLectureHallResponse)
+                    .map(space -> {
+                        List<FacilityLectureHallResponse.BookedSlot> bookedSlots = dayBookings.stream()
+                                .filter(b -> b.getLectureHallCode().equals(space.getCode()) && !"CANCELLED".equals(b.getStatus()) && !"REJECTED".equals(b.getStatus()))
+                                .map(b -> new FacilityLectureHallResponse.BookedSlot(
+                                        b.getBookingTime(),
+                                        b.getBookingTime().plusHours(sanitizeDuration(b.getDurationHours()))))
+                                .toList();
+                        return mapToLectureHallResponse(space, bookedSlots);
+                    })
                     .toList();
         }
 
         return facilityRepository.findAll().stream()
                 .filter(space -> "FACILITY".equals(resolveResourceCategory(space.getSpaceType())))
                 .filter(space -> {
-                    List<FacilityBooking> sameHallBookings = facilityBookingRepository.findByLectureHallCodeAndBookingDate(
-                            space.getCode(),
-                            targetDate);
+                    List<FacilityBooking> sameHallBookings = dayBookings.stream()
+                            .filter(b -> b.getLectureHallCode().equals(space.getCode()) && !"CANCELLED".equals(b.getStatus()) && !"REJECTED".equals(b.getStatus()))
+                            .toList();
                     return sameHallBookings.stream().noneMatch(existingBooking ->
                             isOverlappingSlot(
                                     existingBooking.getBookingTime(),
@@ -85,7 +90,7 @@ public class FacilityBookingService {
                                     bookingTime,
                                     requestedDurationHours));
                 })
-                .map(this::mapToLectureHallResponse)
+                .map(space -> mapToLectureHallResponse(space, java.util.Collections.emptyList()))
                 .toList();
     }
 
@@ -176,7 +181,7 @@ public class FacilityBookingService {
         facilityBookingRepository.delete(booking);
     }
 
-    private FacilityLectureHallResponse mapToLectureHallResponse(com.tech.spcours.paf_smart.model.Facility hall) {
+    private FacilityLectureHallResponse mapToLectureHallResponse(com.tech.spcours.paf_smart.model.Facility hall, List<FacilityLectureHallResponse.BookedSlot> bookedSlots) {
         return FacilityLectureHallResponse.builder()
                 .code(hall.getCode())
                 .building(hall.getBuilding())
@@ -186,6 +191,7 @@ public class FacilityBookingService {
                 .displayName(hall.getBuilding() + " | Block " + hall.getBlock() + " | Floor " + hall.getFloor() + " | " + hall.getName())
                 .spaceType(hall.getSpaceType())
                 .capacity(hall.getCapacity())
+                .bookedSlots(bookedSlots)
                 .build();
     }
 
