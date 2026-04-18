@@ -468,14 +468,8 @@ export function BookingResourcesPage() {
         setResources(mapped);
       } else if (['SPORTS', 'LIBRARY', 'EVENT'].includes(type)) {
         const { getFacilitiesByType } = await import('../../api/facilities');
-        
-        const typeMapping = {
-          SPORTS: 'SPORTS_VENUE',
-          LIBRARY: 'LIBRARY_ZONE',
-          EVENT: 'SEMINAR_ROOM'
-        };
-        
-        const dbPlaces = await getFacilitiesByType(typeMapping[type] || type);
+
+        const dbPlaces = await getFacilitiesByType(type);
         
         const mapped = dbPlaces.map(item => ({
           id: item.id,
@@ -1604,7 +1598,7 @@ export function BookingResourcesPage() {
 
                   <label className="block">
                     <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                      Facility Space (Lecture Hall / Lab)
+                      Facility Space
                     </span>
                     <select
                       value={facilityForm.lectureHallCode}
@@ -1838,14 +1832,19 @@ export function BookingResourcesPage() {
           ) : availableFacilitySpaces.length === 0 ? (
             <Card className="border border-slate-200/70 dark:border-slate-800">
               <CardContent className="py-10 text-center text-sm text-slate-500 dark:text-slate-300">
-                All lecture halls and labs are reserved for {facilityCatalogDate}. Try another date.
+                All facility spaces are reserved for {facilityCatalogDate}. Try another date.
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
               {availableFacilitySpaces.map((space) => {
-                const spaceType = space.spaceType || (space.name?.toLowerCase().includes('lab') ? 'LAB' : 'LECTURE_HALL');
-                const isLab = spaceType === 'LAB';
+                const normalizedSpaceType = String(space.spaceType || 'FACILITY').toUpperCase();
+                const typeLabel = normalizedSpaceType === 'FACILITY'
+                  ? 'Facility'
+                  : normalizedSpaceType
+                      .toLowerCase()
+                      .replace(/_/g, ' ')
+                      .replace(/\b\w/g, (char) => char.toUpperCase());
                 return (
                   <Card
                     key={space.code}
@@ -1860,13 +1859,9 @@ export function BookingResourcesPage() {
                           </p>
                         </div>
                         <span
-                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                            isLab
-                              ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300'
-                              : 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
-                          }`}
+                          className="rounded-full bg-cyan-100 px-2.5 py-1 text-[11px] font-semibold text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300"
                         >
-                          {isLab ? 'Lab' : 'Lecture Hall'}
+                          {typeLabel}
                         </span>
                       </div>
 

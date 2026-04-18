@@ -7,6 +7,25 @@ import { Badge } from '../../components/ui/Badge';
 import { getAllFacilities, deleteFacility, createFacility, updateFacility, getResourceSummary } from '../../api/facilities';
 import { getEquipmentsByFacility, createEquipment, updateEquipment, deleteEquipment } from '../../api/equipments';
 
+const RESOURCE_TYPE_OPTIONS = ['FACILITY', 'SPORTS', 'LIBRARY', 'EVENT'];
+
+function formatResourceTypeLabel(rawType) {
+    const normalized = String(rawType || '').toUpperCase();
+    if (!normalized) {
+        return 'FACILITY';
+    }
+    if (normalized === 'SPORTS_VENUE' || normalized === 'SPORTS') {
+        return 'SPORTS';
+    }
+    if (normalized === 'LIBRARY_ZONE' || normalized === 'LIBRARY') {
+        return 'LIBRARY';
+    }
+    if (normalized === 'SEMINAR_ROOM' || normalized === 'EVENT') {
+        return 'EVENT';
+    }
+    return 'FACILITY';
+}
+
 export function AdminFacilitiesPage() {
     const [facilities, setFacilities] = useState([]);
     const [summary, setSummary] = useState({ FACILITY: 0, EQUIPMENT: 0, SPORTS: 0, LIBRARY: 0, EVENT: 0 });
@@ -142,7 +161,7 @@ export function AdminFacilitiesPage() {
             building: formData.get('building'),
             block: formData.get('block'),
             floor: parseInt(formData.get('floor')),
-            spaceType: formData.get('spaceType'),
+            spaceType: String(formData.get('spaceType') || 'FACILITY').toUpperCase(),
             capacity: parseInt(formData.get('capacity')),
             description: formData.get('description'),
             amenities: formData.get('amenities').split(',').map(s => s.trim()).filter(s => s),
@@ -202,7 +221,7 @@ export function AdminFacilitiesPage() {
                     { label: 'EQUIPMENT', count: summary.EQUIPMENT, sub: 'Items', icon: <FiBox />, color: 'orange' },
                     { label: 'SPORTS', count: summary.SPORTS, sub: 'Venues', icon: <FiActivity />, color: 'emerald' },
                     { label: 'LIBRARY', count: summary.LIBRARY, sub: 'Zones', icon: <FiBookOpen />, color: 'purple' },
-                    { label: 'EVENT', count: summary.EVENT, sub: 'Seminar', icon: <FiCalendar />, color: 'rose' }
+                    { label: 'EVENT', count: summary.EVENT, sub: 'Events', icon: <FiCalendar />, color: 'rose' }
                 ].map((item, i) => (
                     <Card key={i} className="p-4 flex flex-col items-center text-center group hover:scale-105 transition-transform border-none shadow-sm dark:bg-slate-900/50">
                         <div className={`w-10 h-10 rounded-2xl mb-3 flex items-center justify-center text-white bg-${item.color}-500 shadow-lg shadow-${item.color}-500/20`}>
@@ -283,7 +302,9 @@ export function AdminFacilitiesPage() {
                                                     <div>
                                                         <p className="text-sm font-bold text-slate-900 dark:text-white uppercase leading-none mb-1">{facility.code}</p>
                                                         <p className="text-xs text-slate-500 dark:text-slate-400">{facility.name}</p>
-                                                        <Badge variant="primary" className="text-[9px] px-1 py-0 mt-1">{facility.spaceType}</Badge>
+                                                        <Badge variant="primary" className="text-[9px] px-1 py-0 mt-1">
+                                                            {formatResourceTypeLabel(facility.spaceType)}
+                                                        </Badge>
                                                     </div>
                                                 </div>
                                             </td>
@@ -444,15 +465,13 @@ export function AdminFacilitiesPage() {
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Facility Type</label>
-                                            <select name="spaceType" defaultValue={currentFacility?.spaceType || 'LECTURE_HALL'} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white">
-                                                <option value="LECTURE_HALL">Lecture Hall</option>
-                                                <option value="LAB">Laboratory</option>
-                                                <option value="MEETING_ROOM">Meeting Room</option>
-                                                <option value="AUDITORIUM">Auditorium</option>
-                                                <option value="SPORTS_VENUE">Sports Venue</option>
-                                                <option value="LIBRARY_ZONE">Library Zone</option>
-                                                <option value="SEMINAR_ROOM">Seminar Room</option>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Resource Type</label>
+                                            <select name="spaceType" defaultValue={formatResourceTypeLabel(currentFacility?.spaceType) || 'FACILITY'} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white">
+                                                {RESOURCE_TYPE_OPTIONS.map((typeOption) => (
+                                                    <option key={typeOption} value={typeOption}>
+                                                        {typeOption}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div className="space-y-2">
