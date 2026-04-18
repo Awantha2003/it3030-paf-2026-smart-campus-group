@@ -21,6 +21,7 @@ public record ResourceBookingResponse(
         Integer quantity,
         String purpose,
         String status,
+        String rejectionReason,
         Instant createdAt,
         Instant updatedAt) {
 }
