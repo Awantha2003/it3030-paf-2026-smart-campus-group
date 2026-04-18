@@ -55,7 +55,7 @@ export function TopNav() {
 
     useEffect(() => {
         fetchNotificationsData();
-        const intervalId = setInterval(fetchNotificationsData, 30000); // Poll every 30 seconds
+        const intervalId = setInterval(fetchNotificationsData, 5000); // Poll every 5 seconds
 
         return () => clearInterval(intervalId);
     }, [user, location.pathname]);

@@ -23,6 +23,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTechnicianTracking } from '../../contexts/TechnicianTrackingContext';
 import { getTechnicianIssueReports, updateIssueReportStatus } from '../../api/issues';
 import { RouteMap } from '../../components/maps/RouteMap';
+import { NotificationsPage } from '../notifications/NotificationsPage';
 import {
   formatCoordinates,
   formatDistanceKm,
@@ -44,6 +45,7 @@ export function TechnicianDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const techId = user?.id;
+  const [activeDashboardTab, setActiveDashboardTab] = useState('DASHBOARD');
   const [tickets, setTickets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [focusedTicketId, setFocusedTicketId] = useState('');
@@ -164,6 +166,37 @@ export function TechnicianDashboard() {
         </div>
       </div>
 
+      <div className="flex space-x-1 border-b border-slate-200 dark:border-slate-800 mb-6">
+        <button
+          onClick={() => setActiveDashboardTab('DASHBOARD')}
+          className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
+            activeDashboardTab === 'DASHBOARD'
+              ? 'border-brand-purple text-brand-purple'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
+        >
+          Overview
+        </button>
+        <button
+          onClick={() => setActiveDashboardTab('NOTIFICATIONS')}
+          className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
+            activeDashboardTab === 'NOTIFICATIONS'
+              ? 'border-brand-purple text-brand-purple'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
+        >
+          Notifications
+        </button>
+      </div>
+
+      {activeDashboardTab === 'NOTIFICATIONS' && (
+        <div className="-mt-6">
+          <NotificationsPage />
+        </div>
+      )}
+
+      {activeDashboardTab === 'DASHBOARD' && (
+      <>
       {/* Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4 flex items-center space-x-4 border-l-4 border-blue-500">
@@ -638,6 +671,8 @@ export function TechnicianDashboard() {
           </div>
         </form>
       </Modal>
-    </motion.div>);
-
+      </>
+      )}
+    </motion.div>
+  );
 }
