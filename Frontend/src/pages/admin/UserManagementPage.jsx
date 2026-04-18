@@ -58,14 +58,14 @@ export function UserManagementPage() {
     };
 
     const handleDeleteUser = async (userId) => {
-        if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
+        if (!window.confirm('Are you sure you want to delete this user?')) return;
         
         try {
             await api.delete(`/api/admin/users/${userId}`);
             setUsers(users.filter(u => u.id !== userId));
         } catch (err) {
             console.error('Failed to delete user:', err);
-            alert('Failed to delete user: ' + (err.response?.data?.message || err.message));
+            alert('Failed to delete user');
         }
     };
 
