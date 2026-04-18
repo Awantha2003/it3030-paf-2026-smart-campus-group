@@ -48,6 +48,8 @@ public class ResourceBooking {
 
     private String rejectionReason;
 
+    private String cancellationReason;
+
     private Instant createdAt;
 
     private Instant updatedAt;

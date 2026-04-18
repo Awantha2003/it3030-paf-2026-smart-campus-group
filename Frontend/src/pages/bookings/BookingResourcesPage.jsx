@@ -25,14 +25,16 @@ import {
   deleteFacilityBooking,
   getFacilityLectureHalls,
   getMyFacilityBookings,
-  updateFacilityBooking
+  updateFacilityBooking,
+  updateFacilityBookingStatus
 } from '../../api/facilityBookings';
 import {
   createResourceBooking,
   deleteResourceBooking,
   getMyResourceBookings,
   getResourceBookingsByDate,
-  updateResourceBooking
+  updateResourceBooking,
+  updateResourceBookingStatus
 } from '../../api/resourceBookings';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -389,6 +391,9 @@ export function BookingResourcesPage() {
   const [deletingFacilityBookingId, setDeletingFacilityBookingId] = useState('');
   const [deletingGenericBookingId, setDeletingGenericBookingId] = useState('');
   const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
+  // Cancel booking modal state
+  const [cancelModal, setCancelModal] = useState({ open: false, booking: null, isFacility: false, reason: '', submitting: false });
   const [facilityConflictMessage, setFacilityConflictMessage] = useState('');
   const [genericConflictMessage, setGenericConflictMessage] = useState('');
   const [facilityCatalogDate, setFacilityCatalogDate] = useState(getTodayIsoDate);
@@ -1069,10 +1074,11 @@ export function BookingResourcesPage() {
     event.preventDefault();
     setFacilityConflictMessage('');
     setError('');
+    setFormError('');
 
     const validationError = getFacilityFormValidationError();
     if (validationError) {
-      setError(validationError);
+      setFormError(validationError);
       return;
     }
 
@@ -1183,11 +1189,12 @@ export function BookingResourcesPage() {
   async function handleGenericSubmit(event) {
     event.preventDefault();
     setError('');
+    setFormError('');
     setGenericConflictMessage('');
 
     const validationError = getGenericFormValidationError();
     if (validationError) {
-      setError(validationError);
+      setFormError(validationError);
       return;
     }
 
@@ -1255,6 +1262,31 @@ export function BookingResourcesPage() {
       setError(deleteError?.message || 'Unable to delete booking.');
     } finally {
       setDeletingGenericBookingId('');
+    }
+  }
+
+  function openCancelModal(booking, isFacility) {
+    setCancelModal({ open: true, booking, isFacility, reason: '', submitting: false });
+  }
+
+  async function handleStudentCancel(e) {
+    e.preventDefault();
+    if (!cancelModal.reason.trim()) return;
+    setError('');
+    setCancelModal(m => ({ ...m, submitting: true }));
+    try {
+      const payload = { status: 'CANCELLED', cancellationReason: cancelModal.reason.trim() };
+      if (cancelModal.isFacility) {
+        await updateFacilityBookingStatus(cancelModal.booking.id, payload);
+        await loadFacilityMeta();
+      } else {
+        await updateResourceBookingStatus(cancelModal.booking.id, payload);
+        await loadGenericBookingsMeta(selectedType, genericCatalogDate);
+      }
+      setCancelModal({ open: false, booking: null, isFacility: false, reason: '', submitting: false });
+    } catch (err) {
+      setError(err?.message || 'Unable to cancel booking.');
+      setCancelModal(m => ({ ...m, submitting: false }));
     }
   }
 
@@ -1608,23 +1640,35 @@ export function BookingResourcesPage() {
                                   : ''}
                               </p>
                               <div className="flex shrink-0 gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => openEditGenericBookingForm(booking)}
-                                  className="rounded-md border border-cyan-300 p-1 text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-800 dark:text-cyan-300 dark:hover:bg-slate-800"
-                                  aria-label="Update booking"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteGenericBooking(booking.id)}
-                                  disabled={deletingGenericBookingId === booking.id}
-                                  className="rounded-md border border-red-300 p-1 text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-900/20"
-                                  aria-label="Delete booking"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
+                                {booking.status === 'APPROVED' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openCancelModal(booking, false)}
+                                    className="rounded-md border border-amber-400/50 px-2 py-1 text-[10px] font-semibold text-amber-400 transition hover:bg-amber-400/10 dark:border-amber-500/40 dark:text-amber-300"
+                                  >
+                                    Can't Attend
+                                  </button>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => openEditGenericBookingForm(booking)}
+                                      className="rounded-md border border-cyan-300 p-1 text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-800 dark:text-cyan-300 dark:hover:bg-slate-800"
+                                      aria-label="Update booking"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteGenericBooking(booking.id)}
+                                      disabled={deletingGenericBookingId === booking.id}
+                                      className="rounded-md border border-red-300 p-1 text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-900/20"
+                                      aria-label="Delete booking"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1692,23 +1736,35 @@ export function BookingResourcesPage() {
                             {String(booking.bookingTime || '').slice(0, 5)} | {Number(booking.durationHours || 1)} hour(s)
                           </p>
                           <div className="flex shrink-0 gap-1">
-                            <button
-                              type="button"
-                              onClick={() => openEditFacilityBookingForm(booking)}
-                              className="rounded-md border border-cyan-300 p-1 text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-800 dark:text-cyan-300 dark:hover:bg-slate-800"
-                              aria-label="Update booking"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteFacilityBooking(booking.id)}
-                              disabled={deletingFacilityBookingId === booking.id}
-                              className="rounded-md border border-red-300 p-1 text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-900/20"
-                              aria-label="Delete booking"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
+                            {booking.status === 'APPROVED' ? (
+                              <button
+                                type="button"
+                                onClick={() => openCancelModal(booking, true)}
+                                className="rounded-md border border-amber-400/50 px-2 py-1 text-[10px] font-semibold text-amber-400 transition hover:bg-amber-400/10 dark:border-amber-500/40 dark:text-amber-300"
+                              >
+                                Can't Attend
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditFacilityBookingForm(booking)}
+                                  className="rounded-md border border-cyan-300 p-1 text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-800 dark:text-cyan-300 dark:hover:bg-slate-800"
+                                  aria-label="Update booking"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteFacilityBooking(booking.id)}
+                                  disabled={deletingFacilityBookingId === booking.id}
+                                  className="rounded-md border border-red-300 p-1 text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-900/20"
+                                  aria-label="Delete booking"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
                         {booking.status === 'REJECTED' && booking.rejectionReason && (
@@ -1900,6 +1956,13 @@ export function BookingResourcesPage() {
                     </select>
                   </label>
 
+                  {formError && (
+                    <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/10 dark:text-red-400">
+                      <span className="mt-0.5 shrink-0 text-red-500">⚠</span>
+                      <span>{formError}</span>
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
                     isLoading={submittingFacilityBooking}
@@ -2071,6 +2134,13 @@ export function BookingResourcesPage() {
                       required
                     />
                   </label>
+
+                  {formError && (
+                    <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/10 dark:text-red-400">
+                      <span className="mt-0.5 shrink-0 text-red-500">⚠</span>
+                      <span>{formError}</span>
+                    </div>
+                  )}
 
                   <Button
                     type="submit"
@@ -2414,6 +2484,68 @@ export function BookingResourcesPage() {
           </div>
         )}
       </div>
+
+      {/* ── Student Cancel-with-Reason Modal ──────────────────────── */}
+      {cancelModal.open && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-4">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+              <div className="p-2 bg-amber-500/15 rounded-xl ring-1 ring-amber-500/30">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Cancel Approved Booking</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {cancelModal.booking?.lectureHallCode || cancelModal.booking?.resourceName}
+                  {' '}| {cancelModal.booking?.bookingDate} {String(cancelModal.booking?.bookingTime || '').slice(0, 5)}
+                  {' '}| {cancelModal.booking?.durationHours} hour(s)
+                </p>
+              </div>
+            </div>
+            <form onSubmit={handleStudentCancel} className="px-6 py-5 space-y-4">
+              {error && (
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-start gap-2 text-xs text-red-600 dark:text-red-400">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  {error}
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">
+                  Reason for Cancellation <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={cancelModal.reason}
+                  onChange={(e) => setCancelModal(m => ({ ...m, reason: e.target.value }))}
+                  required
+                  rows={4}
+                  autoFocus
+                  placeholder="Please explain why you cannot attend this booking slot…"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 resize-none transition"
+                />
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                ⚠ This action cannot be undone. The admin will be notified of your cancellation reason.
+              </p>
+              <div className="flex justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setCancelModal({ open: false, booking: null, isFacility: false, reason: '', submitting: false })}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Keep Booking
+                </button>
+                <button
+                  type="submit"
+                  disabled={cancelModal.submitting || !cancelModal.reason.trim()}
+                  className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-amber-500 hover:bg-amber-400 transition-colors disabled:opacity-50 shadow-lg shadow-amber-500/20"
+                >
+                  {cancelModal.submitting ? 'Cancelling…' : 'Confirm Cancellation'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

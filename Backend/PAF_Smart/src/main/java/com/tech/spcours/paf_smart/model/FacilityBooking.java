@@ -54,6 +54,8 @@ public class FacilityBooking {
 
     private String rejectionReason;
 
+    private String cancellationReason;
+
     private Instant createdAt;
 
     private Instant updatedAt;

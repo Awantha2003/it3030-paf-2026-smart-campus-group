@@ -77,7 +77,7 @@ public class FacilityBookingService {
                     .filter(space -> "FACILITY".equals(resolveResourceCategory(space.getSpaceType())))
                     .map(space -> {
                         List<FacilityLectureHallResponse.BookedSlot> bookedSlots = dayBookings.stream()
-                                .filter(b -> b.getLectureHallCode().equals(space.getCode()) && !"CANCELLED".equals(b.getStatus()) && !"REJECTED".equals(b.getStatus()))
+                                .filter(b -> b.getLectureHallCode().equals(space.getCode()) && isBlockingStatus(b))
                                 .map(b -> new FacilityLectureHallResponse.BookedSlot(
                                         b.getBookingTime(),
                                         b.getBookingTime().plusHours(sanitizeDuration(b.getDurationHours()))))
@@ -91,7 +91,7 @@ public class FacilityBookingService {
                 .filter(space -> "FACILITY".equals(resolveResourceCategory(space.getSpaceType())))
                 .filter(space -> {
                     List<FacilityBooking> sameHallBookings = dayBookings.stream()
-                            .filter(b -> b.getLectureHallCode().equals(space.getCode()) && !"CANCELLED".equals(b.getStatus()) && !"REJECTED".equals(b.getStatus()))
+                            .filter(b -> b.getLectureHallCode().equals(space.getCode()) && isBlockingStatus(b))
                             .toList();
                     return sameHallBookings.stream().noneMatch(existingBooking ->
                             isOverlappingSlot(
@@ -107,6 +107,7 @@ public class FacilityBookingService {
     public List<FacilityBookingResponse> getStudentBookings(User user) {
         return facilityBookingRepository.findByStudentIdOrderByBookingDateDescBookingTimeDesc(user.getId())
                 .stream()
+                .filter(this::isBlockingStatus)
                 .map(this::toBookingResponse)
                 .toList();
     }
@@ -201,15 +202,32 @@ public class FacilityBookingService {
         return toBookingResponse(saved);
     }
 
-    public FacilityBookingResponse updateBookingStatus(String bookingId, UpdateBookingStatusRequest request) {
+    public FacilityBookingResponse updateBookingStatus(String bookingId, UpdateBookingStatusRequest request, User user) {
         FacilityBooking booking = facilityBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Facility booking not found"));
         
-        booking.setStatus(request.status());
+        boolean isAdmin = user.getRole() == com.tech.spcours.paf_smart.module.user.model.Role.ADMIN;
+        
+        if (!isAdmin) {
+            // If not admin, must be the owner and can only set status to CANCELLED
+            if (!booking.getStudentId().equals(user.getId())) {
+                throw new com.tech.spcours.paf_smart.exception.ResourceConflictException("You can only update your own bookings");
+            }
+            if (!"CANCELLED".equalsIgnoreCase(request.status())) {
+                throw new com.tech.spcours.paf_smart.exception.ResourceConflictException("Students can only cancel their bookings");
+            }
+        }
+
+        booking.setStatus(request.status().toUpperCase());
         if ("REJECTED".equalsIgnoreCase(request.status())) {
             booking.setRejectionReason(request.rejectionReason());
+            booking.setCancellationReason(null);
+        } else if ("CANCELLED".equalsIgnoreCase(request.status())) {
+            booking.setCancellationReason(request.cancellationReason());
+            booking.setRejectionReason(null);
         } else {
             booking.setRejectionReason(null);
+            booking.setCancellationReason(null);
         }
         booking.setUpdatedAt(Instant.now());
         
@@ -253,6 +271,7 @@ public class FacilityBookingService {
                 .lectureHallName(booking.getLectureHallName())
                 .status(booking.getStatus())
                 .rejectionReason(booking.getRejectionReason())
+                .cancellationReason(booking.getCancellationReason())
                 .createdAt(booking.getCreatedAt())
                 .updatedAt(booking.getUpdatedAt())
                 .build();
@@ -288,6 +307,7 @@ public class FacilityBookingService {
 
         boolean hasOverlap = sameHallBookings.stream()
                 .filter(existing -> excludedBookingId == null || !excludedBookingId.equals(existing.getId()))
+                .filter(this::isBlockingStatus)
                 .anyMatch(existing ->
                         isOverlappingSlot(
                                 existing.getBookingTime(),
@@ -311,6 +331,7 @@ public class FacilityBookingService {
 
         boolean hasOverlap = studentDayBookings.stream()
                 .filter(existing -> excludedBookingId == null || !excludedBookingId.equals(existing.getId()))
+                .filter(this::isBlockingStatus)
                 .anyMatch(existing ->
                         isOverlappingSlot(
                                 existing.getBookingTime(),
@@ -321,6 +342,13 @@ public class FacilityBookingService {
         if (hasOverlap) {
             throw new ResourceConflictException("You already have another facility booking at this time");
         }
+    }
+
+    private boolean isBlockingStatus(FacilityBooking booking) {
+        String status = booking.getStatus();
+        if (status == null) return true;
+        String normalized = status.trim().toUpperCase();
+        return !"CANCELLED".equals(normalized) && !"REJECTED".equals(normalized);
     }
 
     private boolean isOverlappingSlot(

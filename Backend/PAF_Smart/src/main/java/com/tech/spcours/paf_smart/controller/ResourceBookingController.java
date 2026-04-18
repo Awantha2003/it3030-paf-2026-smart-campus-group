@@ -77,11 +77,13 @@ public class ResourceBookingController {
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResourceBookingResponse updateBookingStatus(
             @PathVariable String id,
-            @Valid @RequestBody UpdateBookingStatusRequest request) {
-        return resourceBookingService.updateBookingStatus(id, request);
+            @Valid @RequestBody UpdateBookingStatusRequest request,
+            org.springframework.security.core.Authentication auth) {
+        User user = (User) auth.getPrincipal();
+        return resourceBookingService.updateBookingStatus(id, request, user);
     }
 
     @DeleteMapping("/{id}")
