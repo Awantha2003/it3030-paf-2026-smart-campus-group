@@ -24,6 +24,7 @@ import com.tech.spcours.paf_smart.exception.ResourceConflictException;
 import com.tech.spcours.paf_smart.exception.ResourceNotFoundException;
 import com.tech.spcours.paf_smart.model.FacilityBooking;
 import com.tech.spcours.paf_smart.module.user.model.User;
+import com.tech.spcours.paf_smart.module.user.repository.UserRepository;
 import com.tech.spcours.paf_smart.repository.FacilityBookingRepository;
 import com.tech.spcours.paf_smart.module.notification.service.NotificationService;
 
@@ -55,6 +56,7 @@ public class FacilityBookingService {
     private final FacilityBookingRepository facilityBookingRepository;
     private final com.tech.spcours.paf_smart.repository.FacilityRepository facilityRepository;
     private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
     public List<FacilityLectureHallResponse> getLectureHalls() {
         return facilityRepository.findAll().stream()
@@ -93,12 +95,11 @@ public class FacilityBookingService {
                     List<FacilityBooking> sameHallBookings = dayBookings.stream()
                             .filter(b -> b.getLectureHallCode().equals(space.getCode()) && isBlockingStatus(b))
                             .toList();
-                    return sameHallBookings.stream().noneMatch(existingBooking ->
-                            isOverlappingSlot(
-                                    existingBooking.getBookingTime(),
-                                    sanitizeDuration(existingBooking.getDurationHours()),
-                                    bookingTime,
-                                    requestedDurationHours));
+                    return sameHallBookings.stream().noneMatch(existingBooking -> isOverlappingSlot(
+                            existingBooking.getBookingTime(),
+                            sanitizeDuration(existingBooking.getDurationHours()),
+                            bookingTime,
+                            requestedDurationHours));
                 })
                 .map(space -> mapToLectureHallResponse(space, java.util.Collections.emptyList()))
                 .toList();
@@ -120,7 +121,8 @@ public class FacilityBookingService {
     }
 
     public FacilityBookingResponse createBooking(CreateFacilityBookingRequest request, User user) {
-        com.tech.spcours.paf_smart.model.Facility hall = facilityRepository.findByCode(request.lectureHallCode().trim().toUpperCase())
+        com.tech.spcours.paf_smart.model.Facility hall = facilityRepository
+                .findByCode(request.lectureHallCode().trim().toUpperCase())
                 .orElseThrow(() -> new ResourceConflictException("Selected facility space not found"));
         if (!"FACILITY".equals(resolveResourceCategory(hall.getSpaceType()))) {
             throw new ResourceConflictException("Only facility category spaces can be booked here");
@@ -128,11 +130,14 @@ public class FacilityBookingService {
 
         int requestedDurationHours = sanitizeDuration(request.durationHours());
         validateBookingDateTime(request.bookingDate(), request.bookingTime(), requestedDurationHours);
-        ensureHallIsAvailableForSlot(hall.getCode(), request.bookingDate(), request.bookingTime(), requestedDurationHours, null);
-        ensureStudentHasNoOverlap(user.getId(), request.bookingDate(), request.bookingTime(), requestedDurationHours, null);
+        ensureHallIsAvailableForSlot(hall.getCode(), request.bookingDate(), request.bookingTime(),
+                requestedDurationHours, null);
+        ensureStudentHasNoOverlap(user.getId(), request.bookingDate(), request.bookingTime(), requestedDurationHours,
+                null);
 
         Instant now = Instant.now();
-        com.tech.spcours.paf_smart.model.FacilityBooking booking = com.tech.spcours.paf_smart.model.FacilityBooking.builder()
+        com.tech.spcours.paf_smart.model.FacilityBooking booking = com.tech.spcours.paf_smart.model.FacilityBooking
+                .builder()
                 .studentId(user.getId())
                 .studentName(user.getName())
                 .studentEmail(user.getEmail())
@@ -154,14 +159,24 @@ public class FacilityBookingService {
 
         com.tech.spcours.paf_smart.model.FacilityBooking saved = facilityBookingRepository.save(booking);
 
-        notificationService.send(user.getId(), "Booking Confirmed", "Your booking for " + hall.getName() + " on " + request.bookingDate().toString() + " at " + request.bookingTime().toString() + " is confirmed.", "BOOKINGS", saved.getId());
+        notificationService.send(user.getId(), "Booking Created", "Your booking for " + hall.getName() + " on "
+                + request.bookingDate().toString() + " at " + request.bookingTime().toString() + " has been created.",
+                "BOOKINGS", saved.getId());
+
+        userRepository.findByRole(com.tech.spcours.paf_smart.module.user.model.Role.ADMIN).forEach(admin -> {
+            notificationService.send(admin.getId(), "New Facility Booking",
+                    user.getName() + " requested to book " + hall.getName() + " on " + request.bookingDate().toString()
+                            + " at " + request.bookingTime().toString() + ".",
+                    "BOOKINGS", saved.getId());
+        });
 
         return toBookingResponse(saved);
     }
 
     public FacilityBookingResponse updateBooking(String bookingId, CreateFacilityBookingRequest request, User user) {
         com.tech.spcours.paf_smart.model.FacilityBooking existingBooking = findOwnedBooking(bookingId, user);
-        com.tech.spcours.paf_smart.model.Facility hall = facilityRepository.findByCode(request.lectureHallCode().trim().toUpperCase())
+        com.tech.spcours.paf_smart.model.Facility hall = facilityRepository
+                .findByCode(request.lectureHallCode().trim().toUpperCase())
                 .orElseThrow(() -> new ResourceConflictException("Selected facility space not found"));
         if (!"FACILITY".equals(resolveResourceCategory(hall.getSpaceType()))) {
             throw new ResourceConflictException("Only facility category spaces can be booked here");
@@ -197,24 +212,30 @@ public class FacilityBookingService {
 
         com.tech.spcours.paf_smart.model.FacilityBooking saved = facilityBookingRepository.save(existingBooking);
 
-        notificationService.send(user.getId(), "Booking Updated", "Your booking for " + hall.getName() + " on " + request.bookingDate().toString() + " at " + request.bookingTime().toString() + " has been successfully updated.", "BOOKINGS", saved.getId());
+        notificationService.send(user.getId(), "Booking Updated",
+                "Your booking for " + hall.getName() + " on " + request.bookingDate().toString() + " at "
+                        + request.bookingTime().toString() + " has been successfully updated.",
+                "BOOKINGS", saved.getId());
 
         return toBookingResponse(saved);
     }
 
-    public FacilityBookingResponse updateBookingStatus(String bookingId, UpdateBookingStatusRequest request, User user) {
+    public FacilityBookingResponse updateBookingStatus(String bookingId, UpdateBookingStatusRequest request,
+            User user) {
         FacilityBooking booking = facilityBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Facility booking not found"));
-        
+
         boolean isAdmin = user.getRole() == com.tech.spcours.paf_smart.module.user.model.Role.ADMIN;
-        
+
         if (!isAdmin) {
             // If not admin, must be the owner and can only set status to CANCELLED
             if (!booking.getStudentId().equals(user.getId())) {
-                throw new com.tech.spcours.paf_smart.exception.ResourceConflictException("You can only update your own bookings");
+                throw new com.tech.spcours.paf_smart.exception.ResourceConflictException(
+                        "You can only update your own bookings");
             }
             if (!"CANCELLED".equalsIgnoreCase(request.status())) {
-                throw new com.tech.spcours.paf_smart.exception.ResourceConflictException("Students can only cancel their bookings");
+                throw new com.tech.spcours.paf_smart.exception.ResourceConflictException(
+                        "Students can only cancel their bookings");
             }
         }
 
@@ -222,15 +243,30 @@ public class FacilityBookingService {
         if ("REJECTED".equalsIgnoreCase(request.status())) {
             booking.setRejectionReason(request.rejectionReason());
             booking.setCancellationReason(null);
+            notificationService.send(booking.getStudentId(), "Booking Rejected",
+                    "Your facility booking for " + booking.getLectureHallName() + " on " + booking.getBookingDate()
+                            + " has been rejected. Reason: " + request.rejectionReason(),
+                    "BOOKINGS", booking.getId());
         } else if ("CANCELLED".equalsIgnoreCase(request.status())) {
             booking.setCancellationReason(request.cancellationReason());
             booking.setRejectionReason(null);
+            notificationService.send(booking.getStudentId(), "Booking Cancelled",
+                    "Your facility booking for " + booking.getLectureHallName() + " on " + booking.getBookingDate()
+                            + " has been successfully cancelled.",
+                    "BOOKINGS", booking.getId());
+        } else if ("APPROVED".equalsIgnoreCase(request.status())) {
+            booking.setRejectionReason(null);
+            booking.setCancellationReason(null);
+            notificationService.send(booking.getStudentId(), "Booking Approved",
+                    "Your facility booking for " + booking.getLectureHallName() + " on " + booking.getBookingDate()
+                            + " has been approved.",
+                    "BOOKINGS", booking.getId());
         } else {
             booking.setRejectionReason(null);
             booking.setCancellationReason(null);
         }
         booking.setUpdatedAt(Instant.now());
-        
+
         return toBookingResponse(facilityBookingRepository.save(booking));
     }
 
@@ -239,14 +275,16 @@ public class FacilityBookingService {
         facilityBookingRepository.delete(booking);
     }
 
-    private FacilityLectureHallResponse mapToLectureHallResponse(com.tech.spcours.paf_smart.model.Facility hall, List<FacilityLectureHallResponse.BookedSlot> bookedSlots) {
+    private FacilityLectureHallResponse mapToLectureHallResponse(com.tech.spcours.paf_smart.model.Facility hall,
+            List<FacilityLectureHallResponse.BookedSlot> bookedSlots) {
         return FacilityLectureHallResponse.builder()
                 .code(hall.getCode())
                 .building(hall.getBuilding())
                 .block(hall.getBlock())
                 .floor(hall.getFloor())
                 .name(hall.getName())
-                .displayName(hall.getBuilding() + " | Block " + hall.getBlock() + " | Floor " + hall.getFloor() + " | " + hall.getName())
+                .displayName(hall.getBuilding() + " | Block " + hall.getBlock() + " | Floor " + hall.getFloor() + " | "
+                        + hall.getName())
                 .spaceType(hall.getSpaceType())
                 .capacity(hall.getCapacity())
                 .bookedSlots(bookedSlots)
@@ -302,18 +340,17 @@ public class FacilityBookingService {
             LocalTime bookingTime,
             int durationHours,
             String excludedBookingId) {
-        List<FacilityBooking> sameHallBookings =
-                facilityBookingRepository.findByLectureHallCodeAndBookingDate(hallCode, bookingDate);
+        List<FacilityBooking> sameHallBookings = facilityBookingRepository.findByLectureHallCodeAndBookingDate(hallCode,
+                bookingDate);
 
         boolean hasOverlap = sameHallBookings.stream()
                 .filter(existing -> excludedBookingId == null || !excludedBookingId.equals(existing.getId()))
                 .filter(this::isBlockingStatus)
-                .anyMatch(existing ->
-                        isOverlappingSlot(
-                                existing.getBookingTime(),
-                                sanitizeDuration(existing.getDurationHours()),
-                                bookingTime,
-                                durationHours));
+                .anyMatch(existing -> isOverlappingSlot(
+                        existing.getBookingTime(),
+                        sanitizeDuration(existing.getDurationHours()),
+                        bookingTime,
+                        durationHours));
 
         if (hasOverlap) {
             throw new ResourceConflictException("This facility space is already reserved for the selected slot");
@@ -326,18 +363,17 @@ public class FacilityBookingService {
             LocalTime bookingTime,
             int durationHours,
             String excludedBookingId) {
-        List<FacilityBooking> studentDayBookings =
-                facilityBookingRepository.findByStudentIdAndBookingDate(studentId, bookingDate);
+        List<FacilityBooking> studentDayBookings = facilityBookingRepository.findByStudentIdAndBookingDate(studentId,
+                bookingDate);
 
         boolean hasOverlap = studentDayBookings.stream()
                 .filter(existing -> excludedBookingId == null || !excludedBookingId.equals(existing.getId()))
                 .filter(this::isBlockingStatus)
-                .anyMatch(existing ->
-                        isOverlappingSlot(
-                                existing.getBookingTime(),
-                                sanitizeDuration(existing.getDurationHours()),
-                                bookingTime,
-                                durationHours));
+                .anyMatch(existing -> isOverlappingSlot(
+                        existing.getBookingTime(),
+                        sanitizeDuration(existing.getDurationHours()),
+                        bookingTime,
+                        durationHours));
 
         if (hasOverlap) {
             throw new ResourceConflictException("You already have another facility booking at this time");
@@ -346,7 +382,8 @@ public class FacilityBookingService {
 
     private boolean isBlockingStatus(FacilityBooking booking) {
         String status = booking.getStatus();
-        if (status == null) return true;
+        if (status == null)
+            return true;
         String normalized = status.trim().toUpperCase();
         return !"CANCELLED".equals(normalized) && !"REJECTED".equals(normalized);
     }
