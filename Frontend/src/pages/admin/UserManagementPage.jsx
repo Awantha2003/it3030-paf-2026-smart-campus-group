@@ -57,6 +57,18 @@ export function UserManagementPage() {
         }
     };
 
+    const handleDeleteUser = async (userId) => {
+        if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
+        
+        try {
+            await api.delete(`/api/admin/users/${userId}`);
+            setUsers(users.filter(u => u.id !== userId));
+        } catch (err) {
+            console.error('Failed to delete user:', err);
+            alert('Failed to delete user: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
     const filteredUsers = users.filter(user => 
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         user.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -199,7 +211,7 @@ export function UserManagementPage() {
                                                         Suspend
                                                     </button>
                                                 )}
-                                                <button className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors tooltip" aria-label="Delete User">
+                                                <button onClick={() => handleDeleteUser(user.id)} className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors tooltip" aria-label="Delete User">
                                                     <FiTrash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
