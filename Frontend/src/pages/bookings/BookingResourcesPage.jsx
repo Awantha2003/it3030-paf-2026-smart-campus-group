@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   MapPin,
   Package,
+  Search,
   Sparkles,
   Trash2,
   X
@@ -326,6 +327,14 @@ function getBookingApprovalMeta(status) {
   };
 }
 
+function getFacilitySpaceType(space) {
+  const normalizedType = String(space?.spaceType || '').toUpperCase();
+  if (normalizedType === 'LAB' || normalizedType === 'LECTURE_HALL') {
+    return normalizedType;
+  }
+  return String(space?.name || '').toLowerCase().includes('lab') ? 'LAB' : 'LECTURE_HALL';
+}
+
 export function BookingResourcesPage() {
   const { user } = useAuth();
   const [resourceTypes, setResourceTypes] = useState(FALLBACK_TYPES);
@@ -346,6 +355,10 @@ export function BookingResourcesPage() {
   const [facilityConflictMessage, setFacilityConflictMessage] = useState('');
   const [genericConflictMessage, setGenericConflictMessage] = useState('');
   const [facilityCatalogDate, setFacilityCatalogDate] = useState(getTodayIsoDate);
+  const [facilitySearchQuery, setFacilitySearchQuery] = useState('');
+  const [facilitySpaceTypeFilter, setFacilitySpaceTypeFilter] = useState('ALL');
+  const [facilityBuildingFilter, setFacilityBuildingFilter] = useState('ALL');
+  const [facilityBlockFilter, setFacilityBlockFilter] = useState('ALL');
   const [lectureHalls, setLectureHalls] = useState([]);
   const [myFacilityBookings, setMyFacilityBookings] = useState([]);
   const [availableFacilitySpaces, setAvailableFacilitySpaces] = useState([]);
@@ -607,6 +620,72 @@ export function BookingResourcesPage() {
       .filter((entry) => !Number.isNaN(entry.startAt.getTime()) && entry.startAt > now)
       .sort((left, right) => left.startAt - right.startAt)[0]?.booking;
   }, [selectedType, myFacilityBookings]);
+
+  const facilityBuildingOptions = useMemo(
+    () =>
+      [...new Set(availableFacilitySpaces.map((space) => String(space.building || '').trim()).filter(Boolean))].sort(
+        (left, right) => left.localeCompare(right)
+      ),
+    [availableFacilitySpaces]
+  );
+
+  const facilityBlockOptions = useMemo(
+    () =>
+      [...new Set(availableFacilitySpaces.map((space) => String(space.block || '').trim()).filter(Boolean))].sort(
+        (left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' })
+      ),
+    [availableFacilitySpaces]
+  );
+
+  const filteredFacilitySpaces = useMemo(() => {
+    if (selectedType !== 'FACILITY') {
+      return [];
+    }
+
+    const normalizedQuery = facilitySearchQuery.trim().toLowerCase();
+    return availableFacilitySpaces.filter((space) => {
+      const spaceType = getFacilitySpaceType(space);
+      const building = String(space.building || '').trim();
+      const block = String(space.block || '').trim();
+
+      if (facilitySpaceTypeFilter !== 'ALL' && spaceType !== facilitySpaceTypeFilter) {
+        return false;
+      }
+
+      if (facilityBuildingFilter !== 'ALL' && building !== facilityBuildingFilter) {
+        return false;
+      }
+
+      if (facilityBlockFilter !== 'ALL' && block !== facilityBlockFilter) {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      const searchIndex = [
+        space.name,
+        space.displayName,
+        space.code,
+        building,
+        `Block ${block}`,
+        `Floor ${space.floor}`
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return searchIndex.includes(normalizedQuery);
+    });
+  }, [
+    availableFacilitySpaces,
+    facilityBlockFilter,
+    facilityBuildingFilter,
+    facilitySearchQuery,
+    facilitySpaceTypeFilter,
+    selectedType
+  ]);
 
   function updateFacilityField(field, value) {
     setFacilityForm((current) => ({
@@ -1740,17 +1819,68 @@ export function BookingResourcesPage() {
       )}
 
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
             {activeResourceType?.title || 'Resource'} Catalog
           </h3>
           {selectedType === 'FACILITY' && (
-            <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            <div className="flex min-w-[280px] flex-1 flex-wrap items-center gap-2">
+              <label className="relative min-w-[220px] flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="search"
+                  value={facilitySearchQuery}
+                  onChange={(event) => setFacilitySearchQuery(event.target.value)}
+                  placeholder="Search hall, lab, building, block..."
+                  className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                />
+              </label>
+
+              <select
+                value={facilitySpaceTypeFilter}
+                onChange={(event) => setFacilitySpaceTypeFilter(event.target.value)}
+                className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value="ALL">All Types</option>
+                <option value="LECTURE_HALL">Lecture Halls</option>
+                <option value="LAB">Labs</option>
+              </select>
+
+              <select
+                value={facilityBuildingFilter}
+                onChange={(event) => setFacilityBuildingFilter(event.target.value)}
+                className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value="ALL">All Buildings</option>
+                {facilityBuildingOptions.map((building) => (
+                  <option key={building} value={building}>
+                    {building}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={facilityBlockFilter}
+                onChange={(event) => setFacilityBlockFilter(event.target.value)}
+                className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value="ALL">All Blocks</option>
+                {facilityBlockOptions.map((block) => (
+                  <option key={block} value={block}>
+                    Block {block}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {selectedType === 'FACILITY' && (
+            <label className="ml-auto flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
               Date
               <input
                 type="date"
                 value={facilityCatalogDate}
                 onChange={(event) => setFacilityCatalogDate(event.target.value || getTodayIsoDate())}
+                min={getTodayIsoDate()}
                 className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
               />
             </label>
@@ -1771,10 +1901,16 @@ export function BookingResourcesPage() {
                 All lecture halls and labs are reserved for {facilityCatalogDate}. Try another date.
               </CardContent>
             </Card>
+          ) : filteredFacilitySpaces.length === 0 ? (
+            <Card className="border border-slate-200/70 dark:border-slate-800">
+              <CardContent className="py-10 text-center text-sm text-slate-500 dark:text-slate-300">
+                No spaces match your filters. Try a different search or filter combination.
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-              {availableFacilitySpaces.map((space) => {
-                const spaceType = space.spaceType || (space.name?.toLowerCase().includes('lab') ? 'LAB' : 'LECTURE_HALL');
+              {filteredFacilitySpaces.map((space) => {
+                const spaceType = getFacilitySpaceType(space);
                 const isLab = spaceType === 'LAB';
                 return (
                   <Card
