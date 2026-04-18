@@ -36,18 +36,16 @@ export function TopNav() {
                 // Pop up for newly arrived unread notifications OR if it's the first load and we have unread ones
                 if (notifs.length > 0 && count > 0) {
                     const latestUnread = notifs.find(n => !(n.read ?? n.isRead));
-                    if (latestUnread && (prevUnread === -1 || count > prevUnread)) {
-                        setRecentPopup(latestUnread);
-                        setTimeout(() => setRecentPopup(null), 5000);
-                    }
-                }
-                
-                if (prevUnread === -1) {
+                    setPrevUnread(currentPrev => {
+                        if (latestUnread && (currentPrev === -1 || count > currentPrev)) {
+                            setRecentPopup(latestUnread);
+                            setTimeout(() => setRecentPopup(null), 5000);
+                        }
+                        return count;
+                    });
+                } else {
                     setPrevUnread(count);
-                } else if (count > prevUnread) {
-                    setPrevUnread(count);
                 }
-
             } catch (err) {
                 console.error('Failed to fetch notifications info:', err);
             }
@@ -59,7 +57,7 @@ export function TopNav() {
         const intervalId = setInterval(fetchNotificationsData, 30000); // Poll every 30 seconds
 
         return () => clearInterval(intervalId);
-    }, [user]);
+    }, [user, location.pathname]);
 
     const pathnames = location.pathname.split('/').filter((segment) => segment);
     const breadcrumb =
@@ -100,9 +98,12 @@ export function TopNav() {
 
                 <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
 
-                <button 
+                <button
                     type="button"
-                    onClick={() => setShowNotifications(true)}
+                    onClick={() => {
+                        setShowNotifications(true);
+                        fetchNotificationsData();
+                    }}
                     className="relative p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
                 >
                     <Bell className="w-5 h-5" />

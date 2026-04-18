@@ -70,15 +70,20 @@ public class IssueReportService {
                     .ifPresent(technician -> {
                         issueReport.setAssignedTo(technician.getId());
                         issueReport.setStatus("IN_PROGRESS");
-                        notificationService.send(technician.getId(), "New Ticket Assigned", "You have been assigned a critical ticket: " + issueReport.getTitle(), "TICKETS", issueReport.getId());
+                        notificationService.send(technician.getId(), "New Ticket Assigned", "You have been assigned a critical ticket: " + issueReport.getTitle(), "TICKET", issueReport.getId());
                     });
         }
 
         IssueReport saved = issueReportRepository.save(issueReport);
         
         userRepository.findByRole(Role.ADMIN).forEach(admin -> {
-            notificationService.send(admin.getId(), "New Ticket Raised", "A new ticket has been raised by " + issueReport.getStudentName() + ": " + issueReport.getTitle(), "TICKETS", saved.getId());
+            notificationService.send(admin.getId(), "New Ticket Raised", "A new ticket has been raised by " + issueReport.getStudentName() + ": " + issueReport.getTitle(), "TICKET", saved.getId());
         });
+        
+        // Notify the user who created the ticket
+        if (issueReport.getStudentId() != null && !issueReport.getStudentId().isEmpty()) {
+            notificationService.send(issueReport.getStudentId(), "Ticket Created", "Your ticket '" + issueReport.getTitle() + "' has been successfully created. We will review it shortly.", "TICKET", saved.getId());
+        }
 
         return toResponse(saved);
     }
