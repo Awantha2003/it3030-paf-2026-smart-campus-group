@@ -24,6 +24,7 @@ public record FacilityBookingResponse(
         String lectureHallName,
         String status,
         String rejectionReason,
+        String cancellationReason,
         Instant createdAt,
         Instant updatedAt) {
 }
