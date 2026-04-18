@@ -28,6 +28,12 @@ public class FacilityService {
                 .toList();
     }
 
+    public List<FacilityResponse> getFacilitiesByType(String type) {
+        return facilityRepository.findBySpaceType(type).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
     public FacilityResponse getFacilityByCode(String code) {
         return facilityRepository.findByCode(code)
                 .map(this::mapToResponse)

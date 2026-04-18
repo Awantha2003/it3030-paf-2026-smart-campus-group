@@ -400,15 +400,37 @@ export function BookingResourcesPage() {
   async function loadTypes() {
     setLoadingTypes(true);
     try {
-      const typeData = await getResourceTypes();
+      const { getResourceSummary } = await import('../../api/facilities');
+      const [typeData, summaryData] = await Promise.all([
+        getResourceTypes(),
+        getResourceSummary()
+      ]);
+
       if (Array.isArray(typeData) && typeData.length > 0) {
-        setResourceTypes(typeData);
-        setSelectedType(typeData[0].type);
+        // Merge real-time counts into the types list
+        const updatedTypes = typeData.map(type => {
+          const count = summaryData[type.type] || 0;
+          let label = `${count} available`;
+          
+          if (type.type === 'FACILITY') label = `${count} spaces`;
+          else if (type.type === 'EQUIPMENT') label = `${count} items`;
+          else if (type.type === 'SPORTS') label = `${count} venues`;
+          else if (type.type === 'LIBRARY') label = `${count} zones`;
+          else if (type.type === 'EVENT') label = `${count} upcoming`;
+          
+          return {
+            ...type,
+            availabilityLabel: label
+          };
+        });
+        setResourceTypes(updatedTypes);
+        setSelectedType(updatedTypes[0].type);
       }
     } catch (loadError) {
       if (loadError?.message === 'Failed to fetch') {
         setResourceTypes(FALLBACK_TYPES);
       } else {
+        console.error('Failed to load summary counts:', loadError);
         setError(loadError?.message || 'Unable to load resource categories.');
       }
     } finally {
@@ -417,20 +439,64 @@ export function BookingResourcesPage() {
   }
 
   async function loadResourcesByType(type) {
-    if (type === 'EQUIPMENT') {
-      setResources(CURATED_EQUIPMENT_RESOURCES);
-      return;
-    }
-
     setLoadingResources(true);
+    setError('');
+
     try {
-      const resourceData = await getResources(type);
-      setResources(Array.isArray(resourceData) ? resourceData : []);
+      if (type === 'EQUIPMENT') {
+        const { getAllEquipments } = await import('../../api/equipments');
+        const dbEquipments = await getAllEquipments();
+        
+        const mapped = dbEquipments.map(item => ({
+          id: item.id,
+          name: item.name,
+          subtitle: item.description || 'Campus Resource',
+          location: 'Main Campus',
+          capacity: 1,
+          totalUnits: item.totalQuantity,
+          availableUnits: item.availableQuantity,
+          approvalRequired: item.approvalRequired,
+          bookingWindow: 'Up to 14 days',
+          tags: [item.status],
+          highlights: item.approvalRequired ? ['Approval required'] : ['Instant confirmation']
+        }));
+        
+        setResources(mapped);
+      } else if (['SPORTS', 'LIBRARY', 'EVENT'].includes(type)) {
+        const { getFacilitiesByType } = await import('../../api/facilities');
+        
+        const typeMapping = {
+          SPORTS: 'SPORTS_VENUE',
+          LIBRARY: 'LIBRARY_ZONE',
+          EVENT: 'SEMINAR_ROOM'
+        };
+        
+        const dbPlaces = await getFacilitiesByType(typeMapping[type] || type);
+        
+        const mapped = dbPlaces.map(item => ({
+          id: item.id,
+          name: item.name,
+          subtitle: `${item.building} - Block ${item.block}`,
+          location: `Floor ${item.floor}`,
+          capacity: item.capacity,
+          totalUnits: 1,
+          availableUnits: 1,
+          approvalRequired: false,
+          bookingWindow: 'Up to 14 days',
+          tags: item.amenities || [],
+          highlights: [`Capacity: ${item.capacity}`]
+        }));
+        
+        setResources(mapped);
+      } else {
+        const resourceData = await getResources(type);
+        setResources(Array.isArray(resourceData) ? resourceData : []);
+      }
     } catch (loadError) {
       if (loadError?.message === 'Failed to fetch') {
         setResources(FALLBACK_RESOURCE_CATALOG[type] || []);
       } else {
-        setError(loadError?.message || 'Unable to load resources for this category.');
+        console.error('Resource load error:', loadError);
         setResources([]);
       }
     } finally {

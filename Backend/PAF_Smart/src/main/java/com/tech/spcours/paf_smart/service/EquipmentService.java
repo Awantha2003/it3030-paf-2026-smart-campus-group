@@ -21,6 +21,12 @@ public class EquipmentService {
     private final EquipmentRepository equipmentRepository;
     private final FacilityRepository facilityRepository;
 
+    public List<EquipmentResponse> getAllEquipments() {
+        return equipmentRepository.findAll().stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
     public List<EquipmentResponse> getEquipmentsByFacility(String facilityId) {
         return equipmentRepository.findByFacilityId(facilityId).stream()
                 .map(this::mapToResponse)

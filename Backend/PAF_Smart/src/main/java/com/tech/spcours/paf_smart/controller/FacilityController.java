@@ -28,6 +28,12 @@ public class FacilityController {
 
     private final FacilityService facilityService;
 
+    @GetMapping("/type/{type}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public List<FacilityResponse> getFacilitiesByType(@PathVariable String type) {
+        return facilityService.getFacilitiesByType(type);
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public List<FacilityResponse> getAllFacilities() {

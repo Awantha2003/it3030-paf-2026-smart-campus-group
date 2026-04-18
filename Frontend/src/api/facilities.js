@@ -80,3 +80,11 @@ export async function getResourceSummary() {
 
   return parseResponse(response, 'Failed to load resource summary.');
 }
+
+export async function getFacilitiesByType(type) {
+  const response = await fetchFromApi(`/facilities/type/${type}`, {
+    headers: getAuthHeaders(false)
+  });
+
+  return parseResponse(response, `Failed to load facilities of type ${type}.`);
+}
