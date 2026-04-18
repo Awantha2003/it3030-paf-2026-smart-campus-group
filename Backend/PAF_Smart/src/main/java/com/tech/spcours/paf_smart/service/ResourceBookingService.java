@@ -40,6 +40,7 @@ public class ResourceBookingService {
                         user.getId(),
                         normalizedType)
                 .stream()
+                .filter(this::isBlockingStatus)
                 .map(this::toResponse)
                 .toList();
     }
@@ -135,15 +136,32 @@ public class ResourceBookingService {
         return toResponse(resourceBookingRepository.save(existingBooking));
     }
 
-    public ResourceBookingResponse updateBookingStatus(String bookingId, UpdateBookingStatusRequest request) {
+    public ResourceBookingResponse updateBookingStatus(String bookingId, UpdateBookingStatusRequest request, User user) {
         ResourceBooking booking = resourceBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Resource booking not found"));
         
-        booking.setStatus(request.status());
+        boolean isAdmin = user.getRole() == com.tech.spcours.paf_smart.module.user.model.Role.ADMIN;
+        
+        if (!isAdmin) {
+            // If not admin, must be the owner and can only set status to CANCELLED
+            if (!booking.getStudentId().equals(user.getId())) {
+                throw new com.tech.spcours.paf_smart.exception.ResourceConflictException("You can only update your own bookings");
+            }
+            if (!"CANCELLED".equalsIgnoreCase(request.status())) {
+                throw new com.tech.spcours.paf_smart.exception.ResourceConflictException("Students can only cancel their bookings");
+            }
+        }
+
+        booking.setStatus(request.status().toUpperCase());
         if ("REJECTED".equalsIgnoreCase(request.status())) {
             booking.setRejectionReason(request.rejectionReason());
+            booking.setCancellationReason(null);
+        } else if ("CANCELLED".equalsIgnoreCase(request.status())) {
+            booking.setCancellationReason(request.cancellationReason());
+            booking.setRejectionReason(null);
         } else {
             booking.setRejectionReason(null);
+            booking.setCancellationReason(null);
         }
         booking.setUpdatedAt(Instant.now());
         
@@ -316,6 +334,7 @@ public class ResourceBookingService {
                 .purpose(booking.getPurpose())
                 .status(booking.getStatus())
                 .rejectionReason(booking.getRejectionReason())
+                .cancellationReason(booking.getCancellationReason())
                 .createdAt(booking.getCreatedAt())
                 .updatedAt(booking.getUpdatedAt())
                 .build();

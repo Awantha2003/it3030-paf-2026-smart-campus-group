@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiCalendar, FiCheck, FiX, FiClock, FiSearch, FiLayers, FiBox, FiActivity, FiBookOpen } from 'react-icons/fi';
+import { FiCalendar, FiCheck, FiX, FiClock, FiSearch, FiLayers, FiBox, FiActivity, FiBookOpen, FiAlertTriangle } from 'react-icons/fi';
 
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -20,7 +20,8 @@ export function AdminBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedResourceType, setSelectedResourceType] = useState('FACILITY');
-  
+  const [selectedStatus, setSelectedStatus] = useState('ALL');
+
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -84,7 +85,7 @@ export function AdminBookingsPage() {
       alert('Rejection reason is required');
       return;
     }
-    
+
     setIsUpdating(true);
     try {
       if (selectedBooking._isFacility) {
@@ -106,20 +107,22 @@ export function AdminBookingsPage() {
     const bType = b._isFacility ? 'FACILITY' : (b.resourceType || 'FACILITY');
     if (bType !== selectedResourceType) return false;
 
+    if (selectedStatus !== 'ALL' && b.status !== selectedStatus) return false;
+
     const q = searchQuery.toLowerCase();
-    return b.studentName?.toLowerCase().includes(q) || 
-           b.studentId?.toLowerCase().includes(q) || 
-           (b.lectureHallName || b.resourceName)?.toLowerCase().includes(q);
+    return b.studentName?.toLowerCase().includes(q) ||
+      b.studentId?.toLowerCase().includes(q) ||
+      (b.lectureHallName || b.resourceName)?.toLowerCase().includes(q);
   });
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <FiCalendar className="text-cyan-500" /> Booking Approvals
+          <FiCalendar className="text-cyan-500" /> Booking Approvals
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Manage facility and resource booking requests from students
+          Manage facility and resource booking requests from students
         </p>
       </div>
 
@@ -128,25 +131,23 @@ export function AdminBookingsPage() {
           const Icon = type.icon;
           const isActive = selectedResourceType === type.type;
           const count = bookings.filter(b => (b._isFacility ? 'FACILITY' : (b.resourceType || 'FACILITY')) === type.type).length;
-          
+
           return (
             <button
               key={type.type}
               type="button"
               onClick={() => setSelectedResourceType(type.type)}
-              className={`group relative overflow-hidden rounded-3xl border p-5 text-left transition-all ${
-                isActive
+              className={`group relative overflow-hidden rounded-3xl border p-5 text-left transition-all ${isActive
                   ? 'border-white/50 bg-slate-900 text-white shadow-lg'
                   : 'border-slate-200/70 bg-white/80 hover:-translate-y-0.5 hover:border-slate-300 dark:border-slate-700/70 dark:bg-slate-900/70 dark:hover:border-slate-600'
-              }`}
+                }`}
             >
               <div className="relative">
                 <div
-                  className={`mb-4 inline-flex rounded-2xl p-2.5 ring-1 ${
-                    isActive
+                  className={`mb-4 inline-flex rounded-2xl p-2.5 ring-1 ${isActive
                       ? 'bg-white/15 text-white ring-white/25'
                       : 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700'
-                  }`}
+                    }`}
                 >
                   <Icon className="h-5 w-5" />
                 </div>
@@ -165,15 +166,37 @@ export function AdminBookingsPage() {
         })}
       </div>
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div className="relative w-full sm:w-96">
-          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            { id: 'ALL', label: 'All Bookings' },
+            { id: 'PENDING_APPROVAL', label: 'Pending' },
+            { id: 'APPROVED', label: 'Approved' },
+            { id: 'REJECTED', label: 'Rejected' },
+            { id: 'CANCELLED', label: 'Cancelled' }
+          ].map(status => (
+            <button
+              key={status.id}
+              onClick={() => setSelectedStatus(status.id)}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all ${
+                selectedStatus === status.id 
+                  ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' 
+                  : 'bg-white/50 text-slate-500 border border-slate-200/60 hover:border-slate-300 dark:bg-slate-900/50 dark:text-slate-400 dark:border-slate-800 dark:hover:border-slate-700'
+              }`}
+            >
+              {status.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative w-full lg:w-96">
+          <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search bookings by student or resource..."
+            placeholder="Search by student, ID or resource..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 transition-shadow"
+            className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200/60 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 text-sm focus:ring-2 focus:ring-cyan-500 transition-all outline-none"
           />
         </div>
       </div>
@@ -204,6 +227,7 @@ export function AdminBookingsPage() {
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       booking.status === 'PENDING_APPROVAL' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' :
                       booking.status === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                      booking.status === 'CANCELLED' ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' :
                       'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                     }`}>
                       {booking.status}
@@ -229,6 +253,14 @@ export function AdminBookingsPage() {
                     <p className="text-sm text-red-600 mt-2 p-2 bg-red-50 dark:bg-red-900/10 rounded border border-red-100 dark:border-red-900/30">
                       <strong>Rejection Reason:</strong> {booking.rejectionReason}
                     </p>
+                  )}
+                  {booking.status === 'CANCELLED' && booking.cancellationReason && (
+                    <div className="flex items-start gap-2 mt-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                      <FiAlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-amber-300">
+                        <span className="font-bold">Student's Cancellation Reason:</span> {booking.cancellationReason}
+                      </p>
+                    </div>
                   )}
                 </div>
 

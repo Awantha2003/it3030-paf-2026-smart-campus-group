@@ -6,5 +6,7 @@ public record UpdateBookingStatusRequest(
         @NotBlank(message = "Status is required")
         String status,
         
-        String rejectionReason
+        String rejectionReason,
+
+        String cancellationReason
 ) {}
