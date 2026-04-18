@@ -1,25 +1,158 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiTool, FiAlertCircle, FiChevronRight, FiShield, FiMail, FiCheckCircle } from 'react-icons/fi';
-import { Card, CardContent, CardHeader } from '../../components/ui/Card';
+import { FiTool, FiAlertCircle, FiChevronRight, FiShield, FiMail, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
+import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/Badge';
-import { mockTickets } from '../../data/mockData';
 import { useAuth } from '../../contexts/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { getStudentIssueReports, createIssueReport } from '../../api/issues';
+import { studentRoutes } from '../../utils/routes';
 
 export function UserDashboard() {
+    const navigate = useNavigate();
     const { user } = useAuth();
+    const [tickets, setTickets] = useState([]);
+    const [isLoadingTickets, setIsLoadingTickets] = useState(true);
+    const [ticketError, setTicketError] = useState('');
     
+    // Emergency states
+    const [isEmergencyLoading, setIsEmergencyLoading] = useState(false);
+    const [emergencyStatus, setEmergencyStatus] = useState('');
+
+    const handleEmergency = async () => {
+        setIsEmergencyLoading(true);
+        setEmergencyStatus('Detecting location...');
+        
+        if (!navigator.geolocation) {
+            setEmergencyStatus('Geolocation is not supported by your browser.');
+            setIsEmergencyLoading(false);
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const locationString = `Emergency GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                setEmergencyStatus('Assigning technician...');
+
+                try {
+                    await createIssueReport({
+                        title: "EMERGENCY ASSISTANCE REQUIRED",
+                        description: "Emergency generated from student dashboard. Immediate dispatch required.",
+                        category: "Emergency",
+                        location: locationString,
+                        priority: "CRITICAL",
+                        studentId: user?.id || '',
+                        studentName: user?.name || 'Student',
+                        studentEmail: user?.email || 'unknown@student.com',
+                        registrationNumber: "EMERGENCY",
+                        faculty: "General",
+                        contactNumber: "Emergency",
+                        requestType: "Emergency",
+                        requestSubType: "Immediate Dispatch",
+                        department: "Security"
+                    });
+                    setEmergencyStatus('Technician dispatched successfully!');
+                    
+                    // Refresh tickets list
+                    const response = await getStudentIssueReports(user.id);
+                    setTickets(Array.isArray(response) ? response : []);
+                } catch (error) {
+                    setEmergencyStatus(error.message || 'Failed to dispatch technician.');
+                } finally {
+                    setTimeout(() => { setIsEmergencyLoading(false); setEmergencyStatus(''); }, 3000);
+                }
+            },
+            (error) => {
+                setEmergencyStatus('Failed to get location. Access denied or unavailable.');
+                setIsEmergencyLoading(false);
+                setTimeout(() => { setEmergencyStatus(''); }, 3000);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
+
+
     // Mock 2FA status
     const mfaEnabled = true;
     const userName = user?.name ? user.name.split(' ')[0] : 'Student';
 
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadStudentTickets() {
+            if (!user?.id) {
+                setTickets([]);
+                setIsLoadingTickets(false);
+                return;
+            }
+
+            setIsLoadingTickets(true);
+            setTicketError('');
+
+            try {
+                const response = await getStudentIssueReports(user.id);
+
+                if (!ignore) {
+                    setTickets(Array.isArray(response) ? response : []);
+                }
+            } catch (error) {
+                if (!ignore) {
+                    setTicketError(error.message || 'Failed to load active tickets.');
+                    setTickets([]);
+                }
+            } finally {
+                if (!ignore) {
+                    setIsLoadingTickets(false);
+                }
+            }
+        }
+
+        loadStudentTickets();
+
+        return () => {
+            ignore = true;
+        };
+    }, [user?.id]);
+
+    const activeTickets = useMemo(
+        () =>
+            tickets
+                .filter(
+                    (ticket) =>
+                        ticket.status !== 'RESOLVED' &&
+                        ticket.status !== 'CLOSED' &&
+                        ticket.status !== 'REJECTED'
+                )
+                .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()),
+        [tickets]
+    );
+
+    const attentionCount = useMemo(
+        () =>
+            activeTickets.filter(
+                (ticket) => ticket.priority === 'CRITICAL' || ticket.priority === 'HIGH' || ticket.status === 'OPEN'
+            ).length,
+        [activeTickets]
+    );
+
+    const activeTicketTrend = isLoadingTickets
+        ? 'Loading live ticket data'
+        : ticketError
+          ? 'Live ticket data unavailable'
+          : attentionCount > 0
+            ? `${attentionCount} require${attentionCount === 1 ? 's' : ''} attention`
+            : activeTickets.length > 0
+              ? 'All active tickets are progressing'
+              : 'No active tickets right now';
+
     const stats = [
         {
             label: 'Active Tickets',
-            value: '2',
-            trend: '1 requires attention',
+            value: isLoadingTickets ? '...' : String(activeTickets.length),
+            trend: activeTicketTrend,
             icon: FiTool,
             gradient: 'from-orange-400 to-red-500',
             shadow: 'shadow-orange-500/30'
@@ -48,14 +181,39 @@ export function UserDashboard() {
                         Stay on top of your campus activities and security.
                     </p>
                 </div>
-                <div className="z-10 flex gap-4">
-                    <Button 
-                        variant="secondary" 
-                        className="bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white shadow-sm"
-                        leftIcon={<FiAlertCircle className="w-5 h-5" />}
-                    >
-                        Report Issue
-                    </Button>
+                <div className="z-10 flex flex-col gap-2 relative mt-4 md:mt-0">
+                    <div className="flex gap-4">
+                        <Button 
+                            variant="secondary" 
+                            onClick={handleEmergency}
+                            disabled={isEmergencyLoading}
+                            className="bg-red-500 hover:bg-red-600 border-none text-white shadow-lg shadow-red-500/40 relative overflow-hidden group"
+                            leftIcon={
+                                <div className="relative">
+                                    <span className="absolute inset-0 bg-red-400 rounded-full animate-ping opacity-75"></span>
+                                    <FiAlertTriangle className="relative w-5 h-5" />
+                                </div>
+                            }
+                        >
+                            <span className="relative z-10 font-bold">
+                                {isEmergencyLoading ? 'Dispatching...' : 'Emergency'}
+                            </span>
+                            <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+                        </Button>
+                        <Button 
+                            variant="secondary" 
+                            onClick={() => navigate(studentRoutes.newTicket)}
+                            className="bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white shadow-sm"
+                            leftIcon={<FiAlertCircle className="w-5 h-5" />}
+                        >
+                            Report Issue
+                        </Button>
+                    </div>
+                    {emergencyStatus && (
+                        <p className="text-white text-sm font-medium absolute -bottom-6 w-full whitespace-nowrap drop-shadow-sm flex items-center justify-center">
+                            {emergencyStatus}
+                        </p>
+                    )}
                 </div>
             </div>
 
@@ -103,6 +261,7 @@ export function UserDashboard() {
                         <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => navigate(studentRoutes.tickets)}
                             className="hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400"
                             rightIcon={<FiChevronRight className="w-4 h-4" />}
                         >
@@ -110,10 +269,30 @@ export function UserDashboard() {
                         </Button>
                     </div>
                     <div className="divide-y divide-slate-100 dark:divide-slate-800/60 p-0 flex-1 bg-white dark:bg-slate-900">
-                        {mockTickets.slice(0, 4).map((ticket) => (
-                            <div
+                        {ticketError ? (
+                            <div className="p-5 text-sm font-medium text-red-600 dark:text-red-400">
+                                {ticketError}
+                            </div>
+                        ) : null}
+
+                        {isLoadingTickets ? (
+                            <div className="p-5 text-sm text-slate-500 dark:text-slate-400">
+                                Loading your active tickets...
+                            </div>
+                        ) : null}
+
+                        {!isLoadingTickets && !ticketError && activeTickets.length === 0 ? (
+                            <div className="p-5 text-sm text-slate-500 dark:text-slate-400">
+                                No active tickets found. New issues you report will appear here.
+                            </div>
+                        ) : null}
+
+                        {!isLoadingTickets && !ticketError && activeTickets.slice(0, 4).map((ticket) => (
+                            <button
                                 key={ticket.id}
-                                className="p-5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group"
+                                type="button"
+                                onClick={() => navigate(studentRoutes.ticketDetail(ticket.id))}
+                                className="w-full p-5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group text-left"
                             >
                                 <div>
                                     <p className="font-bold text-slate-900 dark:text-white text-md group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
@@ -123,6 +302,9 @@ export function UserDashboard() {
                                         <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></span>
                                         {ticket.location}
                                     </p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                                        Reported {new Date(ticket.createdAt).toLocaleDateString()}
+                                    </p>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <span
@@ -130,7 +312,7 @@ export function UserDashboard() {
                                     ></span>
                                     <StatusBadge status={ticket.status} />
                                 </div>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 </Card>

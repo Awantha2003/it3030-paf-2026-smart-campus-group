@@ -2,103 +2,130 @@ export const CAMPUS_MAP_CENTER = { lat: 6.9147, lng: 79.9733 };
 
 export const CAMPUS_ZONES = [
   {
-    id: 'academic-core',
-    name: 'Academic Core',
+    id: 'academic-spine',
+    name: 'Academic Spine',
     color: '#2563eb',
-    center: { lat: 6.9151, lng: 79.9731 },
-    radius: 180,
-    description: 'Lecture halls, faculty offices, labs, and student consultation areas.'
+    center: { lat: 6.9152, lng: 79.97335 },
+    radius: 190,
+    description: 'Faculty buildings, lecture halls, library floors, and the main student learning spaces.'
   },
   {
-    id: 'student-services',
-    name: 'Student Services',
+    id: 'admin-services',
+    name: 'Admin And Services',
     color: '#7c3aed',
-    center: { lat: 6.9142, lng: 79.9741 },
-    radius: 135,
-    description: 'Helpdesk, student affairs, registration support, and service desks.'
-  },
-  {
-    id: 'residential-access',
-    name: 'Access And Transit',
-    color: '#ea580c',
-    center: { lat: 6.9138, lng: 79.9724 },
+    center: { lat: 6.9143, lng: 79.9728 },
     radius: 145,
-    description: 'Main gate, shuttle stop, maintenance access, and vehicle entry points.'
+    description: 'Administration, examinations, student help desks, finance, and service counters.'
   },
   {
-    id: 'innovation-wing',
-    name: 'Innovation Wing',
+    id: 'sports-transit',
+    name: 'Sports And Transit',
+    color: '#ea580c',
+    center: { lat: 6.91375, lng: 79.9736 },
+    radius: 185,
+    description: 'Main gate, shuttle access, recreation areas, and outdoor event movement paths.'
+  },
+  {
+    id: 'research-innovation',
+    name: 'Research And Innovation',
     color: '#059669',
-    center: { lat: 6.9159, lng: 79.9743 },
+    center: { lat: 6.9159, lng: 79.97415 },
     radius: 150,
-    description: 'Makerspaces, computing labs, media rooms, and project collaboration areas.'
+    description: 'Research labs, innovation spaces, incubation activity, and technical project collaboration.'
   }
 ];
 
 export const CAMPUS_LANDMARKS = [
   {
     id: 'main-gate',
-    name: 'Main Gate',
+    name: 'SLIIT Main Gate',
     shortName: 'Gate',
     type: 'ACCESS',
-    description: 'Primary campus entrance and the easiest public pickup point.',
+    description: 'Primary entrance on New Kandy Road and the most reliable campus pickup and drop-off point.',
     position: { lat: 6.9135, lng: 79.9721 }
   },
   {
-    id: 'student-center',
-    name: 'Student Center',
-    shortName: 'Center',
+    id: 'admin-examinations',
+    name: 'Administration And Examinations Tower',
+    shortName: 'Admin',
     type: 'SERVICE',
-    description: 'Student affairs, finance, campus information, and common seating.',
-    position: { lat: 6.9141, lng: 79.9742 }
+    description:
+      'Main administrative tower used for examinations, registrar coordination, and campus operations.',
+    position: { lat: 6.9144, lng: 79.9726 }
   },
   {
-    id: 'computing-faculty',
-    name: 'Computing Faculty',
-    shortName: 'Comp',
+    id: 'student-services',
+    name: 'Student Services And Help Desk',
+    shortName: 'Help',
+    type: 'SERVICE',
+    description: 'Student affairs, finance, information desk support, and routine service counters.',
+    position: { lat: 6.9142, lng: 79.97395 }
+  },
+  {
+    id: 'computing-library',
+    name: 'Faculty Of Computing And Main Library',
+    shortName: 'FOC',
     type: 'ACADEMIC',
-    description: 'Computer science and IT lecture rooms with several lab spaces.',
-    position: { lat: 6.9153, lng: 79.9735 }
+    description:
+      'Core computing lectures, IT labs, faculty offices, and the main library used across the campus.',
+    position: { lat: 6.91525, lng: 79.97345 }
   },
   {
     id: 'engineering-block',
-    name: 'Engineering Block',
-    shortName: 'Eng',
+    name: 'Engineering Faculty Building',
+    shortName: 'ENG',
     type: 'ACADEMIC',
-    description: 'Core engineering classrooms, workshops, and staff offices.',
-    position: { lat: 6.9158, lng: 79.9729 }
+    description: 'Engineering classrooms, specialist laboratories, workshops, and academic offices.',
+    position: { lat: 6.9158, lng: 79.97295 }
   },
   {
-    id: 'library',
-    name: 'Main Library',
-    shortName: 'Lib',
+    id: 'business-school',
+    name: 'Business School Building',
+    shortName: 'BUS',
     type: 'ACADEMIC',
-    description: 'Learning commons, library desks, and group study areas.',
-    position: { lat: 6.9149, lng: 79.9747 }
+    description: 'Teaching floors, seminar rooms, and staff spaces for business and management programmes.',
+    position: { lat: 6.915, lng: 79.974 }
   },
   {
-    id: 'innovation-lab',
-    name: 'Innovation Lab',
-    shortName: 'Lab',
-    type: 'LAB',
-    description: 'Prototype lab, media support, and hardware troubleshooting zone.',
-    position: { lat: 6.9162, lng: 79.9744 }
+    id: 'graduate-humanities-architecture',
+    name: 'Graduate Studies, Humanities And Architecture Tower',
+    shortName: 'GSA',
+    type: 'ACADEMIC',
+    description:
+      'Shared tower for graduate studies, humanities and sciences, architecture, and examination-related activity.',
+    position: { lat: 6.91485, lng: 79.97295 }
   },
   {
-    id: 'sports-complex',
-    name: 'Sports Complex',
-    shortName: 'Sport',
+    id: 'auditorium',
+    name: 'SLIIT Auditorium',
+    shortName: 'AUD',
     type: 'FACILITY',
-    description: 'Indoor court access, recreation equipment, and event preparation.',
-    position: { lat: 6.9139, lng: 79.9751 }
+    description: 'Main auditorium used for large lectures, guest sessions, ceremonies, and campus events.',
+    position: { lat: 6.91455, lng: 79.97475 }
   },
   {
-    id: 'admin-operations',
-    name: 'Admin Operations',
-    shortName: 'Ops',
-    type: 'SERVICE',
-    description: 'Facilities management, admin coordination, and escalation handling.',
-    position: { lat: 6.9146, lng: 79.9726 }
+    id: 'research-centre',
+    name: 'Research And Innovation Centre',
+    shortName: 'R&D',
+    type: 'LAB',
+    description: 'Research, incubation, innovation projects, and advanced technical collaboration spaces.',
+    position: { lat: 6.91595, lng: 79.97415 }
+  },
+  {
+    id: 'sports-recreation',
+    name: 'Sports And Recreation Complex',
+    shortName: 'REC',
+    type: 'FACILITY',
+    description: 'Playing field access, recreation support, fitness activity, and outdoor event coordination.',
+    position: { lat: 6.91385, lng: 79.9751 }
+  },
+  {
+    id: 'shuttle-bay',
+    name: 'Campus Shuttle Bay',
+    shortName: 'Bay',
+    type: 'ACCESS',
+    description: 'Common internal shuttle and pickup zone for moving between campus edges and nearby access roads.',
+    position: { lat: 6.9137, lng: 79.97245 }
   }
 ];
 
@@ -107,13 +134,13 @@ export const CAMPUS_SUPPORT_HUBS = [
     id: 'it-helpdesk',
     name: 'IT Helpdesk',
     team: 'Digital Support',
-    position: { lat: 6.9154, lng: 79.9739 }
+    position: { lat: 6.9153, lng: 79.97375 }
   },
   {
     id: 'facilities-desk',
     name: 'Facilities Desk',
     team: 'Facilities',
-    position: { lat: 6.9145, lng: 79.9727 }
+    position: { lat: 6.91445, lng: 79.9727 }
   },
   {
     id: 'security-post',

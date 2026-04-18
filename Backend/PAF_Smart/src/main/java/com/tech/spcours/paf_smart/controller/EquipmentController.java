@@ -30,6 +30,12 @@ public class EquipmentController {
 
     private final EquipmentService equipmentService;
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public List<EquipmentResponse> getAllEquipments() {
+        return equipmentService.getAllEquipments();
+    }
+
     @GetMapping("/facility/{facilityId}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public List<EquipmentResponse> getEquipmentsByFacility(@PathVariable String facilityId) {

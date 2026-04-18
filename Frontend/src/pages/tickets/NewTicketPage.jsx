@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { createIssueReport, uploadFile } from '../../api/issues';
+import { SERVER_BASE_URL } from '../../api/baseUrl';
 import { GoogleMap } from '@react-google-maps/api';
 import { CAMPUS_LANDMARKS, findCampusLandmarkById } from '../../data/campusMapData';
 import { buildRichLocationLabel, findNearestCoordinate, formatCoordinates } from '../../utils/location';
@@ -246,9 +247,26 @@ export function NewTicketPage() {
     requestType &&
     department;
 
+  const missingRequiredFields = [
+    !registrationNumber.trim() ? 'Registration Number' : null,
+    !faculty ? 'Faculty / School' : null,
+    !contactNumber.trim() ? 'Contact Number' : null,
+    !requestType ? 'Request / Inquiry Type' : null,
+    !title.trim() ? 'Subject' : null,
+    !location.trim() ? 'Location' : null,
+    !description.trim() ? 'Ticket Description' : null
+  ].filter(Boolean);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!user?.id || !user?.name || !user?.email) {
+      setErrorMessage('Your student account details are still loading. Refresh the page and try again.');
+      return;
+    }
+
     if (!isValid) {
+      setErrorMessage(`Complete the required fields before submitting: ${missingRequiredFields.join(', ')}.`);
       return;
     }
 
@@ -260,7 +278,9 @@ export function NewTicketPage() {
       if (selectedFile) {
         const uploadRes = await uploadFile(selectedFile);
         if (uploadRes?.url) {
-          attachmentUrls.push(`http://localhost:8080${uploadRes.url}`);
+          const normalizedUrl =
+            /^https?:\/\//i.test(uploadRes.url) ? uploadRes.url : `${SERVER_BASE_URL}${uploadRes.url}`;
+          attachmentUrls.push(normalizedUrl);
         }
       }
 
@@ -551,12 +571,24 @@ export function NewTicketPage() {
                 <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-gradient-to-br from-slate-50 to-sky-50 p-6 text-center transition hover:border-sky-400 hover:bg-sky-50/70">
                   <input
                     type="file"
-                    accept="image/png, image/jpeg, image/gif, image/svg+xml"
+                    accept="image/png"
                     className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
                     onChange={(e) => {
                       const files = e.target.files;
                       if (files?.length) {
                         const file = files[0];
+                        if (file.type !== 'image/png') {
+                          setSelectedFile(null);
+                          if (filePreview) {
+                            URL.revokeObjectURL(filePreview);
+                            setFilePreview('');
+                          }
+                          setErrorMessage('Only PNG attachments are supported.');
+                          e.target.value = '';
+                          return;
+                        }
+
+                        setErrorMessage('');
                         setSelectedFile(file);
                         if (filePreview) {
                           URL.revokeObjectURL(filePreview);
@@ -569,7 +601,7 @@ export function NewTicketPage() {
                     <>
                       <UploadCloudIcon className="mx-auto mb-2 h-10 w-10 text-sky-600" />
                       <p className="text-sm font-semibold text-slate-700">Drop image here or click to upload</p>
-                      <p className="mt-1 text-xs text-slate-500">PNG, JPG, GIF, SVG</p>
+                      <p className="mt-1 text-xs text-slate-500">PNG only</p>
                     </>
                   ) : (
                     <div className="flex flex-col items-center">
@@ -582,12 +614,17 @@ export function NewTicketPage() {
               </div>
 
               <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-4">
+                {missingRequiredFields.length > 0 && (
+                  <p className="w-full text-sm font-medium text-amber-700">
+                    Submit stays locked until these are filled: {missingRequiredFields.join(', ')}.
+                  </p>
+                )}
                 <Button type="button" variant="outline" onClick={() => navigate(-1)}>
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={!isValid || isSubmitting}
+                  disabled={isSubmitting}
                   isLoading={isSubmitting}
                   className="bg-gradient-to-r from-sky-600 to-cyan-600 text-white hover:from-sky-700 hover:to-cyan-700"
                 >
@@ -645,7 +682,7 @@ export function NewTicketPage() {
             <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-5">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Quick Landmarks</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                {CAMPUS_LANDMARKS.slice(0, 8).map((landmark) => (
+                {CAMPUS_LANDMARKS.map((landmark) => (
                   <button
                     key={landmark.id}
                     type="button"

@@ -57,6 +57,16 @@ public class IssueReportService {
                 .updatedAt(now)
                 .build();
 
+        if ("CRITICAL".equals(issueReport.getPriority())) {
+            technicianMemberRepository.findAll().stream()
+                    .filter(TechnicianMember::isActive)
+                    .findFirst()
+                    .ifPresent(technician -> {
+                        issueReport.setAssignedTo(technician.getId());
+                        issueReport.setStatus("IN_PROGRESS");
+                    });
+        }
+
         return toResponse(issueReportRepository.save(issueReport));
     }
 

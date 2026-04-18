@@ -26,6 +26,14 @@ async function parseResponse(response, fallbackMessage) {
   return payload;
 }
 
+export async function getAllEquipments() {
+  const response = await fetchFromApi('/equipments', {
+    headers: getAuthHeaders(false)
+  });
+
+  return parseResponse(response, 'Failed to load equipment catalogue.');
+}
+
 export async function getEquipmentsByFacility(facilityId) {
   const response = await fetchFromApi(`/equipments/facility/${facilityId}`, {
     headers: getAuthHeaders(false)
