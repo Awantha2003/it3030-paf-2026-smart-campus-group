@@ -1,6 +1,7 @@
 package com.tech.spcours.paf_smart.service;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -17,8 +18,6 @@ import com.tech.spcours.paf_smart.model.TechnicianMember;
 import com.tech.spcours.paf_smart.repository.IssueReportRepository;
 import com.tech.spcours.paf_smart.repository.TechnicianMemberRepository;
 import com.tech.spcours.paf_smart.module.notification.service.NotificationService;
-import com.tech.spcours.paf_smart.module.user.model.User;
-import com.tech.spcours.paf_smart.module.user.model.Role;
 import com.tech.spcours.paf_smart.module.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -38,6 +37,7 @@ public class IssueReportService {
     private final TechnicianMemberRepository technicianMemberRepository;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
+    private final TechnicianMemberService technicianMemberService;
 
     public IssueReportResponse createIssueReport(CreateIssueReportRequest request) {
         Instant now = Instant.now();
@@ -71,6 +71,9 @@ public class IssueReportService {
                 .build();
 
         if ("CRITICAL".equals(issueReport.getPriority())) {
+            userRepository.findByRole(Role.TECHNICIAN)
+                    .forEach(technicianMemberService::syncTechnicianAccount);
+
             technicianMemberRepository.findAll().stream()
                     .filter(TechnicianMember::isActive)
                     .findFirst()
@@ -104,7 +107,23 @@ public class IssueReportService {
     }
 
     public List<IssueReportResponse> getTechnicianIssueReports(String technicianId) {
-        return issueReportRepository.findByAssignedToOrderByCreatedAtDesc(technicianId.trim())
+        LinkedHashSet<String> technicianIds = new LinkedHashSet<>();
+        String normalizedTechnicianId = technicianId == null ? "" : technicianId.trim();
+
+        if (!normalizedTechnicianId.isBlank()) {
+            technicianIds.add(normalizedTechnicianId);
+            try {
+                technicianIds.add(technicianMemberService.resolveTechnicianMember(normalizedTechnicianId).getId());
+            } catch (ResourceNotFoundException ignored) {
+                // Keep the original identifier so legacy assignments still load.
+            }
+        }
+
+        if (technicianIds.isEmpty()) {
+            return List.of();
+        }
+
+        return issueReportRepository.findByAssignedToInOrderByCreatedAtDesc(technicianIds)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -150,8 +169,7 @@ public class IssueReportService {
 
     public IssueReportResponse assignIssueReport(String id, String technicianId) {
         IssueReport issueReport = findIssueReportById(id);
-        TechnicianMember technicianMember = technicianMemberRepository.findById(technicianId.trim())
-                .orElseThrow(() -> new ResourceNotFoundException("Technician account not found"));
+        TechnicianMember technicianMember = technicianMemberService.resolveTechnicianMember(technicianId);
         String normalizedTechnicianId = technicianMember.getId();
 
         if (!technicianMember.isActive()) {
