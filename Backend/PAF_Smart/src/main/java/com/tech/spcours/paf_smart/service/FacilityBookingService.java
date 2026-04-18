@@ -3,11 +3,8 @@ package com.tech.spcours.paf_smart.service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
@@ -27,11 +24,31 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class FacilityBookingService {
 
+    private static final Set<String> FACILITY_CATEGORY_TYPES = Set.of(
+            "FACILITY",
+            "LECTURE_HALL",
+            "LAB",
+            "MEETING_ROOM",
+            "AUDITORIUM");
+
+    private static final Set<String> SPORTS_CATEGORY_TYPES = Set.of(
+            "SPORTS",
+            "SPORTS_VENUE");
+
+    private static final Set<String> LIBRARY_CATEGORY_TYPES = Set.of(
+            "LIBRARY",
+            "LIBRARY_ZONE");
+
+    private static final Set<String> EVENT_CATEGORY_TYPES = Set.of(
+            "EVENT",
+            "SEMINAR_ROOM");
+
     private final FacilityBookingRepository facilityBookingRepository;
     private final com.tech.spcours.paf_smart.repository.FacilityRepository facilityRepository;
 
     public List<FacilityLectureHallResponse> getLectureHalls() {
         return facilityRepository.findAll().stream()
+                .filter(space -> "FACILITY".equals(resolveResourceCategory(space.getSpaceType())))
                 .map(this::mapToLectureHallResponse)
                 .toList();
     }
@@ -43,6 +60,7 @@ public class FacilityBookingService {
                 .toList());
 
         return facilityRepository.findAll().stream()
+                .filter(space -> "FACILITY".equals(resolveResourceCategory(space.getSpaceType())))
                 .filter(space -> !bookedSpaceCodes.contains(space.getCode()))
                 .map(this::mapToLectureHallResponse)
                 .toList();
@@ -58,6 +76,9 @@ public class FacilityBookingService {
     public FacilityBookingResponse createBooking(CreateFacilityBookingRequest request, User user) {
         com.tech.spcours.paf_smart.model.Facility hall = facilityRepository.findByCode(request.lectureHallCode().trim().toUpperCase())
                 .orElseThrow(() -> new ResourceConflictException("Selected facility space not found"));
+        if (!"FACILITY".equals(resolveResourceCategory(hall.getSpaceType()))) {
+            throw new ResourceConflictException("Only facility category spaces can be booked here");
+        }
 
         validateBookingDateTime(request.bookingDate(), request.bookingTime());
 
@@ -104,6 +125,9 @@ public class FacilityBookingService {
         com.tech.spcours.paf_smart.model.FacilityBooking existingBooking = findOwnedBooking(bookingId, user);
         com.tech.spcours.paf_smart.model.Facility hall = facilityRepository.findByCode(request.lectureHallCode().trim().toUpperCase())
                 .orElseThrow(() -> new ResourceConflictException("Selected facility space not found"));
+        if (!"FACILITY".equals(resolveResourceCategory(hall.getSpaceType()))) {
+            throw new ResourceConflictException("Only facility category spaces can be booked here");
+        }
 
         validateBookingDateTime(request.bookingDate(), request.bookingTime());
 
@@ -194,5 +218,28 @@ public class FacilityBookingService {
         if (bookingDate.isEqual(LocalDate.now()) && bookingTime.isBefore(LocalTime.now())) {
             throw new ResourceConflictException("Booking time cannot be in the past");
         }
+    }
+
+    private String resolveResourceCategory(String rawSpaceType) {
+        if (rawSpaceType == null || rawSpaceType.isBlank()) {
+            return "FACILITY";
+        }
+
+        String normalized = rawSpaceType.trim().toUpperCase();
+
+        if (SPORTS_CATEGORY_TYPES.contains(normalized)) {
+            return "SPORTS";
+        }
+        if (LIBRARY_CATEGORY_TYPES.contains(normalized)) {
+            return "LIBRARY";
+        }
+        if (EVENT_CATEGORY_TYPES.contains(normalized)) {
+            return "EVENT";
+        }
+        if (FACILITY_CATEGORY_TYPES.contains(normalized)) {
+            return "FACILITY";
+        }
+
+        return "FACILITY";
     }
 }

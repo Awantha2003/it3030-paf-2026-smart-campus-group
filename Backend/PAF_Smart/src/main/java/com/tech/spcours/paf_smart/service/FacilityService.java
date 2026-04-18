@@ -1,7 +1,10 @@
 package com.tech.spcours.paf_smart.service;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
@@ -19,6 +22,25 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class FacilityService {
 
+    private static final Set<String> FACILITY_CATEGORY_TYPES = Set.of(
+            "FACILITY",
+            "LECTURE_HALL",
+            "LAB",
+            "MEETING_ROOM",
+            "AUDITORIUM");
+
+    private static final Set<String> SPORTS_CATEGORY_TYPES = Set.of(
+            "SPORTS",
+            "SPORTS_VENUE");
+
+    private static final Set<String> LIBRARY_CATEGORY_TYPES = Set.of(
+            "LIBRARY",
+            "LIBRARY_ZONE");
+
+    private static final Set<String> EVENT_CATEGORY_TYPES = Set.of(
+            "EVENT",
+            "SEMINAR_ROOM");
+
     private final FacilityRepository facilityRepository;
     private final EquipmentRepository equipmentRepository;
 
@@ -29,7 +51,9 @@ public class FacilityService {
     }
 
     public List<FacilityResponse> getFacilitiesByType(String type) {
-        return facilityRepository.findBySpaceType(type).stream()
+        String normalizedType = normalizeResourceType(type);
+        return facilityRepository.findAll().stream()
+                .filter(facility -> normalizedType.equals(resolveResourceCategory(facility.getSpaceType())))
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -52,7 +76,7 @@ public class FacilityService {
                 .building(request.building().trim())
                 .block(request.block().trim())
                 .floor(request.floor())
-                .spaceType(request.spaceType().trim())
+                .spaceType(normalizeResourceType(request.spaceType()))
                 .capacity(request.capacity())
                 .description(request.description())
                 .amenities(request.amenities())
@@ -79,7 +103,7 @@ public class FacilityService {
         facility.setBuilding(request.building().trim());
         facility.setBlock(request.block().trim());
         facility.setFloor(request.floor());
-        facility.setSpaceType(request.spaceType().trim());
+        facility.setSpaceType(normalizeResourceType(request.spaceType()));
         facility.setCapacity(request.capacity());
         facility.setDescription(request.description());
         facility.setAmenities(request.amenities());
@@ -96,37 +120,54 @@ public class FacilityService {
         facilityRepository.deleteById(id);
     }
 
-    public java.util.Map<String, Long> getResourceSummary() {
-        java.util.Map<String, Long> summary = new java.util.HashMap<>();
-        
-        // Count facilities by their type grouping
-        List<Facility> allFacilities = facilityRepository.findAll();
-        
-        long facilityCount = allFacilities.stream()
-            .filter(f -> List.of("LECTURE_HALL", "LAB", "MEETING_ROOM", "AUDITORIUM").contains(f.getSpaceType()))
-            .count();
-            
-        long sportsCount = allFacilities.stream()
-            .filter(f -> "SPORTS_VENUE".equals(f.getSpaceType()))
-            .count();
-            
-        long libraryCount = allFacilities.stream()
-            .filter(f -> "LIBRARY_ZONE".equals(f.getSpaceType()))
-            .count();
-            
-        long eventCount = allFacilities.stream()
-            .filter(f -> "SEMINAR_ROOM".equals(f.getSpaceType()))
-            .count();
+    public Map<String, Long> getResourceSummary() {
+        Map<String, Long> summary = new HashMap<>();
+        summary.put("FACILITY", 0L);
+        summary.put("SPORTS", 0L);
+        summary.put("LIBRARY", 0L);
+        summary.put("EVENT", 0L);
 
-        summary.put("FACILITY", facilityCount);
-        summary.put("SPORTS", sportsCount);
-        summary.put("LIBRARY", libraryCount);
-        summary.put("EVENT", eventCount);
-        
-        // Total count of unique equipment types
+        List<Facility> allFacilities = facilityRepository.findAll();
+
+        for (Facility facility : allFacilities) {
+            String category = resolveResourceCategory(facility.getSpaceType());
+            summary.merge(category, 1L, Long::sum);
+        }
+
         summary.put("EQUIPMENT", equipmentRepository.count());
-        
+
         return summary;
+    }
+
+    private String normalizeResourceType(String rawType) {
+        if (rawType == null || rawType.isBlank()) {
+            return "FACILITY";
+        }
+        return resolveResourceCategory(rawType.trim().toUpperCase());
+    }
+
+    private String resolveResourceCategory(String rawSpaceType) {
+        if (rawSpaceType == null || rawSpaceType.isBlank()) {
+            return "FACILITY";
+        }
+
+        String normalized = rawSpaceType.trim().toUpperCase();
+
+        if (SPORTS_CATEGORY_TYPES.contains(normalized)) {
+            return "SPORTS";
+        }
+        if (LIBRARY_CATEGORY_TYPES.contains(normalized)) {
+            return "LIBRARY";
+        }
+        if (EVENT_CATEGORY_TYPES.contains(normalized)) {
+            return "EVENT";
+        }
+        if (FACILITY_CATEGORY_TYPES.contains(normalized)) {
+            return "FACILITY";
+        }
+
+        // Default unknown legacy values to FACILITY to avoid hiding data.
+        return "FACILITY";
     }
 
     private FacilityResponse mapToResponse(Facility facility) {
