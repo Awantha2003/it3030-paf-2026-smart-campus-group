@@ -1,16 +1,39 @@
-
 spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 15MB
   mongodb:
-    uri: "${MONGODB_URI:mongodb+srv://awantha:ABdgpqSthXmK1k8K@cluster0wolfenox.aza9jrr.mongodb.net/PAF_smart_campus}"
+    uri: "${MONGODB_URI:mongodb+srv://awantha:ABdgpqSthXmK1k8K@cluster0wolfenox.aza9jrr.mongodb.net/smart_campus_dev}"
   data:
     mongodb:
       auto-index-creation: true
 
+  # ── ADDED: Google OAuth2 ──────────────────────────────────────────────
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - email
+              - profile
+            redirect-uri: "{baseUrl}/login/oauth2/code/google"
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+  # ─────────────────────────────────────────────────────────────────────
+
 
 app:
   jwt:
-    secret: change-me-in-prod
-    expiration-seconds: 3600
+    secret: MzY0ZTc2YmYzODlmZjZjMDRlN2M0YzZkZTI0MGE1NTVlNzViNzEwNDE3MDVlMzViOGQwYzFhZjJkOWFiNTkyMw==
+    expiration: 3600000 # 1 hour in ms
   auth:
     seed-admin: true
     admin-registration-code: ${ADMIN_REGISTRATION_CODE:ADMIN-ACCESS-2026}
@@ -34,3 +57,13 @@ app:
     api-secret: ${CLOUDINARY_API_SECRET:t7tMm0_KRERFz6bFtzMCZNJSINM}
     folder: ${CLOUDINARY_FOLDER:unistudyhub/profile-images}
 
+  facility-booking:
+    reminders:
+      enabled: ${FACILITY_BOOKING_REMINDERS_ENABLED:true}
+      before-minutes: ${FACILITY_BOOKING_REMINDERS_BEFORE_MINUTES:10}
+      scan-interval-ms: ${FACILITY_BOOKING_REMINDERS_SCAN_INTERVAL_MS:60000}
+      timezone: ${FACILITY_BOOKING_REMINDERS_TIMEZONE:Asia/Colombo}
+
+  # ── ADDED: frontend URL for OAuth2 redirect after Google login ────────
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  # ─────────────────────────────────────────────────────────────────────
