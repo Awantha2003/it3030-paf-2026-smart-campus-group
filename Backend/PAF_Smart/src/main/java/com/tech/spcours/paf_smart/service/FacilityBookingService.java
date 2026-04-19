@@ -49,6 +49,8 @@ public class FacilityBookingService {
 
     private static final Set<String> SUPPORTED_RECURRENCE_TYPES = Set.of("NONE", "WEEKLY", "MONTHLY");
     private static final int MAX_RECURRING_OCCURRENCES = 104;
+    private static final int MAX_LECTURE_HALL_STUDENT_COUNT = 60;
+    private static final int MAX_LAB_STUDENT_COUNT = 20;
 
     private final FacilityBookingRepository facilityBookingRepository;
     private final com.tech.spcours.paf_smart.repository.FacilityRepository facilityRepository;
@@ -124,6 +126,7 @@ public class FacilityBookingService {
         if (!"FACILITY".equals(resolveResourceCategory(hall.getSpaceType()))) {
             throw new ResourceConflictException("Only facility category spaces can be booked here");
         }
+        validateStudentCountForSpace(request.studentCount(), hall);
 
         int requestedDurationHours = sanitizeDuration(request.durationHours());
         String recurrenceType = sanitizeRecurrenceType(request.recurrenceType());
@@ -210,6 +213,7 @@ public class FacilityBookingService {
         if (!"FACILITY".equals(resolveResourceCategory(hall.getSpaceType()))) {
             throw new ResourceConflictException("Only facility category spaces can be booked here");
         }
+        validateStudentCountForSpace(request.studentCount(), hall);
 
         int requestedDurationHours = sanitizeDuration(request.durationHours());
         validateBookingDateTime(request.bookingDate(), request.bookingTime(), requestedDurationHours);
@@ -453,6 +457,27 @@ public class FacilityBookingService {
             return 12;
         }
         return durationHours;
+    }
+
+    private void validateStudentCountForSpace(Integer studentCount, com.tech.spcours.paf_smart.model.Facility hall) {
+        if (studentCount == null || studentCount < 1) {
+            throw new ResourceConflictException("Student count must be at least 1");
+        }
+
+        boolean isLab = isLabSpace(hall);
+        int allowedMax = isLab ? MAX_LAB_STUDENT_COUNT : MAX_LECTURE_HALL_STUDENT_COUNT;
+        if (studentCount > allowedMax) {
+            if (isLab) {
+                throw new ResourceConflictException("Lab booking limit exceeded: maximum student count is 20");
+            }
+            throw new ResourceConflictException("Lecture hall booking limit exceeded: maximum student count is 60");
+        }
+    }
+
+    private boolean isLabSpace(com.tech.spcours.paf_smart.model.Facility hall) {
+        String spaceType = String.valueOf(hall.getSpaceType()).trim().toUpperCase();
+        String hallName = String.valueOf(hall.getName()).trim().toUpperCase();
+        return spaceType.contains("LAB") || hallName.contains("LAB");
     }
 
     private String sanitizeRecurrenceType(String recurrenceType) {
