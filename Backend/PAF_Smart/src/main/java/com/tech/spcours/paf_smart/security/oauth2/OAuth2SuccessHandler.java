@@ -11,6 +11,8 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
+import com.tech.spcours.paf_smart.module.notification.service.NotificationService;
+
 import java.io.IOException;
 
 @Component
@@ -19,6 +21,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
@@ -44,6 +47,14 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         }
 
         String token = jwtTokenProvider.generateToken(user);
+
+        notificationService.send(
+            user.getId(),
+            "Login Success",
+            "A successful login was recorded for your account via Google.",
+            "SYSTEM",
+            user.getId()
+        );
 
         // Redirect to frontend with token and role as query params
         String redirectUrl = frontendUrl + "/oauth2/callback?token=" + token + "&role=" + user.getRole().name();
