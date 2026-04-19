@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiUsers, FiArrowRight, FiCheckCircle, FiClock, FiAlertTriangle, FiShield, FiLock, FiSmartphone } from 'react-icons/fi';
-import { FaUserShield, FaTools, FaBuilding, FaTicketAlt } from 'react-icons/fa';
+import { FaUserShield, FaTools, FaTicketAlt } from 'react-icons/fa';
 import { PiBuildingOfficeBold } from 'react-icons/pi';
 import { Link } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
@@ -9,6 +9,55 @@ import { Badge, StatusBadge } from '../../components/ui/Badge';
 import { getAllIssueReports } from '../../api/issues';
 import { adminRoutes } from '../../utils/routes';
 import { useAuth } from '../../contexts/AuthContext';
+
+const COMPLETED_TICKET_STATUSES = new Set(['RESOLVED', 'CLOSED', 'REJECTED']);
+
+function isEmergencyTicket(ticket) {
+    const emergencySignals = [
+        ticket?.category,
+        ticket?.requestType,
+        ticket?.department,
+        ticket?.title,
+        ticket?.location
+    ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+    return emergencySignals.includes('emergency');
+}
+
+function getTicketTimestamp(ticket) {
+    return new Date(ticket?.createdAt || 0).getTime();
+}
+
+function formatRelativeTime(dateValue) {
+    const date = new Date(dateValue);
+    const elapsedMs = Date.now() - date.getTime();
+
+    if (!Number.isFinite(elapsedMs) || elapsedMs < 0) {
+        return 'just now';
+    }
+
+    const elapsedMinutes = Math.floor(elapsedMs / 60000);
+
+    if (elapsedMinutes < 1) {
+        return 'just now';
+    }
+
+    if (elapsedMinutes < 60) {
+        return `${elapsedMinutes} min ago`;
+    }
+
+    const elapsedHours = Math.floor(elapsedMinutes / 60);
+
+    if (elapsedHours < 24) {
+        return `${elapsedHours} hr ago`;
+    }
+
+    const elapsedDays = Math.floor(elapsedHours / 24);
+    return `${elapsedDays} day${elapsedDays === 1 ? '' : 's'} ago`;
+}
 
 export function AdminDashboard() {
     const { user } = useAuth();
@@ -49,11 +98,17 @@ export function AdminDashboard() {
     const openTickets = tickets.filter((ticket) => ticket.status === 'OPEN');
     const inProgressTickets = tickets.filter((ticket) => ticket.status === 'IN_PROGRESS');
     const resolvedTickets = tickets.filter((ticket) => ticket.status === 'RESOLVED');
+    const emergencyTickets = tickets
+        .filter((ticket) => isEmergencyTicket(ticket) && !COMPLETED_TICKET_STATUSES.has(ticket.status))
+        .sort((left, right) => getTicketTimestamp(right) - getTicketTimestamp(left));
     const criticalTickets = tickets
         .filter(
-        (ticket) => ticket.priority === 'CRITICAL' || ticket.priority === 'HIGH'
+        (ticket) =>
+            !isEmergencyTicket(ticket) &&
+            (ticket.priority === 'CRITICAL' || ticket.priority === 'HIGH')
         )
-        .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+        .sort((left, right) => getTicketTimestamp(right) - getTicketTimestamp(left));
+    const hasActiveEmergency = emergencyTickets.length > 0;
 
     // Mock data for user accounts
     const activeUsers = 124;
@@ -87,6 +142,25 @@ export function AdminDashboard() {
                     )}
                 </div>
                 <div className="z-10 flex flex-wrap gap-4">
+                    <Link
+                        to={adminRoutes.tickets}
+                        className={`relative inline-flex items-center gap-3 overflow-hidden rounded-xl border px-6 py-3 text-sm font-bold text-white shadow-lg transition-all ${
+                            hasActiveEmergency
+                                ? 'border-red-300/40 bg-red-500 hover:bg-red-600 shadow-red-900/40'
+                                : 'border-white/20 bg-white/15 hover:bg-white/20'
+                        }`}
+                    >
+                        <span className="relative flex h-5 w-5 items-center justify-center">
+                            <span className={`h-3 w-3 rounded-full ${hasActiveEmergency ? 'bg-red-100' : 'bg-white/70'}`}></span>
+                            {hasActiveEmergency ? (
+                                <span className="absolute inset-0 rounded-full bg-red-200/70 animate-ping"></span>
+                            ) : null}
+                        </span>
+                        <span className="relative">
+                            Student Emergency
+                            {hasActiveEmergency ? ` (${emergencyTickets.length})` : ''}
+                        </span>
+                    </Link>
                     <Link
                         to="/Admin/users"
                         className="px-6 py-3 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white text-sm font-bold rounded-xl transition-all flex items-center gap-2 shadow-sm"
@@ -186,7 +260,7 @@ export function AdminDashboard() {
                             <FiAlertTriangle className="w-7 h-7" />
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Critical</p>
+                            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Critical Queue</p>
                             <h3 className="text-3xl font-black text-slate-900 dark:text-white">
                                 {isLoadingTickets ? '...' : criticalTickets.length}
                             </h3>
@@ -238,7 +312,7 @@ export function AdminDashboard() {
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 <FiAlertTriangle className="text-red-500" /> Priority Issue Queue
                             </h3>
-                            <p className="text-sm text-slate-500">Items requiring immediate administrative attention.</p>
+                            <p className="text-sm text-slate-500">High-priority maintenance items excluding emergency dispatch alerts.</p>
                         </div>
                         <Link
                             to={adminRoutes.tickets}
@@ -274,6 +348,9 @@ export function AdminDashboard() {
                                             </p>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium truncate flex items-center gap-1">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></span> {ticket.location}
+                                            </p>
+                                            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                                                Logged {formatRelativeTime(ticket.createdAt)}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-4 shrink-0">

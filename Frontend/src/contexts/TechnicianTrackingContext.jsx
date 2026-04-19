@@ -4,7 +4,9 @@ import { useTechnicianLiveTracking } from '../hooks/useTechnicianLiveTracking';
 
 const TechnicianTrackingContext = createContext({
   currentCoordinates: null,
+  isTrackingEnabled: false,
   locationStatus: '',
+  setIsTrackingEnabled: () => {},
   trackingUpdatedAt: null
 });
 

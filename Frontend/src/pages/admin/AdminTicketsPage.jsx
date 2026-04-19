@@ -11,7 +11,7 @@ import {
   updateIssueReportAdminNote,
   updateIssueReportStatus
 } from '../../api/issues';
-import { fetchTechnicians, fetchTechnicianUsers } from '../../api/technicians';
+import { fetchTechnicians } from '../../api/technicians';
 import {
   calculateDistanceKm,
   estimateTravelMinutes,
@@ -135,23 +135,14 @@ export function AdminTicketsPage() {
     }
 
     try {
-      const [ticketData, technicianMembers, technicianUsers] = await Promise.all([
+      const [ticketData, technicianMembers] = await Promise.all([
         getAllIssueReports(),
-        fetchTechnicians(),
-        fetchTechnicianUsers()
+        fetchTechnicians()
       ]);
 
-      const technicianRoster = [
-        ...technicianMembers.map((technician) => normalizeTechnicianRosterEntry(technician, 'technician')),
-        ...technicianUsers
-          .filter(
-            (user) =>
-              !technicianMembers.some(
-                (technician) => technician.email?.toLowerCase() === user.email?.toLowerCase()
-              )
-          )
-          .map((user) => normalizeTechnicianRosterEntry(user, 'user'))
-      ];
+      const technicianRoster = technicianMembers.map((technician) =>
+        normalizeTechnicianRosterEntry(technician, 'technician')
+      );
 
       setTickets(ticketData);
       setTechnicians(technicianRoster);

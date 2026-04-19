@@ -1,9 +1,13 @@
 package com.tech.spcours.paf_smart.service;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 
@@ -26,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class IssueReportService {
 
+    private static final Pattern COORDINATE_PATTERN = Pattern.compile("(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)");
     private static final Set<String> ALLOWED_STATUSES = Set.of(
             "OPEN",
             "IN_PROGRESS",
@@ -74,9 +79,7 @@ public class IssueReportService {
             userRepository.findAll().stream().filter(u -> u.getRole() == Role.TECHNICIAN)
                     .forEach(technicianMemberService::syncTechnicianAccount);
 
-            technicianMemberRepository.findAll().stream()
-                    .filter(TechnicianMember::isActive)
-                    .findFirst()
+            selectBestActiveTechnician(issueReport)
                     .ifPresent(technician -> {
                         issueReport.setAssignedTo(technician.getId());
                         issueReport.setAssignedAt(now);
@@ -301,5 +304,89 @@ public class IssueReportService {
 
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private Optional<TechnicianMember> selectBestActiveTechnician(IssueReport issueReport) {
+        Coordinates incidentCoordinates = extractCoordinates(issueReport.getLocation());
+
+        return technicianMemberRepository.findAll().stream()
+                .filter(TechnicianMember::isActive)
+                .map(technician -> new TechnicianDispatchCandidate(
+                        technician,
+                        getActiveAssignmentLoad(technician),
+                        getDistanceScore(technician, incidentCoordinates)))
+                .min(Comparator
+                        .comparingInt((TechnicianDispatchCandidate candidate) -> candidate.activeLoad() == 0 ? 0 : 1)
+                        .thenComparingDouble(TechnicianDispatchCandidate::distanceScore)
+                        .thenComparingInt(TechnicianDispatchCandidate::activeLoad)
+                        .thenComparing(
+                                candidate -> candidate.technician().getTrackingUpdatedAt(),
+                                Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(
+                                candidate -> candidate.technician().getCreatedAt(),
+                                Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(TechnicianDispatchCandidate::technician);
+    }
+
+    private double getDistanceScore(TechnicianMember technician, Coordinates incidentCoordinates) {
+        if (incidentCoordinates == null
+                || technician.getCurrentLatitude() == null
+                || technician.getCurrentLongitude() == null) {
+            return Double.MAX_VALUE;
+        }
+
+        return calculateDistanceKm(
+                technician.getCurrentLatitude(),
+                technician.getCurrentLongitude(),
+                incidentCoordinates.latitude(),
+                incidentCoordinates.longitude());
+    }
+
+    private int getActiveAssignmentLoad(TechnicianMember technician) {
+        return (int) issueReportRepository.findByAssignedToOrderByCreatedAtDesc(technician.getId()).stream()
+                .filter(ticket -> !Set.of("RESOLVED", "CLOSED", "REJECTED").contains(ticket.getStatus()))
+                .count();
+    }
+
+    private Coordinates extractCoordinates(String location) {
+        if (location == null || location.isBlank()) {
+            return null;
+        }
+
+        Matcher matcher = COORDINATE_PATTERN.matcher(location);
+        if (!matcher.find()) {
+            return null;
+        }
+
+        try {
+            return new Coordinates(
+                    Double.parseDouble(matcher.group(1)),
+                    Double.parseDouble(matcher.group(2)));
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private double calculateDistanceKm(double startLat, double startLng, double endLat, double endLng) {
+        double earthRadiusKm = 6371.0;
+        double deltaLat = Math.toRadians(endLat - startLat);
+        double deltaLng = Math.toRadians(endLng - startLng);
+        double startLatRadians = Math.toRadians(startLat);
+        double endLatRadians = Math.toRadians(endLat);
+
+        double a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2)
+                + Math.cos(startLatRadians) * Math.cos(endLatRadians)
+                        * Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+
+        return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    private record Coordinates(double latitude, double longitude) {
+    }
+
+    private record TechnicianDispatchCandidate(
+            TechnicianMember technician,
+            int activeLoad,
+            double distanceScore) {
     }
 }

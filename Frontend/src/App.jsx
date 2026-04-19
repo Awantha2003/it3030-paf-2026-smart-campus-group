@@ -24,63 +24,63 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { NotificationsPage } from './pages/notifications/NotificationsPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { TechnicianTrackingProvider } from './contexts/TechnicianTrackingContext';
 
 export const App = () => {
   return (
     <ThemeProvider>
       <Router>
         <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/mfa-setup" element={<MfaSetupPage />} />
-            <Route path="/mfa-verify" element={<MfaVerifyPage />} />
-            <Route path="/oauth2/callback" element={<OAuth2RedirectHandler />} />
+          <TechnicianTrackingProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/mfa-setup" element={<MfaSetupPage />} />
+              <Route path="/mfa-verify" element={<MfaVerifyPage />} />
+              <Route path="/oauth2/callback" element={<OAuth2RedirectHandler />} />
 
-            <Route path="/Admin" element={<DashboardLayout />}>
-              <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-                <Route path="dashboard" element={<AdminDashboard />} />
-                <Route path="users" element={<UserManagementPage />} />
-                <Route path="tickets" element={<AdminTicketsPage />} />
-                <Route path="facilities" element={<AdminFacilitiesPage />} />
-                <Route path="bookings" element={<AdminBookingsPage />} />
-                <Route path="technicians" element={<AdminTechniciansPage />} />
-                <Route path="campus-map" element={<CampusMapPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-                <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="/Admin" element={<DashboardLayout />}>
+                <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+                  <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="users" element={<UserManagementPage />} />
+                  <Route path="tickets" element={<AdminTicketsPage />} />
+                  <Route path="facilities" element={<AdminFacilitiesPage />} />
+                  <Route path="bookings" element={<AdminBookingsPage />} />
+                  <Route path="technicians" element={<AdminTechniciansPage />} />
+                  <Route path="campus-map" element={<CampusMapPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
+                  <Route path="notifications" element={<NotificationsPage />} />
+                </Route>
               </Route>
-            </Route>
 
-            <Route path="/Technician" element={<DashboardLayout />}>
-              <Route element={<ProtectedRoute allowedRoles={['TECHNICIAN']} />}>
-                <Route path="dashboard" element={<TechnicianDashboard />} />
-                <Route path="tickets" element={<TechnicianDashboard />} />
-                <Route path="tickets/:id" element={<TicketDetailPage />} />
-                <Route path="campus-map" element={<CampusMapPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-                <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="/Technician" element={<DashboardLayout />}>
+                <Route element={<ProtectedRoute allowedRoles={['TECHNICIAN']} />}>
+                  <Route path="dashboard" element={<TechnicianDashboard />} />
+                  <Route path="tickets" element={<TechnicianDashboard />} />
+                  <Route path="tickets/:id" element={<TicketDetailPage />} />
+                  <Route path="campus-map" element={<CampusMapPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
+                  <Route path="notifications" element={<NotificationsPage />} />
+                </Route>
               </Route>
-            </Route>
 
-            <Route path="/Student" element={<DashboardLayout />}>
-              <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
-                <Route path="dashboard" element={<UserDashboard />} />
-                <Route path="tickets" element={<MyTicketsPage />} />
-                <Route path="tickets/new" element={<NewTicketPage />} />
-                <Route path="tickets/:id" element={<TicketDetailPage />} />
-                <Route path="booking-resources" element={<BookingResourcesPage />} />
-                <Route path="campus-map" element={<CampusMapPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-                <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="/Student" element={<DashboardLayout />}>
+                <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
+                  <Route path="dashboard" element={<UserDashboard />} />
+                  <Route path="tickets" element={<MyTicketsPage />} />
+                  <Route path="tickets/new" element={<NewTicketPage />} />
+                  <Route path="tickets/:id" element={<TicketDetailPage />} />
+                  <Route path="booking-resources" element={<BookingResourcesPage />} />
+                  <Route path="campus-map" element={<CampusMapPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
+                  <Route path="notifications" element={<NotificationsPage />} />
+                </Route>
               </Route>
-            </Route>
 
-            {/* Redirect root to login for now */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
-
-            {/* Fallback for undefined routes */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </TechnicianTrackingProvider>
         </AuthProvider>
       </Router>
     </ThemeProvider>

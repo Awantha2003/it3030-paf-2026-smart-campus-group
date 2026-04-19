@@ -41,6 +41,29 @@ function renderStars(rating) {
   return `${rating}/5 stars`;
 }
 
+function formatTrackingAge(trackingUpdatedAt) {
+  if (!trackingUpdatedAt) {
+    return 'No live update yet';
+  }
+
+  const elapsedMs = Date.now() - new Date(trackingUpdatedAt).getTime();
+  if (!Number.isFinite(elapsedMs) || elapsedMs < 0) {
+    return 'Updated just now';
+  }
+
+  const elapsedSeconds = Math.floor(elapsedMs / 1000);
+  if (elapsedSeconds < 60) {
+    return `Updated ${elapsedSeconds}s ago`;
+  }
+
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+  if (elapsedMinutes < 60) {
+    return `Updated ${elapsedMinutes} min ago`;
+  }
+
+  return `Updated ${new Date(trackingUpdatedAt).toLocaleTimeString()}`;
+}
+
 export function TechnicianDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -68,7 +91,13 @@ export function TechnicianDashboard() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [updateStatus, setUpdateStatus] = useState('IN_PROGRESS');
   const [resolutionNotes, setResolutionNotes] = useState('');
-  const { currentCoordinates, locationStatus, trackingUpdatedAt } = useTechnicianTracking();
+  const {
+    currentCoordinates,
+    isTrackingEnabled,
+    locationStatus,
+    setIsTrackingEnabled,
+    trackingUpdatedAt
+  } = useTechnicianTracking();
   
   // The API already filters by assignedTo, so we just map tickets directly
   const assignedTickets = tickets || [];
@@ -163,6 +192,37 @@ export function TechnicianDashboard() {
           <p className="text-slate-500 dark:text-slate-400">
             Manage your assigned tasks and updates
           </p>
+        </div>
+        <div className="w-full sm:w-auto rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                Live Location
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                {isTrackingEnabled ? 'On duty tracking enabled' : 'Tracking paused'}
+              </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {isTrackingEnabled
+                  ? formatTrackingAge(trackingUpdatedAt)
+                  : 'Turn this on to share GPS with admin dispatch.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsTrackingEnabled((current) => !current)}
+              className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors ${
+                isTrackingEnabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+              }`}
+              aria-pressed={isTrackingEnabled}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+                  isTrackingEnabled ? 'translate-x-9' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -434,7 +494,7 @@ export function TechnicianDashboard() {
                   Live Route Guidance
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Review assigned tasks one by one while GPS tracking runs automatically.
+                  Review assigned tasks one by one while on-duty GPS sharing is active.
                 </p>
               </div>
               {activeRouteTicket && (
@@ -468,6 +528,38 @@ export function TechnicianDashboard() {
                   </Button>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/50">
+                  <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-950/40">
+                    <div className="flex items-center gap-3">
+                      <span className={`relative flex h-3.5 w-3.5 ${isTrackingEnabled ? '' : 'opacity-60'}`}>
+                        <span
+                          className={`absolute inline-flex h-full w-full rounded-full ${
+                            isTrackingEnabled ? 'animate-ping bg-emerald-400/70' : 'bg-slate-400/40'
+                          }`}
+                        />
+                        <span
+                          className={`relative inline-flex h-3.5 w-3.5 rounded-full ${
+                            isTrackingEnabled ? 'bg-emerald-500' : 'bg-slate-400'
+                          }`}
+                        />
+                      </span>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          Technician GPS Broadcast
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {isTrackingEnabled ? 'Sharing live location' : 'Tracking is off'}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant={isTrackingEnabled ? 'outline' : 'default'}
+                      size="sm"
+                      onClick={() => setIsTrackingEnabled((current) => !current)}
+                    >
+                      {isTrackingEnabled ? 'Pause' : 'Enable'}
+                    </Button>
+                  </div>
                   <p className="text-sm font-semibold text-slate-900 dark:text-white">
                     Destination: {activeRouteTicket.title}
                   </p>
@@ -480,7 +572,7 @@ export function TechnicianDashboard() {
                     </p>
                   )}
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {locationStatus || 'Waiting for technician GPS permission.'}
+                    {locationStatus || 'Enable tracking to start technician GPS updates.'}
                   </p>
                   {currentCoordinates && (
                     <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -489,7 +581,7 @@ export function TechnicianDashboard() {
                   )}
                   {trackingUpdatedAt && (
                     <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
-                      Updated {new Date(trackingUpdatedAt).toLocaleTimeString()}
+                      {formatTrackingAge(trackingUpdatedAt)}
                     </p>
                   )}
                 </div>
