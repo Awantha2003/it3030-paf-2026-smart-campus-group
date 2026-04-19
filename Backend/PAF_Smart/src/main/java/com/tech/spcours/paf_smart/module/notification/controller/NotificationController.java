@@ -47,9 +47,16 @@ public class NotificationController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, String>> deleteNotification(@PathVariable String id, Authentication authentication) {
+    public ResponseEntity<Map<String, String>> deleteNotification(@PathVariable String id,
+            Authentication authentication) {
         notificationService.deleteNotification(id, getCurrentUserId(authentication));
         return ResponseEntity.ok(Map.of("message", "Notification deleted"));
+    }
+
+    @DeleteMapping("/clear-all")
+    public ResponseEntity<Map<String, String>> clearAllNotifications(Authentication authentication) {
+        notificationService.deleteAllNotifications(getCurrentUserId(authentication));
+        return ResponseEntity.ok(Map.of("message", "All notifications cleared"));
     }
 
     // TEMPORARY ENDPOINT FOR TESTING THE FLOW
@@ -60,8 +67,7 @@ public class NotificationController {
                 "Test Notification Worker",
                 "This is a test notification to see if the UI updates!",
                 "SYSTEM",
-                "test-123"
-        );
+                "test-123");
         return ResponseEntity.ok(testNotif);
     }
 }

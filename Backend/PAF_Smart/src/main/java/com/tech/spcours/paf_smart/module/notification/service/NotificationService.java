@@ -66,4 +66,9 @@ public class NotificationService {
 
         notificationRepository.deleteById(id);
     }
+
+    public void deleteAllNotifications(String userId) {
+        List<Notification> userNotifications = notificationRepository.findByUserId(userId);
+        notificationRepository.deleteAll(userNotifications);
+    }
 }
