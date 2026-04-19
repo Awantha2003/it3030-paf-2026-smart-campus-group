@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { Search, Sun, Moon, Plus, Bell, Wrench, Check } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Search, Sun, Moon, Bell, Wrench } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
