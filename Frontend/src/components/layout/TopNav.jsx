@@ -52,7 +52,17 @@ export function TopNav() {
             }
         }
     };
-
+    const handleClearAll = async () => {
+        try {
+            await api.delete('/api/notifications/clear-all');
+            setNotifications([]);
+            setUnreadCount(0);
+            setPrevUnread(0);
+            setShowNotifications(false);
+        } catch (error) {
+            console.error('Failed to clear notifications:', error);
+        }
+    };
     useEffect(() => {
         fetchNotificationsData();
         const intervalId = setInterval(fetchNotificationsData, 5000); // Poll every 5 seconds
@@ -178,16 +188,26 @@ export function TopNav() {
                 position="right"
                 width="w-full sm:w-[400px]"
                 footer={
-                    <Button
-                        variant="primary"
-                        className="w-full"
-                        onClick={() => {
-                            setShowNotifications(false);
-                            navigate(resolvePathForRole('/notifications', user?.role));
-                        }}
-                    >
-                        View All
-                    </Button>
+                    <div className="flex flex-col gap-2 w-full">
+                        <Button
+                            variant="outline"
+                            className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            onClick={handleClearAll}
+                            disabled={notifications.length === 0}
+                        >
+                            Clear All
+                        </Button>
+                        <Button
+                            variant="primary"
+                            className="w-full"
+                            onClick={() => {
+                                setShowNotifications(false);
+                                navigate(resolvePathForRole('/notifications', user?.role));
+                            }}
+                        >
+                            View All
+                        </Button>
+                    </div>
                 }
             >
                 <div className="space-y-4">
