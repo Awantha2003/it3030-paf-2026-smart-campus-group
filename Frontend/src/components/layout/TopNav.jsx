@@ -97,18 +97,6 @@ export function TopNav() {
                     />
                 </div>
 
-                <Button
-                    variant="primary"
-                    size="sm"
-                    leftIcon={<Plus className="w-4 h-4" />}
-                    className="hidden sm:flex"
-                >
-
-                    Quick Add
-                </Button>
-
-                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
-
                 <button
                     type="button"
                     onClick={() => {
