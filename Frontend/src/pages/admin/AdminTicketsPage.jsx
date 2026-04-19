@@ -25,6 +25,29 @@ import { rankTechniciansForTicket } from '../../utils/campusMap';
 
 const ticketTabs = ['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'CLOSED'];
 
+function formatTrackingAge(trackingUpdatedAt) {
+  if (!trackingUpdatedAt) {
+    return 'No recent GPS update';
+  }
+
+  const elapsedMs = Date.now() - new Date(trackingUpdatedAt).getTime();
+  if (!Number.isFinite(elapsedMs) || elapsedMs < 0) {
+    return 'Updated just now';
+  }
+
+  const elapsedSeconds = Math.floor(elapsedMs / 1000);
+  if (elapsedSeconds < 60) {
+    return `Updated ${elapsedSeconds}s ago`;
+  }
+
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+  if (elapsedMinutes < 60) {
+    return `Updated ${elapsedMinutes} min ago`;
+  }
+
+  return `Updated ${new Date(trackingUpdatedAt).toLocaleTimeString()}`;
+}
+
 function normalizeTechnicianRosterEntry(technician, source) {
   if (source === 'user') {
     return {
@@ -98,6 +121,15 @@ export function AdminTicketsPage() {
   const assignmentOptions = technicianRecommendations.length
     ? technicianRecommendations.map((entry) => entry.technician)
     : activeTechnicians;
+  const assignmentInsights = technicianRecommendations.length
+    ? technicianRecommendations
+    : assignmentOptions.map((technician) => ({
+        technician,
+        coordinates: getTechnicianCoordinates(technician),
+        distanceKm: calculateDistanceKm(getTechnicianCoordinates(technician), studentCoordinates),
+        activeLoad: 0,
+        travelMinutes: null
+      }));
 
   useEffect(() => {
     setAdminNote(selectedTicket?.adminNote || '');
@@ -526,8 +558,8 @@ export function AdminTicketsPage() {
                     <UserCircle className="mr-2 h-4 w-4 text-blue-500" /> Technician Assignment
                   </h3>
                   <div className="rounded-xl border border-blue-100/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 p-4 shadow-sm backdrop-blur-md dark:border-blue-900/30 dark:from-blue-900/10 dark:to-indigo-900/10">
-                    <div className="space-y-4">
-                      <div className="flex flex-col md:flex-row md:items-center gap-4">
+                      <div className="space-y-4">
+                        <div className="flex flex-col md:flex-row md:items-center gap-4">
                         <div className="flex-1">
                           <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
                             Assign personnel
@@ -563,6 +595,57 @@ export function AdminTicketsPage() {
                             })}
                           </select>
                         </div>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {assignmentInsights.slice(0, 4).map((entry) => {
+                          const technicianLocation =
+                            entry.technician.currentLocation ||
+                            (entry.coordinates ? `GPS ${formatCoordinates(entry.coordinates)}` : 'Live GPS not available');
+
+                          return (
+                            <button
+                              key={entry.technician.id}
+                              type="button"
+                              onClick={() => handleAssign(selectedTicket.id, entry.technician.id)}
+                              disabled={actioning === `assign-${selectedTicket.id}`}
+                              className={`rounded-2xl border p-4 text-left transition-all ${
+                                selectedTicket.assignedTo === entry.technician.id
+                                  ? 'border-blue-400 bg-blue-50 shadow-sm dark:border-blue-700 dark:bg-blue-900/20'
+                                  : 'border-white/70 bg-white/70 hover:border-blue-200 hover:bg-white dark:border-slate-700 dark:bg-slate-900/40 dark:hover:border-blue-800'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-bold text-slate-900 dark:text-white">
+                                    {entry.technician.fullName}
+                                  </p>
+                                  <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                    {entry.technician.specialization || 'General Support'}
+                                  </p>
+                                </div>
+                                <span
+                                  className={`inline-flex h-3 w-3 rounded-full ${
+                                    entry.coordinates ? 'bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.16)]' : 'bg-slate-300 dark:bg-slate-600'
+                                  }`}
+                                />
+                              </div>
+                              <p className="mt-3 text-xs font-medium text-slate-600 dark:text-slate-300">
+                                {technicianLocation}
+                              </p>
+                              <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                  {entry.distanceKm !== null ? formatDistanceKm(entry.distanceKm) : 'No route distance'}
+                                </span>
+                                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
+                                  {entry.activeLoad} active
+                                </span>
+                                <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+                                  {formatTrackingAge(entry.technician.trackingUpdatedAt)}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
