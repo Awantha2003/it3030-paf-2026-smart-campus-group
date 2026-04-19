@@ -6,6 +6,7 @@ import {
   parseCoordinatesFromLocation
 } from './location';
 
+// Give higher weight to more urgent tickets.
 function getPriorityWeight(priority) {
   if (priority === 'CRITICAL') return 5;
   if (priority === 'HIGH') return 4;
@@ -14,12 +15,14 @@ function getPriorityWeight(priority) {
   return 1;
 }
 
+// Open tickets are treated as more urgent than completed ones.
 function getStatusWeight(status) {
   if (status === 'OPEN') return 3;
   if (status === 'IN_PROGRESS') return 2;
   return 1;
 }
 
+// Count how many active tickets a technician is already handling.
 export function getTechnicianActiveLoad(technicianId, tickets = []) {
   return tickets.filter(
     (ticket) =>
@@ -30,6 +33,7 @@ export function getTechnicianActiveLoad(technicianId, tickets = []) {
   ).length;
 }
 
+// Rank technicians by distance, workload, and category match.
 export function rankTechniciansForTicket(ticket, technicians = [], tickets = []) {
   const destination = parseCoordinatesFromLocation(ticket?.location);
 
@@ -65,6 +69,7 @@ export function rankTechniciansForTicket(ticket, technicians = [], tickets = [])
     });
 }
 
+// Rank a technician's own tickets so the next best task appears first.
 export function rankTicketsForTechnician(tickets = [], currentCoordinates) {
   return [...tickets]
     .map((ticket) => {
@@ -89,6 +94,7 @@ export function rankTicketsForTechnician(tickets = [], currentCoordinates) {
     .sort((left, right) => right.dispatchScore - left.dispatchScore);
 }
 
+// Measure how much ticket and technician data can be shown on the live map.
 export function getMapCoverageSummary(tickets = [], technicians = []) {
   const actionableTickets = tickets.filter(
     (ticket) => ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED' && ticket.status !== 'REJECTED'
@@ -108,6 +114,7 @@ export function getMapCoverageSummary(tickets = [], technicians = []) {
   };
 }
 
+// Find the closest item to a given starting point.
 export function getNearestEntity(origin, items = [], getCoordinates) {
   const start = parseCoordinates(origin);
 

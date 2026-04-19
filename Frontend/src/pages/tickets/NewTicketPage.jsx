@@ -37,10 +37,12 @@ const REQUEST_TYPES = ['Technical Support', 'Facilities Issue', 'Network Problem
 const DEPARTMENTS = ['Student Services', 'IT Helpdesk', 'Maintenance', 'Academic Affairs', 'Security'];
 const MAX_ATTACHMENTS = 3;
 
+// Convert the current GPS reading into a readable ticket location label.
 function formatGpsLocation(lat, lng) {
   return `Current GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }
 
+// Show simple location messages when GPS access fails.
 function getGeolocationErrorMessage(error) {
   if (error?.code === 1) {
     return 'Location access was blocked. Allow browser permission or enter the building and room manually.';
@@ -100,6 +102,7 @@ function LocationPickerViewport({ center, zoom }) {
   return null;
 }
 
+// Main student page for creating a new support ticket.
 export function NewTicketPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -139,6 +142,7 @@ export function NewTicketPage() {
     : null;
   const selectedLandmark = findCampusLandmarkById(selectedLandmarkId);
 
+  // Start live GPS tracking when the page opens.
   useEffect(() => {
     if (!isAutoTracking) {
       return undefined;
@@ -191,6 +195,7 @@ export function NewTicketPage() {
     };
   }, []);
 
+  // Let the student pick the issue location directly from the map.
   const handleMapClick = ({ lat, lng }) => {
     setIsAutoTracking(false);
     setMarkerPos({ lat, lng });
@@ -200,6 +205,7 @@ export function NewTicketPage() {
     setLocationStatus('Automatic tracking paused. The selected map pin will be submitted.');
   };
 
+  // Let the student fine-tune the marker position before submitting.
   const handleMarkerDragEnd = (latLng) => {
     if (!latLng || typeof latLng.lat !== 'number' || typeof latLng.lng !== 'number') {
       return;
@@ -264,6 +270,7 @@ export function NewTicketPage() {
     setLocationStatus('Campus landmark selected. Technicians can use this as a reliable dispatch point.');
   };
 
+  // Accept only PNG screenshots and keep the upload count small.
   const handleAttachmentSelection = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) {
@@ -330,6 +337,7 @@ export function NewTicketPage() {
     !description.trim() ? 'Ticket Description' : null
   ].filter(Boolean);
 
+  // Upload attachments first, then create the main ticket record.
   const handleSubmit = async (e) => {
     e.preventDefault();
 

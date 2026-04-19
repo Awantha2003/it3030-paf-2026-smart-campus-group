@@ -25,6 +25,7 @@ import {
 } from '../../utils/location';
 import { getTicketListPathForRole } from '../../utils/routes';
 
+// Show one ticket in full detail, including route and feedback.
 export function TicketDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -40,6 +41,7 @@ export function TicketDetailPage() {
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const { currentCoordinates } = useTechnicianTracking();
 
+  // Load the selected ticket by its id.
   useEffect(() => {
     let ignore = false;
 
@@ -76,6 +78,7 @@ export function TicketDetailPage() {
     };
   }, [id]);
 
+  // Load the assigned technician so route details can be shown.
   useEffect(() => {
     let ignore = false;
 
@@ -110,6 +113,7 @@ export function TicketDetailPage() {
     setFeedbackMessage('');
   }, [ticket?.id, ticket?.studentFeedbackRating, ticket?.studentFeedbackComment]);
 
+  // Convert uploaded attachments into previewable images.
   useEffect(() => {
     let ignore = false;
     const createdUrls = [];
@@ -199,6 +203,7 @@ export function TicketDetailPage() {
     Boolean(ticket?.assignedTo) &&
     (ticket?.status === 'RESOLVED' || ticket?.status === 'CLOSED');
 
+  // Submit the student's rating and comment to the backend.
   const handleFeedbackSubmit = async (e) => {
     e.preventDefault();
 

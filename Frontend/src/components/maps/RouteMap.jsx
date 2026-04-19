@@ -11,6 +11,7 @@ import {
 
 const DEFAULT_CENTER = { lat: 6.9147, lng: 79.9733 };
 
+// Pick a useful center point so both markers stay visible on the map.
 function getMapCenter(origin, destination) {
   if (origin && destination) {
     return {
@@ -22,6 +23,7 @@ function getMapCenter(origin, destination) {
   return destination || origin || DEFAULT_CENTER;
 }
 
+// Keep the Leaflet map centered when route data changes.
 function RouteMapViewport({ center, zoom }) {
   const map = useMap();
 
@@ -36,6 +38,7 @@ function RouteMapViewport({ center, zoom }) {
   return null;
 }
 
+// Show the technician location, student location, and a simple route line.
 export function RouteMap({
   origin,
   destination,

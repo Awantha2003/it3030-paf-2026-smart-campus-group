@@ -33,6 +33,7 @@ import {
 import { rankTicketsForTechnician } from '../../utils/campusMap';
 import { getTicketDetailPathForRole } from '../../utils/routes';
 
+// Convert the numeric feedback into a simple readable label.
 function renderStars(rating) {
   if (!rating) {
     return 'No rating yet';
@@ -64,6 +65,7 @@ function formatTrackingAge(trackingUpdatedAt) {
   return `Updated ${new Date(trackingUpdatedAt).toLocaleTimeString()}`;
 }
 
+// Technician view for live tasks, route help, and status updates.
 export function TechnicianDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -73,6 +75,7 @@ export function TechnicianDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [focusedTicketId, setFocusedTicketId] = useState('');
 
+  // Load only the tickets assigned to the logged-in technician.
   useEffect(() => {
     async function loadAssignedTickets() {
       if (!techId) return;
@@ -113,11 +116,15 @@ export function TechnicianDashboard() {
   const feedbackReceivedCount = assignedTickets.filter(
     (t) => typeof t.studentFeedbackRating === 'number'
   ).length;
+
+  // Open the update modal for the chosen ticket.
   const handleUpdateClick = (ticket) => {
     setSelectedTicket(ticket);
     setUpdateStatus(ticket.status === 'OPEN' ? 'IN_PROGRESS' : ticket.status);
     setIsUpdateModalOpen(true);
   };
+
+  // Save the technician's latest ticket status.
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     if (selectedTicket) {
@@ -136,8 +143,11 @@ export function TechnicianDashboard() {
       setResolutionNotes('');
     }
   };
+
+  // Sort assigned tickets by urgency and route usefulness.
   const sortedTickets = rankTicketsForTechnician(assignedTickets, currentCoordinates);
 
+  // Keep one route card focused so the technician sees the next task clearly.
   useEffect(() => {
     if (!sortedTickets.length) {
       setFocusedTicketId('');

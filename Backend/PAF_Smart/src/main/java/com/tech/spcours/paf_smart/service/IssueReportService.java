@@ -44,6 +44,7 @@ public class IssueReportService {
     private final UserRepository userRepository;
     private final TechnicianMemberService technicianMemberService;
 
+    // Build a new ticket, save it, and send related notifications.
     public IssueReportResponse createIssueReport(CreateIssueReportRequest request) {
         Instant now = Instant.now();
 
@@ -107,6 +108,7 @@ public class IssueReportService {
         return toResponse(saved);
     }
 
+    // Show only the tickets created by the logged-in student.
     public List<IssueReportResponse> getStudentIssueReports(String studentId) {
         return issueReportRepository.findByStudentIdOrderByCreatedAtDesc(studentId.trim())
                 .stream()
@@ -114,6 +116,7 @@ public class IssueReportService {
                 .toList();
     }
 
+    // Show only the tickets assigned to the technician.
     public List<IssueReportResponse> getTechnicianIssueReports(String technicianId) {
         LinkedHashSet<String> technicianIds = new LinkedHashSet<>();
         String normalizedTechnicianId = technicianId == null ? "" : technicianId.trim();
@@ -137,6 +140,7 @@ public class IssueReportService {
                 .toList();
     }
 
+    // Admin can load every ticket for monitoring and assignment.
     public List<IssueReportResponse> getAllIssueReports() {
         return issueReportRepository.findAll()
                 .stream()
@@ -145,10 +149,12 @@ public class IssueReportService {
                 .toList();
     }
 
+    // Load one ticket by id for the detail page.
     public IssueReportResponse getIssueReportById(String id) {
         return toResponse(findIssueReportById(id));
     }
 
+    // Update the current ticket status and notify the student.
     public IssueReportResponse updateIssueReportStatus(String id, String status, String rejectionReason) {
         IssueReport issueReport = findIssueReportById(id);
         String normalizedStatus = normalizeStatus(status);
@@ -175,6 +181,7 @@ public class IssueReportService {
         return toResponse(saved);
     }
 
+    // Assign the selected technician to the ticket.
     public IssueReportResponse assignIssueReport(String id, String technicianId) {
         IssueReport issueReport = findIssueReportById(id);
         TechnicianMember technicianMember = technicianMemberService.resolveTechnicianMember(technicianId);
@@ -210,6 +217,7 @@ public class IssueReportService {
         return toResponse(saved);
     }
 
+    // Save the admin's private note for later review.
     public IssueReportResponse updateIssueReportAdminNote(String id, String adminNote) {
         IssueReport issueReport = findIssueReportById(id);
         issueReport.setAdminNote(adminNote.trim());
@@ -218,6 +226,7 @@ public class IssueReportService {
         return toResponse(issueReportRepository.save(issueReport));
     }
 
+    // Save student feedback after the work is completed.
     public IssueReportResponse updateIssueReportStudentFeedback(
             String id,
             Integer feedbackRating,
@@ -306,6 +315,7 @@ public class IssueReportService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    // Pick the best active technician using load and location.
     private Optional<TechnicianMember> selectBestActiveTechnician(IssueReport issueReport) {
         Coordinates incidentCoordinates = extractCoordinates(issueReport.getLocation());
 

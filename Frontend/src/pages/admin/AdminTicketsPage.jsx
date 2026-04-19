@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle, Clock, MapPin, MessageSquare, RefreshCw, XC
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge, StatusBadge } from '../../components/ui/Badge';
+import { CampusOperationsMap } from '../../components/maps/CampusOperationsMap';
 import { RouteMap } from '../../components/maps/RouteMap';
 import {
   assignIssueReport,
@@ -25,6 +26,7 @@ import { rankTechniciansForTicket } from '../../utils/campusMap';
 
 const ticketTabs = ['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'CLOSED'];
 
+// Show how recent the technician's last GPS update is.
 function formatTrackingAge(trackingUpdatedAt) {
   if (!trackingUpdatedAt) {
     return 'No recent GPS update';
@@ -48,6 +50,7 @@ function formatTrackingAge(trackingUpdatedAt) {
   return `Updated ${new Date(trackingUpdatedAt).toLocaleTimeString()}`;
 }
 
+// Normalize technician data before using it in ticket assignment screens.
 function normalizeTechnicianRosterEntry(technician, source) {
   if (source === 'user') {
     return {
@@ -77,12 +80,14 @@ function normalizeTechnicianRosterEntry(technician, source) {
   };
 }
 
+// Admin dashboard for reviewing, assigning, and updating tickets.
 export function AdminTicketsPage() {
   const [tickets, setTickets] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [activeTab, setActiveTab] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTicketId, setSelectedTicketId] = useState('');
+  const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
   const [adminNote, setAdminNote] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
@@ -111,6 +116,10 @@ export function AdminTicketsPage() {
   const assignedTechnician = technicians.find(
     (technician) => technician.id === selectedTicket?.assignedTo
   );
+  const selectedTechnician =
+    technicians.find((technician) => technician.id === selectedTechnicianId) ||
+    assignedTechnician ||
+    null;
   const studentCoordinates = parseCoordinatesFromLocation(selectedTicket?.location);
   const technicianCoordinates = getTechnicianCoordinates(assignedTechnician);
   const routeDistance = calculateDistanceKm(technicianCoordinates, studentCoordinates);
@@ -140,9 +149,14 @@ export function AdminTicketsPage() {
   }, [selectedTicketId, selectedTicket?.rejectionReason]);
 
   useEffect(() => {
+    setSelectedTechnicianId(selectedTicket?.assignedTo || '');
+  }, [selectedTicketId, selectedTicket?.assignedTo]);
+
+  useEffect(() => {
     setIsRejectDialogOpen(false);
   }, [selectedTicketId]);
 
+  // Apply tab and search filters to the admin ticket list.
   const filteredTickets = tickets.filter((ticket) => {
     const query = searchTerm.toLowerCase();
     const matchesTab = activeTab === 'ALL' || ticket.status === activeTab;
@@ -153,6 +167,7 @@ export function AdminTicketsPage() {
     return matchesTab && matchesSearch;
   });
 
+  // Load tickets and technician data for the admin control panel.
   async function loadData(showRefreshState = false, silent = false) {
     if (silent) {
       setError('');
@@ -195,6 +210,7 @@ export function AdminTicketsPage() {
     }
   }
 
+  // Update one changed ticket without reloading the whole list.
   function updateTicketInState(updatedTicket) {
     setTickets((current) =>
       current.map((ticket) => (ticket.id === updatedTicket.id ? updatedTicket : ticket))
@@ -205,6 +221,7 @@ export function AdminTicketsPage() {
     return technicians.find((technician) => technician.id === technicianId)?.fullName || '';
   }
 
+  // Assign the selected technician to the selected ticket.
   async function handleAssign(ticketId, technicianId) {
     setActioning(`assign-${ticketId}`);
     setError('');
@@ -221,6 +238,7 @@ export function AdminTicketsPage() {
     }
   }
 
+  // Change ticket progress such as OPEN, IN_PROGRESS, or RESOLVED.
   async function handleStatusChange(ticketId, status) {
     if (status === 'REJECTED') {
       openRejectDialog();
@@ -257,6 +275,7 @@ export function AdminTicketsPage() {
     setRejectionReason(selectedTicket?.rejectionReason || '');
   }
 
+  // Reject the ticket only after the admin provides a reason.
   async function handleRejectTicket() {
     if (!selectedTicket) {
       return;
@@ -290,6 +309,7 @@ export function AdminTicketsPage() {
     }
   }
 
+  // Save the admin's internal note for future reference.
   async function handleSaveNote() {
     if (!selectedTicket || !adminNote.trim()) {
       return;
@@ -648,6 +668,27 @@ export function AdminTicketsPage() {
                         })}
                       </div>
                     </div>
+                  </div>
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
+                  <h3 className="mb-2 flex items-center text-xs font-bold uppercase tracking-widest text-slate-800 dark:text-slate-200">
+                    <Navigation className="mr-2 h-4 w-4 text-indigo-500" /> Campus Operations Map
+                  </h3>
+                  <div className="rounded-xl border border-indigo-100/50 bg-gradient-to-br from-indigo-50/50 to-sky-50/50 p-4 shadow-sm backdrop-blur-md dark:border-indigo-900/30 dark:from-indigo-900/10 dark:to-sky-900/10">
+                    <CampusOperationsMap
+                      tickets={filteredTickets}
+                      technicians={activeTechnicians}
+                      selectedTicket={selectedTicket}
+                      selectedTechnician={selectedTechnician}
+                      onTicketSelect={(ticket) => setSelectedTicketId(ticket.id)}
+                      onTechnicianSelect={(technician) => setSelectedTechnicianId(technician.id)}
+                      showTickets
+                      showTechnicians
+                      showLandmarks
+                      showZones
+                      height="460px"
+                    />
                   </div>
                 </motion.div>
 

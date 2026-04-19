@@ -33,27 +33,32 @@ public class IssueReportController {
 
     private final IssueReportService issueReportService;
 
+    // Create a new ticket from the student side.
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public IssueReportResponse createIssueReport(@Valid @RequestBody CreateIssueReportRequest request) {
         return issueReportService.createIssueReport(request);
     }
 
+    // Get all tickets created by one student.
     @GetMapping
     public List<IssueReportResponse> getStudentIssueReports(@RequestParam String studentId) {
         return issueReportService.getStudentIssueReports(studentId);
     }
 
+    // Get all tickets assigned to one technician.
     @GetMapping("/technician")
     public List<IssueReportResponse> getTechnicianIssueReports(@RequestParam String technicianId) {
         return issueReportService.getTechnicianIssueReports(technicianId);
     }
 
+    // Get full details of one ticket by its id.
     @GetMapping("/{id}")
     public IssueReportResponse getIssueReportById(@PathVariable String id) {
         return issueReportService.getIssueReportById(id);
     }
 
+    // Let the student submit feedback after the ticket is handled.
     @PatchMapping("/{id}/feedback")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public IssueReportResponse updateIssueReportFeedback(
@@ -68,11 +73,13 @@ public class IssueReportController {
                 user);
     }
 
+    // Admin view: load every ticket in the system.
     @GetMapping("/admin/all")
     public List<IssueReportResponse> getAllIssueReports() {
         return issueReportService.getAllIssueReports();
     }
 
+    // Admin view: change ticket status such as OPEN or RESOLVED.
     @PatchMapping("/admin/{id}/status")
     public IssueReportResponse updateIssueReportStatus(
             @PathVariable String id,
@@ -80,6 +87,7 @@ public class IssueReportController {
         return issueReportService.updateIssueReportStatus(id, request.status(), request.rejectionReason());
     }
 
+    // Admin view: assign a technician to a ticket.
     @PatchMapping("/admin/{id}/assign")
     public IssueReportResponse assignIssueReport(
             @PathVariable String id,
@@ -87,6 +95,7 @@ public class IssueReportController {
         return issueReportService.assignIssueReport(id, request.technicianId());
     }
 
+    // Admin view: save an internal note for the ticket.
     @PatchMapping("/admin/{id}/note")
     public IssueReportResponse updateIssueReportAdminNote(
             @PathVariable String id,

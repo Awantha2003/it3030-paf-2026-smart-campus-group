@@ -15,6 +15,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { getStudentIssueReports } from '../../api/issues';
 import { studentRoutes } from '../../utils/routes';
+
+// Student view for tracking all tickets created by the logged-in user.
 export function MyTicketsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -24,6 +26,8 @@ export function MyTicketsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [priorityFilter, setPriorityFilter] = useState('ALL');
+
+  // Load the student's tickets when the page opens.
   useEffect(() => {
     let ignore = false;
 
@@ -59,6 +63,8 @@ export function MyTicketsPage() {
       ignore = true;
     };
   }, [user?.id]);
+
+  // Apply search, status, and priority filters to the visible list.
   const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch =
     ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -69,6 +75,8 @@ export function MyTicketsPage() {
     priorityFilter === 'ALL' || ticket.priority === priorityFilter;
     return matchesSearch && matchesStatus && matchesPriority;
   });
+
+  // Show ticket urgency with a simple color style.
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'CRITICAL':
