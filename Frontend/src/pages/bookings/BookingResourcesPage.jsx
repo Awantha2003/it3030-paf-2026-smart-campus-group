@@ -85,6 +85,11 @@ const FACULTY_OPTIONS = [
 ];
 
 const FACILITY_BUILDING_FILTER_OPTIONS = ['Engineering', 'Computing', 'Business'];
+const FACILITY_RECURRENCE_OPTIONS = [
+  { value: 'NONE', label: 'One-time booking' },
+  { value: 'WEEKLY', label: 'Repeat weekly' },
+  { value: 'MONTHLY', label: 'Repeat monthly' }
+];
 
 const CURATED_EQUIPMENT_RESOURCES = [
   {
@@ -283,6 +288,43 @@ function getCurrentTimeIso() {
   return `${hours}:${minutes}`;
 }
 
+function addWeeksToIsoDate(dateValue, weeks) {
+  const baseDate = new Date(`${dateValue}T00:00:00`);
+  baseDate.setDate(baseDate.getDate() + weeks * 7);
+  const year = baseDate.getFullYear();
+  const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+  const day = String(baseDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function addMonthsToIsoDate(dateValue, months) {
+  const baseDate = new Date(`${dateValue}T00:00:00`);
+  baseDate.setMonth(baseDate.getMonth() + months);
+  const year = baseDate.getFullYear();
+  const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+  const day = String(baseDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getWeekdayLabel(isoDate) {
+  if (!isoDate) {
+    return '';
+  }
+  const date = new Date(`${isoDate}T00:00:00`);
+  return date.toLocaleDateString(undefined, { weekday: 'long' });
+}
+
+function getDefaultRecurrenceEndDate(recurrenceType, bookingDate) {
+  const baseDate = bookingDate || getTodayIsoDate();
+  if (recurrenceType === 'WEEKLY') {
+    return addWeeksToIsoDate(baseDate, 4);
+  }
+  if (recurrenceType === 'MONTHLY') {
+    return addMonthsToIsoDate(baseDate, 3);
+  }
+  return '';
+}
+
 function timeToMinutes(timeValue) {
   const normalized = String(timeValue || '').slice(0, 5);
   const [hoursPart, minutesPart] = normalized.split(':');
@@ -416,7 +458,9 @@ export function BookingResourcesPage() {
     bookingTime: '',
     durationHours: 1,
     studentCount: 1,
-    lectureHallCode: ''
+    lectureHallCode: '',
+    recurrenceType: 'NONE',
+    recurrenceEndDate: ''
   });
 
   const [genericForm, setGenericForm] = useState({
@@ -931,10 +975,28 @@ export function BookingResourcesPage() {
   }, [selectedType, myFacilityBookings]);
 
   function updateFacilityField(field, value) {
-    setFacilityForm((current) => ({
-      ...current,
-      [field]: value
-    }));
+    setFacilityForm((current) => {
+      const next = {
+        ...current,
+        [field]: value
+      };
+
+      if (field === 'recurrenceType') {
+        if (value === 'NONE') {
+          next.recurrenceEndDate = '';
+        } else if (!current.recurrenceEndDate) {
+          next.recurrenceEndDate = getDefaultRecurrenceEndDate(value, current.bookingDate);
+        }
+      }
+
+      if (field === 'bookingDate' && next.recurrenceType !== 'NONE') {
+        if (!next.recurrenceEndDate || next.recurrenceEndDate < value) {
+          next.recurrenceEndDate = getDefaultRecurrenceEndDate(next.recurrenceType, value);
+        }
+      }
+
+      return next;
+    });
   }
 
   function openNewFacilityBookingForm(preselectedSpaceCode = '') {
@@ -945,7 +1007,9 @@ export function BookingResourcesPage() {
       bookingTime: '',
       durationHours: 1,
       studentCount: 1,
-      lectureHallCode: preselectedSpaceCode || current.lectureHallCode || lectureHalls[0]?.code || ''
+      lectureHallCode: preselectedSpaceCode || current.lectureHallCode || lectureHalls[0]?.code || '',
+      recurrenceType: 'NONE',
+      recurrenceEndDate: ''
     }));
     setShowFacilityForm(true);
   }
@@ -981,6 +1045,7 @@ export function BookingResourcesPage() {
 
   function openEditFacilityBookingForm(booking) {
     const normalizedTime = String(booking.bookingTime || '').slice(0, 5);
+    const recurrenceType = String(booking.recurrenceType || 'NONE').toUpperCase();
     setEditingFacilityBookingId(booking.id);
     setFacilityForm({
       faculty: booking.faculty || FACULTY_OPTIONS[0],
@@ -988,7 +1053,10 @@ export function BookingResourcesPage() {
       bookingTime: normalizedTime,
       durationHours: Number(booking.durationHours || 1),
       studentCount: booking.studentCount || 1,
-      lectureHallCode: booking.lectureHallCode || ''
+      lectureHallCode: booking.lectureHallCode || '',
+      recurrenceType,
+      recurrenceEndDate:
+        recurrenceType === 'NONE' ? '' : getDefaultRecurrenceEndDate(recurrenceType, booking.bookingDate || getTodayIsoDate())
     });
     setShowFacilityForm(true);
   }
@@ -1084,13 +1152,19 @@ export function BookingResourcesPage() {
 
     setSubmittingFacilityBooking(true);
     try {
+      const recurrenceType = String(facilityForm.recurrenceType || 'NONE').toUpperCase();
       const payload = {
         faculty: facilityForm.faculty,
         bookingDate: facilityForm.bookingDate,
         bookingTime: facilityForm.bookingTime,
         studentCount: Number(facilityForm.studentCount),
         durationHours: Number(facilityForm.durationHours),
-        lectureHallCode: facilityForm.lectureHallCode
+        lectureHallCode: facilityForm.lectureHallCode,
+        recurrenceType,
+        recurrenceEndDate:
+          recurrenceType !== 'NONE' && facilityForm.recurrenceEndDate
+            ? facilityForm.recurrenceEndDate
+            : null
       };
 
       if (editingFacilityBookingId) {
@@ -1105,7 +1179,9 @@ export function BookingResourcesPage() {
         bookingDate: facilityCatalogDate,
         bookingTime: '',
         durationHours: 1,
-        studentCount: 1
+        studentCount: 1,
+        recurrenceType: 'NONE',
+        recurrenceEndDate: ''
       }));
       await loadFacilityMeta();
     } catch (submitError) {
@@ -1241,7 +1317,6 @@ export function BookingResourcesPage() {
       if (editingFacilityBookingId === bookingId) {
         setEditingFacilityBookingId('');
       }
-      await loadFacilityMeta();
     } catch (deleteError) {
       setError(deleteError?.message || 'Unable to delete booking.');
     } finally {
@@ -1254,10 +1329,11 @@ export function BookingResourcesPage() {
     setDeletingGenericBookingId(bookingId);
     try {
       await deleteResourceBooking(bookingId);
+      setGenericBookings((current) => current.filter((booking) => booking.id !== bookingId));
+      setGenericDayBookings((current) => current.filter((booking) => booking.id !== bookingId));
       if (editingGenericBookingId === bookingId) {
         closeGenericForm();
       }
-      await loadGenericBookingsMeta(selectedType, genericCatalogDate);
     } catch (deleteError) {
       setError(deleteError?.message || 'Unable to delete booking.');
     } finally {
@@ -1660,7 +1736,11 @@ export function BookingResourcesPage() {
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => handleDeleteGenericBooking(booking.id)}
+                                      onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        handleDeleteGenericBooking(booking.id);
+                                      }}
                                       disabled={deletingGenericBookingId === booking.id}
                                       className="rounded-md border border-red-300 p-1 text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-900/20"
                                       aria-label="Delete booking"
@@ -1756,7 +1836,11 @@ export function BookingResourcesPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteFacilityBooking(booking.id)}
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    handleDeleteFacilityBooking(booking.id);
+                                  }}
                                   disabled={deletingFacilityBookingId === booking.id}
                                   className="rounded-md border border-red-300 p-1 text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-900/20"
                                   aria-label="Delete booking"
@@ -1955,6 +2039,50 @@ export function BookingResourcesPage() {
                       ))}
                     </select>
                   </label>
+
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                      Recurring Booking (Optional)
+                    </p>
+                    <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                          Repeat
+                        </span>
+                        <select
+                          value={facilityForm.recurrenceType}
+                          onChange={(event) => updateFacilityField('recurrenceType', event.target.value)}
+                          className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                        >
+                          {FACILITY_RECURRENCE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                          Repeat Until
+                        </span>
+                        <input
+                          type="date"
+                          min={facilityForm.bookingDate || getTodayIsoDate()}
+                          value={facilityForm.recurrenceEndDate}
+                          onChange={(event) => updateFacilityField('recurrenceEndDate', event.target.value)}
+                          disabled={facilityForm.recurrenceType === 'NONE'}
+                          className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:disabled:bg-slate-800"
+                        />
+                      </label>
+                    </div>
+                    {facilityForm.recurrenceType !== 'NONE' && (
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        {facilityForm.recurrenceType === 'WEEKLY'
+                          ? `This will repeat every ${getWeekdayLabel(facilityForm.bookingDate)}.`
+                          : 'This will repeat every month on the same date.'}
+                      </p>
+                    )}
+                  </div>
 
                   {formError && (
                     <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/10 dark:text-red-400">
