@@ -3,8 +3,11 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
 import { ChatWidget } from '../chat/ChatWidget';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function DashboardLayout() {
+    const { user } = useAuth();
+
     return (
         <div className="min-h-screen bg-brand-bg dark:bg-brand-dark text-slate-900 dark:text-slate-100 transition-colors duration-200 relative">
             <div className="flex min-h-screen">
@@ -17,8 +20,10 @@ export function DashboardLayout() {
                 </div>
             </div>
             
-            {/* Global Chat Widget */}
-            <ChatWidget />
+            {/* Global Chat Widget - Visible only to ADMIN and TECHNICIAN */}
+            {user?.role && ['ADMIN', 'TECHNICIAN'].includes(user.role) && (
+                <ChatWidget />
+            )}
         </div>
     );
 }

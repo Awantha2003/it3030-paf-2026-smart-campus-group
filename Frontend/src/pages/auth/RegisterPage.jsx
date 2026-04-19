@@ -17,10 +17,49 @@ const RegisterPage = () => {
     role: 'STUDENT'
   });
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({
+    name: '',
+    password: ''
+  });
+
+  const handleNameChange = (e) => {
+    const val = e.target.value;
+    setFormData({ ...formData, name: val });
+    
+    if (val && !/^[a-zA-Z\s]+$/.test(val)) {
+      setFieldErrors(prev => ({ ...prev, name: 'Name must contain only letters and spaces' }));
+    } else {
+      setFieldErrors(prev => ({ ...prev, name: '' }));
+    }
+  };
+
+  const handlePasswordChange = (e) => {
+    const val = e.target.value;
+    setFormData({ ...formData, password: val });
+    
+    if (val && !/^(?=.*[a-zA-Z])(?=.*\d).+$/.test(val)) {
+      setFieldErrors(prev => ({ ...prev, password: 'Password must contain at least one letter and one number' }));
+    } else if (val && val.length < 6) {
+      setFieldErrors(prev => ({ ...prev, password: 'Password must be at least 6 characters' }));
+    } else {
+      setFieldErrors(prev => ({ ...prev, password: '' }));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Prevent submission if there are any active inline field errors
+    if (fieldErrors.name || fieldErrors.password) {
+      setError('Please fix the validation errors before submitting');
+      return;
+    }
+
+    if (!/^[a-zA-Z\s]+$/.test(formData.name)) {
+      setError('Name must contain only letters and spaces');
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -29,6 +68,11 @@ const RegisterPage = () => {
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (!/^(?=.*[a-zA-Z])(?=.*\d).+$/.test(formData.password)) {
+      setError('Password must contain at least one letter and one number');
       return;
     }
 
@@ -86,9 +130,10 @@ const RegisterPage = () => {
               className="block w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-[15px] text-slate-900 placeholder:text-slate-300 focus:border-blue-500 focus:bg-blue-50/5 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
               placeholder="e.g. John Doe"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={handleNameChange}
             />
           </div>
+          {fieldErrors.name && <p className="text-[10px] uppercase font-bold text-red-500 ml-1">{fieldErrors.name}</p>}
         </div>
 
         <div className="space-y-1.5">
@@ -148,9 +193,10 @@ const RegisterPage = () => {
                 className="block w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-3 text-[15px] text-slate-900 placeholder:text-slate-300 focus:border-blue-500 focus:bg-blue-50/5 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
                 placeholder="••••••••"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={handlePasswordChange}
               />
             </div>
+            {fieldErrors.password && <p className="text-[10px] uppercase font-bold text-red-500 ml-1">{fieldErrors.password}</p>}
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500 ml-1" htmlFor="confirmPassword">Confirm</label>
