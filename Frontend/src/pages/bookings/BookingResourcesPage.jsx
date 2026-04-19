@@ -391,6 +391,11 @@ function classifyFacilitySpaceType(rawSpaceType = '', rawName = '', rawDisplayNa
   return 'LECTURE_HALL';
 }
 
+function getStudentLimitForFacilitySpace(rawSpaceType = '', rawName = '', rawDisplayName = '') {
+  const spaceType = classifyFacilitySpaceType(rawSpaceType, rawName, rawDisplayName);
+  return spaceType === 'LAB' ? 20 : 60;
+}
+
 function getBookingApprovalMeta(status) {
   const normalizedStatus = String(status || '').toUpperCase();
   if (normalizedStatus === 'PENDING_APPROVAL' || normalizedStatus === 'PENDING') {
@@ -974,6 +979,21 @@ export function BookingResourcesPage() {
       .sort((left, right) => left.startAt - right.startAt)[0]?.booking;
   }, [selectedType, myFacilityBookings]);
 
+  const selectedFacilitySpace = useMemo(
+    () => lectureHalls.find((hall) => hall.code === facilityForm.lectureHallCode) || null,
+    [lectureHalls, facilityForm.lectureHallCode]
+  );
+
+  const facilityStudentCountLimit = useMemo(
+    () =>
+      getStudentLimitForFacilitySpace(
+        selectedFacilitySpace?.spaceType,
+        selectedFacilitySpace?.name,
+        selectedFacilitySpace?.displayName
+      ),
+    [selectedFacilitySpace]
+  );
+
   function updateFacilityField(field, value) {
     setFacilityForm((current) => {
       const next = {
@@ -993,6 +1013,18 @@ export function BookingResourcesPage() {
         if (!next.recurrenceEndDate || next.recurrenceEndDate < value) {
           next.recurrenceEndDate = getDefaultRecurrenceEndDate(next.recurrenceType, value);
         }
+      }
+
+      if (field === 'lectureHallCode') {
+        const selectedHall = lectureHalls.find((hall) => hall.code === value);
+        const maxCount = getStudentLimitForFacilitySpace(
+          selectedHall?.spaceType,
+          selectedHall?.name,
+          selectedHall?.displayName
+        );
+        const currentCount = Number.parseInt(String(current.studentCount || '1'), 10);
+        const safeCount = Number.isFinite(currentCount) ? currentCount : 1;
+        next.studentCount = Math.max(1, Math.min(maxCount, safeCount));
       }
 
       return next;
@@ -1126,8 +1158,8 @@ export function BookingResourcesPage() {
     }
 
     const studentCount = Number(facilityForm.studentCount);
-    if (!Number.isInteger(studentCount) || studentCount < 1 || studentCount > 60) {
-      return 'Student count must be between 1 and 60.';
+    if (!Number.isInteger(studentCount) || studentCount < 1 || studentCount > facilityStudentCountLimit) {
+      return `Student count must be between 1 and ${facilityStudentCountLimit}.`;
     }
 
     const durationHours = Number(facilityForm.durationHours);
@@ -1986,17 +2018,20 @@ export function BookingResourcesPage() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="block">
                       <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                        Student Count (max 60)
+                        Student Count (max {facilityStudentCountLimit})
                       </span>
                       <input
                         type="number"
                         min={1}
-                        max={60}
+                        max={facilityStudentCountLimit}
                         value={facilityForm.studentCount}
                         onChange={(event) => {
                           const parsed = parseInt(event.target.value || '1', 10);
                           const safeValue = Number.isFinite(parsed) ? parsed : 1;
-                          updateFacilityField('studentCount', Math.max(1, Math.min(60, safeValue)));
+                          updateFacilityField(
+                            'studentCount',
+                            Math.max(1, Math.min(facilityStudentCountLimit, safeValue))
+                          );
                         }}
                         className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                         required
