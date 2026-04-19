@@ -13,6 +13,36 @@
     @apply bg-[#F8FAFC] text-slate-900 dark:bg-[#0B1120] dark:text-slate-100 antialiased transition-colors duration-200;
   }
 }
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  font: inherit;
+  background: #e2e8f0;
+  z-index: 0;
+}
+
+.campus-marker-wrapper {
+  background: transparent;
+  border: 0;
+}
+
+.campus-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  box-shadow: 0 14px 30px -18px rgba(15, 23, 42, 0.9);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.campus-marker__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Custom Scrollbar for a premium feel */
 ::-webkit-scrollbar {
   width: 6px;

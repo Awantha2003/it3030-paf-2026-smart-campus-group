@@ -15,11 +15,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { createIssueReport, uploadFile } from '../../api/issues';
 import { SERVER_BASE_URL } from '../../api/baseUrl';
-import { GoogleMap } from '@react-google-maps/api';
+import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import { CAMPUS_LANDMARKS, findCampusLandmarkById } from '../../data/campusMapData';
 import { buildRichLocationLabel, findNearestCoordinate, formatCoordinates } from '../../utils/location';
-import { CAMPUS_GOOGLE_MAP_ID, useCampusGoogleMaps } from '../../hooks/useCampusGoogleMaps';
 import { CampusMarker } from '../../components/maps/CampusMarker';
+import {
+  CAMPUS_MAP_ATTRIBUTION,
+  CAMPUS_MAP_TILE_URL,
+  toLeafletPosition
+} from '../../components/maps/mapConfig';
 import { studentRoutes } from '../../utils/routes';
 
 const DEFAULT_MAP_CENTER = { lat: 6.9147, lng: 79.9733 };
@@ -72,6 +76,30 @@ function InputShell({ icon, children }) {
   );
 }
 
+function LocationPickerMapEvents({ onMapClick }) {
+  useMapEvents({
+    click(event) {
+      onMapClick(event.latlng);
+    }
+  });
+
+  return null;
+}
+
+function LocationPickerViewport({ center, zoom }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const nextCenter = toLeafletPosition(center);
+
+    if (nextCenter) {
+      map.setView(nextCenter, zoom);
+    }
+  }, [center, map, zoom]);
+
+  return null;
+}
+
 export function NewTicketPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -106,8 +134,6 @@ export function NewTicketPage() {
   const watchIdRef = useRef(null);
   const [mapCenter, setMapCenter] = useState(DEFAULT_MAP_CENTER);
   const [markerPos, setMarkerPos] = useState(null);
-
-  const { isLoaded } = useCampusGoogleMaps();
   const nearestLandmark = markerPos
     ? findNearestCoordinate(markerPos, CAMPUS_LANDMARKS, (landmark) => landmark.position)
     : null;
@@ -165,9 +191,7 @@ export function NewTicketPage() {
     };
   }, []);
 
-  const handleMapClick = (e) => {
-    const lat = e.latLng.lat();
-    const lng = e.latLng.lng();
+  const handleMapClick = ({ lat, lng }) => {
     setIsAutoTracking(false);
     setMarkerPos({ lat, lng });
     setMapCenter({ lat, lng });
@@ -176,14 +200,12 @@ export function NewTicketPage() {
     setLocationStatus('Automatic tracking paused. The selected map pin will be submitted.');
   };
 
-  const handleMarkerDragEnd = (e) => {
-    const latLng = e?.latLng || e?.detail?.latLng;
-    if (!latLng) {
+  const handleMarkerDragEnd = (latLng) => {
+    if (!latLng || typeof latLng.lat !== 'number' || typeof latLng.lng !== 'number') {
       return;
     }
 
-    const lat = typeof latLng.lat === 'function' ? latLng.lat() : latLng.lat;
-    const lng = typeof latLng.lng === 'function' ? latLng.lng() : latLng.lng;
+    const { lat, lng } = latLng;
     const draggedCoordinates = { lat, lng };
     const nearestToDraggedPoint = findNearestCoordinate(
       draggedCoordinates,
@@ -721,35 +743,28 @@ export function NewTicketPage() {
             </div>
 
             <div className="h-72 overflow-hidden rounded-2xl border-2 border-slate-200 bg-slate-100 shadow-inner md:h-[22rem]">
-              {isLoaded ? (
-                <GoogleMap
-                  mapContainerStyle={{ width: '100%', height: '100%' }}
-                  center={mapCenter}
-                  zoom={17}
-                  onClick={handleMapClick}
-                  options={{
-                    mapId: CAMPUS_GOOGLE_MAP_ID,
-                    streetViewControl: false,
-                    fullscreenControl: false,
-                    mapTypeControl: false
-                  }}
-                >
-                  {markerPos && (
-                    <CampusMarker
-                      position={markerPos}
-                      draggable
-                      glyph="!"
-                      background="#0284c7"
-                      onDragEnd={handleMarkerDragEnd}
-                    />
-                  )}
-                </GoogleMap>
-              ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center text-slate-500">
-                  <div className="mb-2 h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-sky-500" />
-                  <span className="text-sm font-semibold">Loading Campus Map...</span>
-                </div>
-              )}
+              <MapContainer
+                center={toLeafletPosition(mapCenter)}
+                zoom={17}
+                scrollWheelZoom
+                style={{ width: '100%', height: '100%' }}
+              >
+                <LocationPickerViewport center={mapCenter} zoom={17} />
+                <TileLayer
+                  attribution={CAMPUS_MAP_ATTRIBUTION}
+                  url={CAMPUS_MAP_TILE_URL}
+                />
+                <LocationPickerMapEvents onMapClick={handleMapClick} />
+                {markerPos && (
+                  <CampusMarker
+                    position={markerPos}
+                    draggable
+                    glyph="!"
+                    background="#0284c7"
+                    onDragEnd={handleMarkerDragEnd}
+                  />
+                )}
+              </MapContainer>
             </div>
 
             <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-5">

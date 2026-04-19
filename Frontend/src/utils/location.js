@@ -141,14 +141,14 @@ export function getBearingDirection(origin, destination) {
   return vertical || horizontal || 'on-site';
 }
 
-export function getGoogleMapsDirectionsUrl(location) {
+export function getOpenStreetMapLocationUrl(location) {
   const coordinates = parseCoordinatesFromLocation(location);
 
   if (coordinates) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${coordinates.lat},${coordinates.lng}`;
+    return `https://www.openstreetmap.org/?mlat=${coordinates.lat}&mlon=${coordinates.lng}#map=18/${coordinates.lat}/${coordinates.lng}`;
   }
 
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location || '')}`;
+  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(location || '')}`;
 }
 
 export function buildRichLocationLabel({

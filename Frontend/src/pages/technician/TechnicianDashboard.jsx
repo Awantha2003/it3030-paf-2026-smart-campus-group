@@ -27,7 +27,7 @@ import { NotificationsPage } from '../notifications/NotificationsPage';
 import {
   formatCoordinates,
   formatDistanceKm,
-  getGoogleMapsDirectionsUrl,
+  getOpenStreetMapLocationUrl,
   parseCoordinatesFromLocation
 } from '../../utils/location';
 import { rankTicketsForTechnician } from '../../utils/campusMap';
@@ -375,7 +375,7 @@ export function TechnicianDashboard() {
                         <StatusBadge status={ticket.status} />
                         <div className="flex flex-wrap gap-2">
                           <a
-                            href={getGoogleMapsDirectionsUrl(ticket.location)}
+                            href={getOpenStreetMapLocationUrl(ticket.location)}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 h-8 px-3 text-xs"
@@ -617,13 +617,13 @@ export function TechnicianDashboard() {
             </p>
             {parseCoordinatesFromLocation(selectedTicket?.location) && (
               <a
-                href={getGoogleMapsDirectionsUrl(selectedTicket?.location)}
+                href={getOpenStreetMapLocationUrl(selectedTicket?.location)}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-3 inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700"
               >
                 <Navigation className="w-3 h-3 mr-1" />
-                Open student location in Google Maps
+                Open student location in OpenStreetMap
               </a>
             )}
           </div>

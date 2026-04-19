@@ -1,9 +1,13 @@
 import React from 'react';
-import { GoogleMap, Polyline } from '@react-google-maps/api';
+import { MapContainer, Polyline, TileLayer, useMap } from 'react-leaflet';
 import { MapPin, Navigation } from 'lucide-react';
 import { calculateDistanceKm, formatCoordinates, getBearingDirection, parseCoordinates } from '../../utils/location';
-import { CAMPUS_GOOGLE_MAP_ID, useCampusGoogleMaps } from '../../hooks/useCampusGoogleMaps';
 import { CampusMarker } from './CampusMarker';
+import {
+  CAMPUS_MAP_ATTRIBUTION,
+  CAMPUS_MAP_TILE_URL,
+  toLeafletPosition
+} from './mapConfig';
 
 const DEFAULT_CENTER = { lat: 6.9147, lng: 79.9733 };
 
@@ -18,6 +22,20 @@ function getMapCenter(origin, destination) {
   return destination || origin || DEFAULT_CENTER;
 }
 
+function RouteMapViewport({ center, zoom }) {
+  const map = useMap();
+
+  React.useEffect(() => {
+    const nextCenter = toLeafletPosition(center);
+
+    if (nextCenter) {
+      map.setView(nextCenter, zoom);
+    }
+  }, [center, map, zoom]);
+
+  return null;
+}
+
 export function RouteMap({
   origin,
   destination,
@@ -30,8 +48,6 @@ export function RouteMap({
   const distanceKm = calculateDistanceKm(start, end);
   const direction = getBearingDirection(start, end);
   const center = getMapCenter(start, end);
-
-  const { isLoaded } = useCampusGoogleMaps();
 
   if (!start && !end) {
     return (
@@ -72,46 +88,45 @@ export function RouteMap({
       )}
 
       <div className="overflow-hidden rounded-2xl border-2 border-slate-200 shadow-inner dark:border-slate-700">
-        {isLoaded ? (
-          <GoogleMap
-            mapContainerStyle={{ width: '100%', height }}
-            center={center}
-            zoom={16}
-            options={{ mapId: CAMPUS_GOOGLE_MAP_ID }}
-          >
-            {start && (
-              <CampusMarker
-                position={start}
-                glyph="T"
-                background="#2563eb"
-              />
-            )}
-            {end && (
-              <CampusMarker
-                position={end}
-                glyph="S"
-                background="#e11d48"
-              />
-            )}
-            {start && end && (
-              <Polyline
-                path={[start, end]}
-                options={{
-                  strokeColor: '#2563eb',
-                  strokeOpacity: 0.9,
-                  strokeWeight: 4
-                }}
-              />
-            )}
-          </GoogleMap>
-        ) : (
-          <div
-            className="flex items-center justify-center bg-slate-100 text-sm text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-            style={{ height }}
-          >
-            Loading live route map...
-          </div>
-        )}
+        <MapContainer
+          center={toLeafletPosition(center)}
+          zoom={16}
+          scrollWheelZoom
+          style={{ width: '100%', height }}
+        >
+          <RouteMapViewport center={center} zoom={16} />
+          <TileLayer
+            attribution={CAMPUS_MAP_ATTRIBUTION}
+            url={CAMPUS_MAP_TILE_URL}
+          />
+          {start && (
+            <CampusMarker
+              position={start}
+              glyph="T"
+              background="#2563eb"
+            />
+          )}
+          {end && (
+            <CampusMarker
+              position={end}
+              glyph="S"
+              background="#e11d48"
+            />
+          )}
+          {start && end && (
+            <Polyline
+              positions={[
+                toLeafletPosition(start),
+                toLeafletPosition(end)
+              ]}
+              pathOptions={{
+                color: '#2563eb',
+                opacity: 0.9,
+                weight: 4
+              }}
+            />
+          )}
+        </MapContainer>
       </div>
     </div>
   );

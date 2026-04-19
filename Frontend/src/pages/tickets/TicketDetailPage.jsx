@@ -20,7 +20,7 @@ import { getIssueReportById, updateIssueReportFeedback } from '../../api/issues'
 import {
   formatCoordinates,
   getTechnicianCoordinates,
-  getGoogleMapsDirectionsUrl,
+  getOpenStreetMapLocationUrl,
   parseCoordinatesFromLocation
 } from '../../utils/location';
 import { getTicketListPathForRole } from '../../utils/routes';
@@ -247,7 +247,7 @@ export function TicketDetailPage() {
   }
 
   const coordinates = parseCoordinatesFromLocation(ticket.location);
-  const mapsUrl = getGoogleMapsDirectionsUrl(ticket.location);
+  const mapsUrl = getOpenStreetMapLocationUrl(ticket.location);
   const liveTechnicianCoordinates =
     user?.role === 'TECHNICIAN' ? currentCoordinates : getTechnicianCoordinates(assignedTechnician);
 
@@ -338,7 +338,7 @@ export function TicketDetailPage() {
                       className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                     >
                       <NavigationIcon className="w-4 h-4 mr-2" />
-                      Open in Google Maps
+                      Open in OpenStreetMap
                     </a>
                   </div>
                 </div>
