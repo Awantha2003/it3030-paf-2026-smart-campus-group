@@ -512,16 +512,16 @@ export function BookingResourcesPage() {
   async function loadTypes() {
     setLoadingTypes(true);
     setError('');
-    
+
     try {
       const { getResourceSummary } = await import('../../api/facilities');
-      
+
       // Try fetching both, but don't let types failure stop the summary
       const responses = await Promise.allSettled([
         getResourceTypes(),
         getResourceSummary()
       ]);
-      
+
       const typeData = responses[0].status === 'fulfilled' ? responses[0].value : FALLBACK_TYPES;
       const summaryData = responses[1].status === 'fulfilled' ? responses[1].value : {};
 
@@ -531,18 +531,18 @@ export function BookingResourcesPage() {
           if (summaryData[type.type] !== undefined) {
             const count = summaryData[type.type];
             let label = `${count} available`;
-            
+
             if (type.type === 'FACILITY') label = `${count} spaces`;
             else if (type.type === 'EQUIPMENT') label = `${count} items`;
             else if (type.type === 'SPORTS') label = `${count} venues`;
             else if (type.type === 'LIBRARY') label = `${count} zones`;
             else if (type.type === 'EVENT') label = `${count} upcoming`;
-            
+
             return { ...type, availabilityLabel: label };
           }
           return type;
         });
-        
+
         setResourceTypes(updatedTypes);
         setSelectedType(updatedTypes[0].type);
       }
@@ -567,7 +567,7 @@ export function BookingResourcesPage() {
           getAllFacilities()
         ]);
         const facilitiesById = new Map((Array.isArray(allFacilities) ? allFacilities : []).map((item) => [item.id, item]));
-        
+
         const mapped = (Array.isArray(dbEquipments) ? dbEquipments : []).map((item) => {
           const linkedFacility = facilitiesById.get(item.facilityId);
           const building = linkedFacility?.building || '';
@@ -591,16 +591,17 @@ export function BookingResourcesPage() {
             approvalRequired: item.approvalRequired,
             bookingWindow: 'Up to 14 days',
             tags: [item.status],
+            status: item.status,
             highlights: item.approvalRequired ? ['Approval required'] : ['Instant confirmation']
           };
         });
-        
+
         setResources(mapped);
       } else if (['SPORTS', 'LIBRARY', 'EVENT'].includes(type)) {
         const { getFacilitiesByType } = await import('../../api/facilities');
 
         const dbPlaces = await getFacilitiesByType(type);
-        
+
         const mapped = (Array.isArray(dbPlaces) ? dbPlaces : []).map(item => ({
           id: item.id,
           name: item.name,
@@ -615,20 +616,21 @@ export function BookingResourcesPage() {
           approvalRequired: false,
           bookingWindow: 'Up to 14 days',
           tags: item.amenities || [],
+          status: item.status,
           highlights: [`Capacity: ${item.capacity}`]
         }));
-        
+
         setResources(mapped);
       } else {
         const resourceData = await getResources(type);
         setResources(
           Array.isArray(resourceData)
             ? resourceData.map((resource) => ({
-                ...resource,
-                building: resource.building || '',
-                spaceType: resource.spaceType || type,
-                resourceKind: resource.resourceKind || resource.spaceType || type
-              }))
+              ...resource,
+              building: resource.building || '',
+              spaceType: resource.spaceType || type,
+              resourceKind: resource.resourceKind || resource.spaceType || type
+            }))
             : []
         );
       }
@@ -820,7 +822,7 @@ export function BookingResourcesPage() {
       const typeMatches =
         genericTypeFilter === 'ALL' ||
         normalizeResourceKindValue(resource.resourceKind || resource.spaceType || selectedType) ===
-          normalizeResourceKindValue(genericTypeFilter);
+        normalizeResourceKindValue(genericTypeFilter);
       return buildingMatches && typeMatches;
     });
   }, [selectedType, resolvedResources, genericBuildingFilter, genericTypeFilter]);
@@ -1256,9 +1258,8 @@ export function BookingResourcesPage() {
       durationHours < (genericTypeConfig.durationMin || 1) ||
       durationHours > (genericTypeConfig.durationMax || 12)
     ) {
-      return `${genericTypeConfig.durationLabel || 'Required Hours'} must be between ${
-        genericTypeConfig.durationMin || 1
-      } and ${genericTypeConfig.durationMax || 12}.`;
+      return `${genericTypeConfig.durationLabel || 'Required Hours'} must be between ${genericTypeConfig.durationMin || 1
+        } and ${genericTypeConfig.durationMax || 12}.`;
     }
 
     const bookingsForValidationDate =
@@ -1443,36 +1444,32 @@ export function BookingResourcesPage() {
               return (
                 <motion.button
                   key={type.type}
-                type="button"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.04 * index }}
-                onClick={() => handleResourceTypeClick(type.type)}
-                className={`group relative overflow-hidden rounded-3xl border p-5 text-left transition-all ${
-                    isActive
-                      ? 'border-white/50 bg-slate-900 text-white shadow-[0_20px_45px_-20px_rgba(15,23,42,0.8)]'
-                      : 'border-slate-200/70 bg-white/80 hover:-translate-y-0.5 hover:border-slate-300 dark:border-slate-700/70 dark:bg-slate-900/70 dark:hover:border-slate-600'
-                  }`}
+                  type="button"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.04 * index }}
+                  onClick={() => handleResourceTypeClick(type.type)}
+                  className={`group relative overflow-hidden rounded-3xl border p-5 text-left transition-all ${isActive
+                    ? 'border-white/50 bg-slate-900 text-white shadow-[0_20px_45px_-20px_rgba(15,23,42,0.8)]'
+                    : 'border-slate-200/70 bg-white/80 hover:-translate-y-0.5 hover:border-slate-300 dark:border-slate-700/70 dark:bg-slate-900/70 dark:hover:border-slate-600'
+                    }`}
                 >
                   <div
-                    className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${getTypeAccents(type.type)} ${
-                      isActive ? 'opacity-100' : 'opacity-70'
-                    }`}
+                    className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${getTypeAccents(type.type)} ${isActive ? 'opacity-100' : 'opacity-70'
+                      }`}
                   />
                   <div className="relative">
                     <div
-                      className={`mb-4 inline-flex rounded-2xl p-2.5 ring-1 ${
-                        isActive
-                          ? 'bg-white/15 text-white ring-white/25'
-                          : 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700'
-                      }`}
+                      className={`mb-4 inline-flex rounded-2xl p-2.5 ring-1 ${isActive
+                        ? 'bg-white/15 text-white ring-white/25'
+                        : 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700'
+                        }`}
                     >
                       <Icon className="h-5 w-5" />
                     </div>
                     <p
-                      className={`text-xs font-semibold uppercase tracking-[0.14em] ${
-                        isActive ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'
-                      }`}
+                      className={`text-xs font-semibold uppercase tracking-[0.14em] ${isActive ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400'
+                        }`}
                     >
                       {type.type}
                     </p>
@@ -1575,18 +1572,16 @@ export function BookingResourcesPage() {
               return (
                 <div
                   key={feature}
-                  className={`rounded-2xl border px-4 py-3 ${
-                    conflictMessage
-                      ? 'border-red-200 bg-red-50/70 dark:border-red-900/40 dark:bg-red-900/10'
-                      : 'border-slate-200/80 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/70'
-                  }`}
+                  className={`rounded-2xl border px-4 py-3 ${conflictMessage
+                    ? 'border-red-200 bg-red-50/70 dark:border-red-900/40 dark:bg-red-900/10'
+                    : 'border-slate-200/80 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/70'
+                    }`}
                 >
                   <p
-                    className={`text-sm font-semibold ${
-                      conflictMessage
-                        ? 'text-red-800 dark:text-red-300'
-                        : 'text-slate-700 dark:text-slate-200'
-                    }`}
+                    className={`text-sm font-semibold ${conflictMessage
+                      ? 'text-red-800 dark:text-red-300'
+                      : 'text-slate-700 dark:text-slate-200'
+                      }`}
                   >
                     {feature}
                   </p>
@@ -2491,8 +2486,14 @@ export function BookingResourcesPage() {
                         <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 py-2 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
                           Capacity: {space.capacity || 60}
                         </div>
-                        <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 py-2 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
-                          Status: Available
+                        <div className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
+                          space.status === 'MAINTENANCE'
+                            ? 'border-amber-200/50 bg-amber-500/10 text-amber-600 dark:border-amber-500/30 dark:text-amber-400'
+                            : space.status === 'CLOSED'
+                              ? 'border-red-200/50 bg-red-500/10 text-red-600 dark:border-red-500/30 dark:text-red-400'
+                              : 'border-slate-200/80 bg-slate-50/70 text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200'
+                        }`}>
+                          Status: {space.status === 'MAINTENANCE' || space.status === 'CLOSED' ? space.status : 'Available'}
                         </div>
                       </div>
 
@@ -2519,10 +2520,11 @@ export function BookingResourcesPage() {
                       <Button
                         size="sm"
                         onClick={() => openNewFacilityBookingForm(space.code)}
-                        className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700"
-                        rightIcon={<ArrowUpRight className="h-4 w-4" />}
+                        disabled={space.status === 'MAINTENANCE' || space.status === 'CLOSED'}
+                        className={`w-full ${space.status === 'MAINTENANCE' || space.status === 'CLOSED' ? 'bg-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-cyan-500 to-blue-600'} text-white hover:from-cyan-600 hover:to-blue-700`}
+                        rightIcon={!(space.status === 'MAINTENANCE' || space.status === 'CLOSED') ? <ArrowUpRight className="h-4 w-4" /> : null}
                       >
-                        Book This Space
+                        {space.status === 'MAINTENANCE' ? 'Under Maintenance' : space.status === 'CLOSED' ? 'Closed' : 'Book This Space'}
                       </Button>
                     </CardContent>
                   </Card>
@@ -2567,11 +2569,22 @@ export function BookingResourcesPage() {
                           <p className="text-sm text-slate-600 dark:text-slate-300">{resource.subtitle}</p>
                         )}
                       </div>
-                      {resource.approvalRequired && (
-                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                          Approval
-                        </span>
-                      )}
+                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                        {resource.approvalRequired && (
+                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                            Approval
+                          </span>
+                        )}
+                        {resource.status && resource.status !== 'OPERATIONAL' && (
+                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase ${
+                            resource.status === 'MAINTENANCE' 
+                              ? 'bg-amber-500/15 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400'
+                              : 'bg-red-500/15 text-red-600 dark:bg-red-500/20 dark:text-red-400'
+                          }`}>
+                            {resource.status}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
@@ -2634,10 +2647,11 @@ export function BookingResourcesPage() {
                       <Button
                         size="sm"
                         onClick={() => openGenericBookingForm(resource.id)}
-                        className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700"
-                        rightIcon={<ArrowUpRight className="h-4 w-4" />}
+                        disabled={resource.status === 'MAINTENANCE' || resource.status === 'CLOSED'}
+                        className={`w-full ${resource.status === 'MAINTENANCE' || resource.status === 'CLOSED' ? 'bg-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-cyan-500 to-blue-600'} text-white hover:from-cyan-600 hover:to-blue-700`}
+                        rightIcon={!(resource.status === 'MAINTENANCE' || resource.status === 'CLOSED') ? <ArrowUpRight className="h-4 w-4" /> : null}
                       >
-                        Book This Resource
+                         {resource.status === 'MAINTENANCE' ? 'Maintenance' : resource.status === 'CLOSED' ? 'Closed' : 'Book This Resource'}
                       </Button>
                     )}
                   </CardContent>

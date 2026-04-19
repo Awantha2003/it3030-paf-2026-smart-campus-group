@@ -123,6 +123,11 @@ public class FacilityBookingService {
         com.tech.spcours.paf_smart.model.Facility hall = facilityRepository
                 .findByCode(request.lectureHallCode().trim().toUpperCase())
                 .orElseThrow(() -> new ResourceConflictException("Selected facility space not found"));
+        
+        if (hall.getStatus() != null && !"OPERATIONAL".equalsIgnoreCase(hall.getStatus())) {
+            throw new ResourceConflictException("This facility is currently " + hall.getStatus().toLowerCase() + " and cannot be reserved.");
+        }
+
         if (!"FACILITY".equals(resolveResourceCategory(hall.getSpaceType()))) {
             throw new ResourceConflictException("Only facility category spaces can be booked here");
         }

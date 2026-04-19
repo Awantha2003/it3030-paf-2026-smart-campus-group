@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { getAllFacilities, deleteFacility, createFacility, updateFacility, getResourceSummary } from '../../api/facilities';
-import { getEquipmentsByFacility, createEquipment, updateEquipment, deleteEquipment } from '../../api/equipments';
+import { getEquipmentsByFacility, createEquipment, updateEquipment, deleteEquipment, getAllEquipments } from '../../api/equipments';
 
 const RESOURCE_TYPE_OPTIONS = ['FACILITY', 'SPORTS', 'LIBRARY', 'EVENT'];
 
@@ -28,6 +28,7 @@ function formatResourceTypeLabel(rawType) {
 
 export function AdminFacilitiesPage() {
     const [facilities, setFacilities] = useState([]);
+    const [allEquipments, setAllEquipments] = useState([]);
     const [summary, setSummary] = useState({ FACILITY: 0, EQUIPMENT: 0, SPORTS: 0, LIBRARY: 0, EVENT: 0 });
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -42,6 +43,7 @@ export function AdminFacilitiesPage() {
     const [isEqModalOpen, setIsEqModalOpen] = useState(false);
     const [currentEq, setCurrentEq] = useState(null);
     const [targetFacilityId, setTargetFacilityId] = useState(null);
+    const [filterType, setFilterType] = useState('ALL');
 
     useEffect(() => {
         fetchData();
@@ -50,12 +52,14 @@ export function AdminFacilitiesPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [facilitiesData, summaryData] = await Promise.all([
+            const [facilitiesData, summaryData, equipmentsData] = await Promise.all([
                 getAllFacilities(),
-                getResourceSummary()
+                getResourceSummary(),
+                getAllEquipments()
             ]);
             setFacilities(facilitiesData);
             setSummary(summaryData);
+            setAllEquipments(equipmentsData);
             setError(null);
         } catch (err) {
             console.error('Failed to fetch data:', err);
@@ -160,12 +164,13 @@ export function AdminFacilitiesPage() {
             name: formData.get('name'),
             building: formData.get('building'),
             block: formData.get('block'),
-            floor: parseInt(formData.get('floor')),
+            floor: formData.get('floor') ? parseInt(formData.get('floor')) : 0,
             spaceType: String(formData.get('spaceType') || 'FACILITY').toUpperCase(),
             capacity: parseInt(formData.get('capacity')),
             description: formData.get('description'),
             amenities: formData.get('amenities').split(',').map(s => s.trim()).filter(s => s),
-            imageUrl: formData.get('imageUrl')
+            imageUrl: formData.get('imageUrl'),
+            status: formData.get('status')
         };
 
         try {
@@ -183,11 +188,22 @@ export function AdminFacilitiesPage() {
         }
     };
 
-    const filteredFacilities = facilities.filter(f => 
-        f.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        f.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.building.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredFacilities = facilities.filter(f => {
+        const matchesSearch = 
+            f.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            f.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            f.building.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        const matchesType = filterType === 'ALL' || formatResourceTypeLabel(f.spaceType) === filterType;
+        
+        return matchesSearch && matchesType;
+    });
+
+    const filteredEquipments = allEquipments.filter(e => {
+        const f = facilities.find(fac => fac.id === e.facilityId);
+        return e.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+               (f && f.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    });
 
     return (
         <motion.div
@@ -217,20 +233,31 @@ export function AdminFacilitiesPage() {
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {[
-                    { label: 'FACILITY', count: summary.FACILITY, sub: 'Spaces', icon: <FiLayers />, color: 'blue' },
-                    { label: 'EQUIPMENT', count: summary.EQUIPMENT, sub: 'Items', icon: <FiBox />, color: 'orange' },
-                    { label: 'SPORTS', count: summary.SPORTS, sub: 'Venues', icon: <FiActivity />, color: 'emerald' },
-                    { label: 'LIBRARY', count: summary.LIBRARY, sub: 'Zones', icon: <FiBookOpen />, color: 'purple' },
-                    { label: 'EVENT', count: summary.EVENT, sub: 'Events', icon: <FiCalendar />, color: 'rose' }
+                    { type: 'FACILITY', label: 'FACILITY', count: summary.FACILITY, sub: 'Spaces', icon: <FiLayers />, color: 'blue' },
+                    { type: 'EQUIPMENT', label: 'EQUIPMENT', count: summary.EQUIPMENT, sub: 'Items', icon: <FiBox />, color: 'orange' },
+                    { type: 'SPORTS', label: 'SPORTS', count: summary.SPORTS, sub: 'Venues', icon: <FiActivity />, color: 'emerald' },
+                    { type: 'LIBRARY', label: 'LIBRARY', count: summary.LIBRARY, sub: 'Zones', icon: <FiBookOpen />, color: 'purple' },
+                    { type: 'EVENT', label: 'EVENT', count: summary.EVENT, sub: 'Events', icon: <FiCalendar />, color: 'rose' }
                 ].map((item, i) => (
-                    <Card key={i} className="p-4 flex flex-col items-center text-center group hover:scale-105 transition-transform border-none shadow-sm dark:bg-slate-900/50">
-                        <div className={`w-10 h-10 rounded-2xl mb-3 flex items-center justify-center text-white bg-${item.color}-500 shadow-lg shadow-${item.color}-500/20`}>
+                    <button 
+                        key={item.type}
+                        onClick={() => setFilterType(prev => prev === item.type ? 'ALL' : item.type)}
+                        className={`p-4 flex flex-col items-center text-center group rounded-2xl transition-all border-2 ${
+                            filterType === item.type 
+                                ? `border-${item.color}-500 bg-${item.color}-50 dark:bg-${item.color}-900/10 scale-105 shadow-lg` 
+                                : 'border-transparent bg-white/50 dark:bg-slate-900/50 hover:border-slate-200 dark:hover:border-slate-700'
+                        }`}
+                    >
+                        <div className={`w-10 h-10 rounded-2xl mb-3 flex items-center justify-center text-white bg-${item.color}-500 shadow-xl shadow-${item.color}-500/20`}>
                             {item.icon}
                         </div>
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{item.label}</h4>
                         <p className="text-xl font-black text-slate-900 dark:text-white leading-none">{item.count}</p>
                         <p className="text-[9px] text-slate-500 dark:text-slate-500 font-bold uppercase mt-1 tracking-tighter">{item.sub}</p>
-                    </Card>
+                        {filterType === item.type && (
+                            <div className={`mt-2 h-1 w-4 rounded-full bg-${item.color}-500`} />
+                        )}
+                    </button>
                 ))}
             </div>
         </div>
@@ -256,6 +283,58 @@ export function AdminFacilitiesPage() {
                 </div>
 
                 <div className="overflow-x-auto">
+                    {filterType === 'EQUIPMENT' ? (
+                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50/50 dark:bg-slate-900/10">
+                            {filteredEquipments.length === 0 ? (
+                                <div className="col-span-full py-12 text-center text-slate-500">No equipment items found.</div>
+                            ) : (
+                                filteredEquipments.map(eq => {
+                                    const linkedFacility = facilities.find(f => f.id === eq.facilityId);
+                                    const utilization = eq.totalQuantity > 0 ? (eq.availableQuantity / eq.totalQuantity) * 100 : 0;
+                                    return (
+                                        <Card key={eq.id} className="overflow-hidden group hover:shadow-xl transition-all border-none bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800">
+                                            <div className="h-40 bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
+                                                {eq.imageUrl ? (
+                                                    <img src={eq.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-300"><FiBox size={48} /></div>
+                                                )}
+                                                <div className="absolute top-3 right-3 flex gap-1 transform translate-x-12 group-hover:translate-x-0 transition-transform">
+                                                    <button onClick={() => handleOpenEqModal(eq.facilityId, eq)} className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg text-orange-500 shadow-lg hover:bg-orange-500 hover:text-white transition-colors"><FiEdit2 size={16} /></button>
+                                                    <button onClick={() => handleEqDelete(eq.facilityId, eq.id)} className="p-2 bg-white/90 dark:bg-slate-800/90 rounded-lg text-red-500 shadow-lg hover:bg-red-500 hover:text-white transition-colors"><FiTrash2 size={16} /></button>
+                                                </div>
+                                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-200 dark:bg-slate-700">
+                                                    <div className="h-full bg-orange-500 transition-all duration-1000" style={{ width: `${utilization}%` }} />
+                                                </div>
+                                            </div>
+                                            <div className="p-4 space-y-3">
+                                                <div>
+                                                    <h5 className="font-black text-slate-900 dark:text-white leading-tight uppercase tracking-tight">{eq.name}</h5>
+                                                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-1 mt-1">
+                                                        <FiLayers className="w-3 h-3" /> {linkedFacility?.name || 'Unassigned'}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center justify-between py-2 border-y border-slate-50 dark:border-slate-800">
+                                                    <div className="text-center">
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Available</p>
+                                                        <p className="font-black text-slate-900 dark:text-white">{eq.availableQuantity}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total</p>
+                                                        <p className="font-black text-slate-900 dark:text-white">{eq.totalQuantity}</p>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</p>
+                                                        <Badge variant="primary" className="text-[9px] px-1 py-0">{eq.approvalRequired ? 'APPROVAL' : 'INSTANT'}</Badge>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    );
+                                })
+                            )}
+                        </div>
+                    ) : (
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
@@ -302,9 +381,17 @@ export function AdminFacilitiesPage() {
                                                     <div>
                                                         <p className="text-sm font-bold text-slate-900 dark:text-white uppercase leading-none mb-1">{facility.code}</p>
                                                         <p className="text-xs text-slate-500 dark:text-slate-400">{facility.name}</p>
-                                                        <Badge variant="primary" className="text-[9px] px-1 py-0 mt-1">
-                                                            {formatResourceTypeLabel(facility.spaceType)}
-                                                        </Badge>
+                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                            <Badge variant="primary" className="text-[9px] px-1 py-0">
+                                                                {formatResourceTypeLabel(facility.spaceType)}
+                                                            </Badge>
+                                                            <Badge 
+                                                                variant={facility.status === 'OPERATIONAL' ? 'success' : facility.status === 'MAINTENANCE' ? 'warning' : 'danger'} 
+                                                                className="text-[9px] px-1 py-0 uppercase"
+                                                            >
+                                                                {facility.status}
+                                                            </Badge>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -414,6 +501,7 @@ export function AdminFacilitiesPage() {
                             )}
                         </tbody>
                     </table>
+                )}
                 </div>
             </Card>
 
@@ -451,19 +539,19 @@ export function AdminFacilitiesPage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <div className="space-y-2 text-left">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">Building</label>
-                                            <input required name="building" defaultValue={currentFacility?.building} placeholder="Engineering" className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white placeholder:text-slate-300" />
+                                            <input name="building" defaultValue={currentFacility?.building} placeholder="Engineering (Optional)" className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white placeholder:text-slate-300" />
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">Block</label>
-                                            <input required name="block" defaultValue={currentFacility?.block} placeholder="A" className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white placeholder:text-slate-300" />
+                                            <input name="block" defaultValue={currentFacility?.block} placeholder="A (Optional)" className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white placeholder:text-slate-300" />
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">Floor</label>
-                                            <input required type="number" name="floor" defaultValue={currentFacility?.floor} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white" />
+                                            <input type="number" name="floor" defaultValue={currentFacility?.floor} placeholder="0 (Optional)" className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white placeholder:text-slate-300" />
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Resource Type</label>
                                             <select name="spaceType" defaultValue={formatResourceTypeLabel(currentFacility?.spaceType) || 'FACILITY'} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white">
@@ -477,6 +565,14 @@ export function AdminFacilitiesPage() {
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Max Seating</label>
                                             <input required type="number" name="capacity" defaultValue={currentFacility?.capacity} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Operation Status</label>
+                                            <select name="status" defaultValue={currentFacility?.status || 'OPERATIONAL'} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white">
+                                                <option value="OPERATIONAL">OPERATIONAL</option>
+                                                <option value="MAINTENANCE">MAINTENANCE</option>
+                                                <option value="CLOSED">CLOSED</option>
+                                            </select>
                                         </div>
                                     </div>
 

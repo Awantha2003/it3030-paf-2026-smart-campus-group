@@ -73,15 +73,15 @@ public class FacilityService {
         Facility facility = Facility.builder()
                 .code(request.code().trim().toUpperCase())
                 .name(request.name().trim())
-                .building(request.building().trim())
-                .block(request.block().trim())
+                .building(request.building() != null ? request.building().trim() : null)
+                .block(request.block() != null ? request.block().trim() : null)
                 .floor(request.floor())
                 .spaceType(normalizeResourceType(request.spaceType()))
                 .capacity(request.capacity())
                 .description(request.description())
                 .amenities(request.amenities())
                 .imageUrl(request.imageUrl())
-                .status("OPERATIONAL")
+                .status(request.status() != null ? request.status() : "OPERATIONAL")
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -100,14 +100,17 @@ public class FacilityService {
 
         facility.setCode(request.code().trim().toUpperCase());
         facility.setName(request.name().trim());
-        facility.setBuilding(request.building().trim());
-        facility.setBlock(request.block().trim());
+        facility.setBuilding(request.building() != null ? request.building().trim() : null);
+        facility.setBlock(request.block() != null ? request.block().trim() : null);
         facility.setFloor(request.floor());
         facility.setSpaceType(normalizeResourceType(request.spaceType()));
         facility.setCapacity(request.capacity());
         facility.setDescription(request.description());
         facility.setAmenities(request.amenities());
         facility.setImageUrl(request.imageUrl());
+        if (request.status() != null) {
+            facility.setStatus(request.status());
+        }
         facility.setUpdatedAt(Instant.now());
 
         return mapToResponse(facilityRepository.save(facility));
@@ -183,7 +186,7 @@ public class FacilityService {
                 .description(facility.getDescription())
                 .amenities(facility.getAmenities())
                 .imageUrl(facility.getImageUrl())
-                .status(facility.getStatus())
+                .status(facility.getStatus() != null ? facility.getStatus() : "OPERATIONAL")
                 .createdAt(facility.getCreatedAt())
                 .updatedAt(facility.getUpdatedAt())
                 .build();
