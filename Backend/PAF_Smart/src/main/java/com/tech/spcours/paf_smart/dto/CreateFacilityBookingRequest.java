@@ -29,5 +29,9 @@ public record CreateFacilityBookingRequest(
         @NotNull(message = "Duration is required")
         @Min(value = 1, message = "Duration must be at least 1 hour")
         @Max(value = 12, message = "Duration cannot exceed 12 hours")
-        Integer durationHours) {
+        Integer durationHours,
+
+        String recurrenceType,
+
+        LocalDate recurrenceEndDate) {
 }

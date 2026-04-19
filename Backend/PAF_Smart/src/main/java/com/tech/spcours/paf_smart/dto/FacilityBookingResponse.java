@@ -22,6 +22,8 @@ public record FacilityBookingResponse(
         String block,
         Integer floor,
         String lectureHallName,
+        String recurrenceType,
+        String recurrenceGroupId,
         String status,
         String rejectionReason,
         String cancellationReason,

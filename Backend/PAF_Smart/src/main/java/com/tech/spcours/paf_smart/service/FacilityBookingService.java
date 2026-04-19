@@ -3,16 +3,10 @@ package com.tech.spcours.paf_smart.service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-
-import org.springframework.stereotype.Service;
-
-import java.time.LocalTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
@@ -52,6 +46,9 @@ public class FacilityBookingService {
     private static final Set<String> EVENT_CATEGORY_TYPES = Set.of(
             "EVENT",
             "SEMINAR_ROOM");
+
+    private static final Set<String> SUPPORTED_RECURRENCE_TYPES = Set.of("NONE", "WEEKLY", "MONTHLY");
+    private static final int MAX_RECURRING_OCCURRENCES = 104;
 
     private final FacilityBookingRepository facilityBookingRepository;
     private final com.tech.spcours.paf_smart.repository.FacilityRepository facilityRepository;
@@ -129,45 +126,77 @@ public class FacilityBookingService {
         }
 
         int requestedDurationHours = sanitizeDuration(request.durationHours());
-        validateBookingDateTime(request.bookingDate(), request.bookingTime(), requestedDurationHours);
-        ensureHallIsAvailableForSlot(hall.getCode(), request.bookingDate(), request.bookingTime(),
-                requestedDurationHours, null);
-        ensureStudentHasNoOverlap(user.getId(), request.bookingDate(), request.bookingTime(), requestedDurationHours,
-                null);
+        String recurrenceType = sanitizeRecurrenceType(request.recurrenceType());
+        List<LocalDate> occurrenceDates = resolveOccurrenceDates(
+                request.bookingDate(),
+                recurrenceType,
+                request.recurrenceEndDate());
+        String recurrenceGroupId = "NONE".equals(recurrenceType) ? null : UUID.randomUUID().toString();
+
+        for (LocalDate occurrenceDate : occurrenceDates) {
+            validateBookingDateTime(occurrenceDate, request.bookingTime(), requestedDurationHours);
+            ensureHallIsAvailableForSlot(
+                    hall.getCode(),
+                    occurrenceDate,
+                    request.bookingTime(),
+                    requestedDurationHours,
+                    null);
+            ensureStudentHasNoOverlap(
+                    user.getId(),
+                    occurrenceDate,
+                    request.bookingTime(),
+                    requestedDurationHours,
+                    null);
+        }
 
         Instant now = Instant.now();
-        com.tech.spcours.paf_smart.model.FacilityBooking booking = com.tech.spcours.paf_smart.model.FacilityBooking
-                .builder()
-                .studentId(user.getId())
-                .studentName(user.getName())
-                .studentEmail(user.getEmail())
-                .faculty(request.faculty().trim())
-                .bookingDate(request.bookingDate())
-                .bookingTime(request.bookingTime())
-                .durationHours(requestedDurationHours)
-                .studentCount(request.studentCount())
-                .lectureHallCode(hall.getCode())
-                .building(hall.getBuilding())
-                .block(hall.getBlock())
-                .floor(hall.getFloor())
-                .lectureHallName(hall.getName())
-                .status("PENDING_APPROVAL")
-                .reminderSentAt(null)
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
+        List<com.tech.spcours.paf_smart.model.FacilityBooking> toSave = occurrenceDates.stream()
+                .map(occurrenceDate -> com.tech.spcours.paf_smart.model.FacilityBooking
+                        .builder()
+                        .studentId(user.getId())
+                        .studentName(user.getName())
+                        .studentEmail(user.getEmail())
+                        .faculty(request.faculty().trim())
+                        .bookingDate(occurrenceDate)
+                        .bookingTime(request.bookingTime())
+                        .durationHours(requestedDurationHours)
+                        .studentCount(request.studentCount())
+                        .lectureHallCode(hall.getCode())
+                        .building(hall.getBuilding())
+                        .block(hall.getBlock())
+                        .floor(hall.getFloor())
+                        .lectureHallName(hall.getName())
+                        .recurrenceType(recurrenceType)
+                        .recurrenceGroupId(recurrenceGroupId)
+                        .status("PENDING_APPROVAL")
+                        .reminderSentAt(null)
+                        .createdAt(now)
+                        .updatedAt(now)
+                        .build())
+                .toList();
 
-        com.tech.spcours.paf_smart.model.FacilityBooking saved = facilityBookingRepository.save(booking);
+        List<com.tech.spcours.paf_smart.model.FacilityBooking> savedBookings = facilityBookingRepository.saveAll(toSave);
+        com.tech.spcours.paf_smart.model.FacilityBooking saved = savedBookings.get(0);
+        int createdCount = savedBookings.size();
 
-        notificationService.send(user.getId(), "Booking Created", "Your booking for " + hall.getName() + " on "
-                + request.bookingDate().toString() + " at " + request.bookingTime().toString() + " has been created.",
-                "BOOKINGS", saved.getId());
+        String recurrenceSummary = createdCount > 1 ? " Recurring plan created for " + createdCount + " bookings." : "";
+        notificationService.send(
+                user.getId(),
+                "Booking Created",
+                "Your booking for " + hall.getName() + " on " + request.bookingDate().toString() + " at "
+                        + request.bookingTime().toString() + " has been created." + recurrenceSummary,
+                "BOOKINGS",
+                saved.getId());
 
         userRepository.findByRole(com.tech.spcours.paf_smart.module.user.model.Role.ADMIN).forEach(admin -> {
-            notificationService.send(admin.getId(), "New Facility Booking",
+            notificationService.send(
+                    admin.getId(),
+                    "New Facility Booking",
                     user.getName() + " requested to book " + hall.getName() + " on " + request.bookingDate().toString()
-                            + " at " + request.bookingTime().toString() + ".",
-                    "BOOKINGS", saved.getId());
+                            + " at " + request.bookingTime().toString()
+                            + (createdCount > 1 ? " (" + createdCount + " recurring slots)." : "."),
+                    "BOOKINGS",
+                    saved.getId());
         });
 
         return toBookingResponse(saved);
@@ -207,6 +236,16 @@ public class FacilityBookingService {
         existingBooking.setBlock(hall.getBlock());
         existingBooking.setFloor(hall.getFloor());
         existingBooking.setLectureHallName(hall.getName());
+        String requestedRecurrenceType = request.recurrenceType();
+        String updatedRecurrenceType = requestedRecurrenceType == null
+                ? sanitizeRecurrenceType(existingBooking.getRecurrenceType())
+                : sanitizeRecurrenceType(requestedRecurrenceType);
+        existingBooking.setRecurrenceType(updatedRecurrenceType);
+        if ("NONE".equals(updatedRecurrenceType)) {
+            existingBooking.setRecurrenceGroupId(null);
+        } else if (existingBooking.getRecurrenceGroupId() == null || existingBooking.getRecurrenceGroupId().isBlank()) {
+            existingBooking.setRecurrenceGroupId(UUID.randomUUID().toString());
+        }
         existingBooking.setReminderSentAt(null);
         existingBooking.setUpdatedAt(Instant.now());
 
@@ -307,6 +346,8 @@ public class FacilityBookingService {
                 .block(booking.getBlock())
                 .floor(booking.getFloor())
                 .lectureHallName(booking.getLectureHallName())
+                .recurrenceType(booking.getRecurrenceType())
+                .recurrenceGroupId(booking.getRecurrenceGroupId())
                 .status(booking.getStatus())
                 .rejectionReason(booking.getRejectionReason())
                 .cancellationReason(booking.getCancellationReason())
@@ -412,6 +453,52 @@ public class FacilityBookingService {
             return 12;
         }
         return durationHours;
+    }
+
+    private String sanitizeRecurrenceType(String recurrenceType) {
+        if (recurrenceType == null || recurrenceType.isBlank()) {
+            return "NONE";
+        }
+
+        String normalized = recurrenceType.trim().toUpperCase();
+        if (!SUPPORTED_RECURRENCE_TYPES.contains(normalized)) {
+            throw new ResourceConflictException("Unsupported recurrence type");
+        }
+        return normalized;
+    }
+
+    private List<LocalDate> resolveOccurrenceDates(
+            LocalDate bookingDate,
+            String recurrenceType,
+            LocalDate recurrenceEndDate) {
+        List<LocalDate> occurrenceDates = new ArrayList<>();
+        occurrenceDates.add(bookingDate);
+
+        if ("NONE".equals(recurrenceType)) {
+            return occurrenceDates;
+        }
+
+        LocalDate effectiveEndDate = recurrenceEndDate == null
+                ? ("WEEKLY".equals(recurrenceType) ? bookingDate.plusWeeks(4) : bookingDate.plusMonths(3))
+                : recurrenceEndDate;
+
+        if (effectiveEndDate.isBefore(bookingDate)) {
+            throw new ResourceConflictException("Recurring end date cannot be before booking date");
+        }
+
+        LocalDate cursor = bookingDate;
+        while (true) {
+            cursor = "WEEKLY".equals(recurrenceType) ? cursor.plusWeeks(1) : cursor.plusMonths(1);
+            if (cursor.isAfter(effectiveEndDate)) {
+                break;
+            }
+            occurrenceDates.add(cursor);
+            if (occurrenceDates.size() > MAX_RECURRING_OCCURRENCES) {
+                throw new ResourceConflictException("Recurring plan is too long. Please choose a shorter range.");
+            }
+        }
+
+        return occurrenceDates;
     }
 
     private String resolveResourceCategory(String rawSpaceType) {

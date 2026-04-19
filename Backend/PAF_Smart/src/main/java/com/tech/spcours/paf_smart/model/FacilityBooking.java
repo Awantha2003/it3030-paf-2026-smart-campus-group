@@ -48,6 +48,10 @@ public class FacilityBooking {
 
     private String lectureHallName;
 
+    private String recurrenceType;
+
+    private String recurrenceGroupId;
+
     private String status;
 
     private Instant reminderSentAt;
