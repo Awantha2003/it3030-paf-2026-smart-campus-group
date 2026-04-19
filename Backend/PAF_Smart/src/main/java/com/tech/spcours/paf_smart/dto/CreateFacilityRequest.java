@@ -33,6 +33,8 @@ public record CreateFacilityRequest(
 
         List<String> amenities,
 
-        String imageUrl
+        String imageUrl,
+        
+        String status
 ) {
 }

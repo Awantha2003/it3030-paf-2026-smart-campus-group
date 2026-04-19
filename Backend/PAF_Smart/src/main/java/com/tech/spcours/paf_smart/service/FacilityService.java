@@ -81,7 +81,7 @@ public class FacilityService {
                 .description(request.description())
                 .amenities(request.amenities())
                 .imageUrl(request.imageUrl())
-                .status("OPERATIONAL")
+                .status(request.status() != null ? request.status() : "OPERATIONAL")
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -108,6 +108,9 @@ public class FacilityService {
         facility.setDescription(request.description());
         facility.setAmenities(request.amenities());
         facility.setImageUrl(request.imageUrl());
+        if (request.status() != null) {
+            facility.setStatus(request.status());
+        }
         facility.setUpdatedAt(Instant.now());
 
         return mapToResponse(facilityRepository.save(facility));
@@ -183,7 +186,7 @@ public class FacilityService {
                 .description(facility.getDescription())
                 .amenities(facility.getAmenities())
                 .imageUrl(facility.getImageUrl())
-                .status(facility.getStatus())
+                .status(facility.getStatus() != null ? facility.getStatus() : "OPERATIONAL")
                 .createdAt(facility.getCreatedAt())
                 .updatedAt(facility.getUpdatedAt())
                 .build();

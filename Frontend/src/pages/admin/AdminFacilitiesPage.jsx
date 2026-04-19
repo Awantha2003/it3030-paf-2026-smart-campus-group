@@ -165,7 +165,8 @@ export function AdminFacilitiesPage() {
             capacity: parseInt(formData.get('capacity')),
             description: formData.get('description'),
             amenities: formData.get('amenities').split(',').map(s => s.trim()).filter(s => s),
-            imageUrl: formData.get('imageUrl')
+            imageUrl: formData.get('imageUrl'),
+            status: formData.get('status')
         };
 
         try {
@@ -302,9 +303,17 @@ export function AdminFacilitiesPage() {
                                                     <div>
                                                         <p className="text-sm font-bold text-slate-900 dark:text-white uppercase leading-none mb-1">{facility.code}</p>
                                                         <p className="text-xs text-slate-500 dark:text-slate-400">{facility.name}</p>
-                                                        <Badge variant="primary" className="text-[9px] px-1 py-0 mt-1">
-                                                            {formatResourceTypeLabel(facility.spaceType)}
-                                                        </Badge>
+                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                            <Badge variant="primary" className="text-[9px] px-1 py-0">
+                                                                {formatResourceTypeLabel(facility.spaceType)}
+                                                            </Badge>
+                                                            <Badge 
+                                                                variant={facility.status === 'OPERATIONAL' ? 'success' : facility.status === 'MAINTENANCE' ? 'warning' : 'danger'} 
+                                                                className="text-[9px] px-1 py-0 uppercase"
+                                                            >
+                                                                {facility.status}
+                                                            </Badge>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -463,7 +472,7 @@ export function AdminFacilitiesPage() {
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Resource Type</label>
                                             <select name="spaceType" defaultValue={formatResourceTypeLabel(currentFacility?.spaceType) || 'FACILITY'} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white">
@@ -477,6 +486,14 @@ export function AdminFacilitiesPage() {
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Max Seating</label>
                                             <input required type="number" name="capacity" defaultValue={currentFacility?.capacity} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Operation Status</label>
+                                            <select name="status" defaultValue={currentFacility?.status || 'OPERATIONAL'} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white">
+                                                <option value="OPERATIONAL">OPERATIONAL</option>
+                                                <option value="MAINTENANCE">MAINTENANCE</option>
+                                                <option value="CLOSED">CLOSED</option>
+                                            </select>
                                         </div>
                                     </div>
 
