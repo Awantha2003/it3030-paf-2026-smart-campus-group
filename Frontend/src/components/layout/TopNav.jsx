@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { Search, Sun, Moon, Plus, Bell, Wrench, Check } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Search, Sun, Moon, Bell, Wrench } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
@@ -86,16 +86,6 @@ export function TopNav() {
                         className="pl-9 pr-4 py-2 w-64 bg-slate-100 dark:bg-slate-800 border-transparent focus:bg-white dark:focus:bg-brand-dark focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 rounded-lg text-sm transition-all outline-none text-slate-700 dark:text-slate-200"
                     />
                 </div>
-
-                <Button
-                    variant="primary"
-                    size="sm"
-                    leftIcon={<Plus className="w-4 h-4" />}
-                    className="hidden sm:flex"
-                >
-
-                    Quick Add
-                </Button>
 
                 <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
 
