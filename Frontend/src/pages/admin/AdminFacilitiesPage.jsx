@@ -164,7 +164,7 @@ export function AdminFacilitiesPage() {
             name: formData.get('name'),
             building: formData.get('building'),
             block: formData.get('block'),
-            floor: parseInt(formData.get('floor')),
+            floor: formData.get('floor') ? parseInt(formData.get('floor')) : 0,
             spaceType: String(formData.get('spaceType') || 'FACILITY').toUpperCase(),
             capacity: parseInt(formData.get('capacity')),
             description: formData.get('description'),
@@ -539,15 +539,15 @@ export function AdminFacilitiesPage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <div className="space-y-2 text-left">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">Building</label>
-                                            <input required name="building" defaultValue={currentFacility?.building} placeholder="Engineering" className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white placeholder:text-slate-300" />
+                                            <input name="building" defaultValue={currentFacility?.building} placeholder="Engineering (Optional)" className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white placeholder:text-slate-300" />
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">Block</label>
-                                            <input required name="block" defaultValue={currentFacility?.block} placeholder="A" className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white placeholder:text-slate-300" />
+                                            <input name="block" defaultValue={currentFacility?.block} placeholder="A (Optional)" className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white placeholder:text-slate-300" />
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">Floor</label>
-                                            <input required type="number" name="floor" defaultValue={currentFacility?.floor} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white" />
+                                            <input type="number" name="floor" defaultValue={currentFacility?.floor} placeholder="0 (Optional)" className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all dark:text-white placeholder:text-slate-300" />
                                         </div>
                                     </div>
 

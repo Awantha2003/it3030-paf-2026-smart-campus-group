@@ -13,13 +13,8 @@ public record CreateFacilityRequest(
         @NotBlank(message = "Facility name is required")
         String name,
 
-        @NotBlank(message = "Building name is required")
         String building,
-
-        @NotBlank(message = "Block name is required")
         String block,
-
-        @NotNull(message = "Floor level is required")
         Integer floor,
 
         @NotBlank(message = "Space type is required")
